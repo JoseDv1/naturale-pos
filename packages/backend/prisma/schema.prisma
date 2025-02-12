@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,4 +5,98 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id       String @id @default(cuid())
+  username String @unique
+  password String
+  sales    Sale[]
+  role     Role   @default(USER)
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  stock       Int
+  updatedAt   DateTime @updatedAt
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: SetDefault, onUpdate: Cascade)
+  categoryId  Int      @default(0)
+
+  @@map("products")
+}
+
+model Sale {
+  id        Int             @id @default(autoincrement())
+  total     Float
+  date      DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  products  ProductOnSale[]
+  userId    String?
+  user      User?           @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+
+  @@map("sales")
+}
+
+model ProductOnSale {
+  saleId    Int
+  productId String
+  quantity  Int
+  price     Float
+  sale      Sale   @relation(fields: [saleId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@id([saleId, productId])
+  @@map("products_on_sale")
+}
+
+model Provider {
+  id       String   @id @default(cuid())
+  name     String
+  address  String?
+  phone    String?
+  email    String?
+  supplies Supply[]
+
+  @@map("providers")
+}
+
+model Supply {
+  id             Int               @id @default(autoincrement())
+  providerId     String            @default("0")
+  total          Float
+  date           DateTime          @default(now())
+  supplyProducts ProductOnSupply[]
+  provider       Provider          @relation(fields: [providerId], references: [id], onUpdate: Cascade, onDelete: SetDefault)
+
+  @@map("supplies")
+}
+
+model ProductOnSupply {
+  supplyId  Int
+  productId String
+
+  quantity Int
+  price    Float
+  supply   Supply @relation(fields: [supplyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([supplyId, productId])
+  @@map("products_on_supply")
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  products    Product[]
+
+  @@map("categories")
 }

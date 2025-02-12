@@ -1,0 +1,12 @@
+name: "Naturale POS"
+services:
+  db:
+    image: "postgres:17"
+    environment:
+      - POSTGRES_USER=naturale
+      - POSTGRES_PASSWORD=naturale
+      - POSTGRES_DB=naturale
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db_data:/var/lib/postgresql/data

@@ -1,5 +1,3 @@
-// TODO: Create Default Provider 
-// TODO: Create Default Category
 import { PrismaClient } from '@prisma/client'
 const db = new PrismaClient()
 async function seed() {
@@ -16,7 +14,7 @@ async function seed() {
 	await db.category.create({
 		data: {
 			name: "Default Category",
-			id: "0"
+			id: 0
 		}
 	})
 	console.log('Default Category Created!')

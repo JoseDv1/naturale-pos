@@ -8,13 +8,12 @@ interface UserCredentials {
 
 export async function register({ username, password }: UserCredentials) {
 	const hashedPassword = await Bun.password.hash(password);
-	const user = await db.user.create({
+	return await db.user.create({
 		data: {
 			username,
 			password: hashedPassword,
 		},
 	});
-	return user;
 }
 
 export async function login({ username, password }: UserCredentials) {
@@ -32,7 +31,6 @@ export async function changePassword({ username, newPassword }: { username: stri
 		where: { username },
 		data: { password: hashedPassword },
 	});
-
 }
 
 export async function getUserById(id: string) {

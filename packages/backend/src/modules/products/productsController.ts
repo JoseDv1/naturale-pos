@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@/lib/zValidator';
 import { createProduct, getProductById, getProducts, updateProduct, deleteProduct } from './productsServices';
+import { jwt, jwtGuard } from '@/lib/jwt';
 
 const productSchema = z.object({
 	name: z.string(),
@@ -25,7 +26,8 @@ export const productRouter = new Hono()
 			const product = await getProductById(id);
 			return c.json(product);
 		})
-
+	.use(jwt()) // Manage the JWT token
+	.use(jwtGuard('ADMIN')) // Manage the permissions
 	.post('/',
 		zValidator('json', productSchema),
 		async (c) => {

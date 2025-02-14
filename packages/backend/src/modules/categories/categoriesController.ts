@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@/lib/zValidator';
 import { createCategory, getCategoryById, getCategories, updateCategory, deleteCategory } from './categoriesServices';
+import { jwt, jwtGuard } from '@/lib/jwt';
 
 const categorySchema = z.object({
 	name: z.string(),
@@ -23,6 +24,8 @@ export const categoryRouter = new Hono()
 			const category = await getCategoryById(id);
 			return c.json(category);
 		})
+	.use(jwt()) // Manage the JWT token
+	.use(jwtGuard('ADMIN')) // Manage the permissions
 	.post('/',
 		zValidator('json', categorySchema),
 		async (c) => {

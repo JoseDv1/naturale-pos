@@ -1,19 +1,20 @@
 import { Hono } from 'hono';
-import { login, register, changePassword, getUserById } from './userServices';
+import { login, register, changePassword, getUserById, getUsers } from './userServices';
 import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@/lib/zValidator';
 import { z } from 'zod';
 import { sign } from "hono/jwt"
 import { setCookie } from "hono/cookie"
-import { jwt, JwtPayload } from '@/lib/jwt';
+import { jwt, jwtGuard, JwtPayload } from '@/lib/jwt';
 
 const tokenDuration = () => Math.floor(Date.now() / 1000) + 60 * 60 * 24 // 24 hours
+const userSchema = z.object({ username: z.string(), password: z.string() })
 export const userRouter = new Hono()
 	.post('/register',
-		zValidator("json", z.object({ username: z.string(), password: z.string() })),
+		zValidator("json", userSchema.extend({ name: z.string() })),
 		async (c) => {
-			const { username, password } = await c.req.valid("json")
-			const user = await register({ username, password });
+			const data = await c.req.valid("json")
+			const user = await register(data);
 			const token = await sign({
 				sub: user.id,
 				role: user.role,
@@ -24,10 +25,10 @@ export const userRouter = new Hono()
 
 		})
 	.post('/login',
-		zValidator("json", z.object({ username: z.string(), password: z.string() })),
+		zValidator("json", userSchema),
 		async (c) => {
-			const { username, password } = await c.req.valid("json")
-			const user = await login({ username, password });
+			const data = c.req.valid("json")
+			const user = await login(data);
 			const token = await sign({
 				sub: user.id,
 				role: user.role,
@@ -48,4 +49,18 @@ export const userRouter = new Hono()
 			const { username, newPassword } = c.req.valid("json")
 			await changePassword({ username, newPassword });
 			return c.json({ message: "Password changed" });
-		});
+		})
+	.get('/me',
+		jwt(),
+		async (c) => {
+			const { sub: userId }: JwtPayload = c.get("jwtPayload")
+			const user = await getUserById(userId);
+			return c.json(user);
+		})
+	.get("/",
+		jwt(),
+		jwtGuard("ADMIN"),
+		async (c) => {
+			const users = await getUsers();
+			return c.json(users);
+		})

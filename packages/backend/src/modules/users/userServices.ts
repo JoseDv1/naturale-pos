@@ -3,22 +3,26 @@ import { HTTPException } from "hono/http-exception";
 
 interface UserCredentials {
 	username: string;
+	name: string;
 	password: string;
 }
 
-export async function register({ username, password }: UserCredentials) {
-	const hashedPassword = await Bun.password.hash(password);
+export async function register(data: UserCredentials) {
+	const hashedPassword = await Bun.password.hash(data.password);
 	return await db.user.create({
 		data: {
-			username,
+			...data,
 			password: hashedPassword,
 		},
 	});
 }
 
-export async function login({ username, password }: UserCredentials) {
+export async function login({ username, password }: Omit<UserCredentials, "name">) {
 	const user = await db.user.findUniqueOrThrow({
 		where: { username },
+		omit: {
+			password: false,
+		}
 	});
 	const isPasswordValid = await Bun.password.verify(password, user.password);
 	if (!isPasswordValid) throw new HTTPException(401, { message: "Invalid password" });
@@ -39,4 +43,7 @@ export async function getUserById(id: string) {
 	});
 }
 
+export async function getUsers() {
+	return await db.user.findMany();
+}
 

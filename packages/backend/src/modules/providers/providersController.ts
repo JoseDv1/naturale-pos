@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@/lib/zValidator';
 import { createProvider, getProviderById, getProviders, updateProvider, deleteProvider } from './providersServices';
+import { jwt, jwtGuard } from '@/lib/jwt';
 
 const providerSchema = z.object({
 	name: z.string(),
@@ -25,6 +26,8 @@ export const providerRouter = new Hono()
 			const provider = await getProviderById(id);
 			return c.json(provider);
 		})
+	.use(jwt()) // Manage the JWT token
+	.use(jwtGuard('ADMIN')) // Manage the permissions
 	.post('/',
 		zValidator('json', providerSchema),
 		async (c) => {

@@ -5,13 +5,15 @@ import { apiRoutes } from './router'
 
 const PORT = process.env.PORT ?? 3000
 const app = new Hono()
+  .use(logger())
+  .use(cors())
 
-app.use(logger())
-app.use(cors())
-const routes = app.route("/api", apiRoutes)
+const rpc = app.route("/api", apiRoutes)
+export type Apptype = typeof rpc
 
-
-Bun.serve({
+const server = Bun.serve({
   fetch: app.fetch,
   port: PORT
 })
+
+console.log(`Server running on http://localhost:${server.port}`)

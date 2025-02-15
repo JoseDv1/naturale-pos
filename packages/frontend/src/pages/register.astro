@@ -1,0 +1,39 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import RegisterForm from "@/components/Auth/RegisterForm.svelte";
+---
+
+<Layout title="Inicio">
+	<main>
+		<h1 transition:name="title">Naturale POS | Registrarse</h1>
+		<RegisterForm client:load />
+
+		<p transition:name="footer">
+			Ya tienes una cuenta? <a href="/login">Inicia Sesion</a>
+		</p>
+	</main>
+</Layout>
+
+<style>
+	:global(body > main) {
+		background-color: var(--background-color);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 100dvh;
+	}
+
+	main {
+		background-color: var(--aceent-color);
+		padding: 2rem;
+		border-radius: var(--border-radius);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		width: clamp(300px, 80%, 1000px);
+	}
+
+	p a {
+		text-decoration: underline;
+	}
+</style>

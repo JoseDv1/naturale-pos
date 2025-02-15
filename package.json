@@ -1,6 +1,6 @@
 {
 	"name": "naturale-pos",
 	"workspaces": [
-		"packages/*"
+		"packages/**"
 	]
 }

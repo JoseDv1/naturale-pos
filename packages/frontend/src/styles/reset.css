@@ -1,0 +1,52 @@
+/* RESET */
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	position: relative;
+	/* Debug */
+	/* outline: 1px solid red; */
+}
+
+ul,
+ol {
+	list-style: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin: 0;
+}
+
+a {
+	text-decoration: none;
+	color: inherit;
+}
+
+img {
+	max-width: 100%;
+	height: auto;
+	vertical-align: middle;
+	font-style: italic;
+	background-repeat: no-repeat;
+	background-size: cover;
+	shape-margin: 1rem;
+}
+
+svg {
+	fill: currentColor;
+}
+
+textarea {
+	resize: none;
+	field-sizing: content;
+	outline: none;
+}
+
+label:has(svg) {
+	line-height: 0;
+}

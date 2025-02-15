@@ -9,6 +9,7 @@ import { jwt, jwtGuard, JwtPayload } from '@/lib/jwt';
 
 const tokenDuration = () => Math.floor(Date.now() / 1000) + 60 * 60 * 24 // 24 hours
 const userSchema = z.object({ username: z.string(), password: z.string() })
+
 export const userRouter = new Hono()
 	.post('/register',
 		zValidator("json", userSchema.extend({ name: z.string() })),

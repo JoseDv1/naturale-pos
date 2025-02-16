@@ -7,6 +7,9 @@ import svelte from "@astrojs/svelte";
 export default defineConfig({
 	output: "server",
 	integrations: [svelte()],
+	experimental: {
+		svg: true,
+	},
 	vite: {
 		server: {
 			proxy: {

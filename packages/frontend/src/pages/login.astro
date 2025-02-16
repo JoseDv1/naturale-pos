@@ -1,7 +1,11 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-import RegisterForm from "@/components/Auth/RegisterForm.svelte";
 import LoginForm from "@/components/Auth/LoginForm.svelte";
+
+const token = Astro.cookies.get("token");
+if (token) {
+	return Astro.redirect("/dashboard");
+}
 ---
 
 <Layout title="Inicio">

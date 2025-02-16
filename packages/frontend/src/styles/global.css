@@ -12,7 +12,7 @@
 	--color-info: var(--blue);
 
 	--background-color: var(--light-green);
-	--aceent-color: hsl(from var(--light-green) h s 80% / 75%);
+	--accent-color: hsl(from var(--light-green) h s 80% / 75%);
 	--text-color: var(--dark-green);
 
 	--border-radius: 1rem;

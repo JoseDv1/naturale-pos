@@ -11,7 +11,7 @@ export interface JwtPayload {
 }
 export const jwt = () =>
 	jsonwt({
-		secret: process.env.JWT_SECRET!,
+		secret: Bun.env.JWT_SECRET!,
 		cookie: "token",
 	})
 export const jwtGuard = (role: Role) => {

@@ -1,0 +1,14 @@
+---
+import Navbar from "@/components/Navbar.astro";
+import Layout from "@/layouts/Layout.astro";
+
+// Authenticated routes
+const token = Astro.cookies.get("token");
+if (!token) {
+	return Astro.redirect("/login");
+}
+---
+
+<Layout title="Insumos">
+	<Navbar actual="Insumos" />
+</Layout>

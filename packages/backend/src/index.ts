@@ -3,7 +3,7 @@ import { logger } from "hono/logger"
 import { cors } from "hono/cors"
 import { apiRoutes } from './router'
 
-const PORT = process.env.PORT ?? 3000
+const PORT = Bun.env.PORT ?? 3000
 const app = new Hono()
   .use(logger())
   .use(cors())

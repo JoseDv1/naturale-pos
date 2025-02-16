@@ -1,0 +1,128 @@
+---
+import Logo from "@/../public/favicon.svg";
+import { slide } from "astro:transitions";
+
+interface Links {
+	name: string;
+	url: string;
+	icon: string;
+}
+
+const links: Links[] = [
+	{
+		name: "Inicio",
+		url: "/dashboard",
+		icon: "🏠",
+	},
+	{
+		name: "Ventas",
+		url: "/dashboard/sales",
+		icon: "💸",
+	},
+	{
+		name: "Productos",
+		url: "/dashboard/products",
+		icon: "📦",
+	},
+	{
+		name: "Categorias",
+		url: "/dashboard/categories",
+		icon: "📂",
+	},
+	{
+		name: "Proveedores",
+		url: "/dashboard/providers",
+		icon: "👨‍🌾",
+	},
+	{
+		name: "Insumos",
+		url: "/dashboard/supplies",
+		icon: "🧾",
+	},
+	// {
+	// 	name: "Usuarios",
+	// 	url: "/dashboard/users",
+	// 	icon: "👨‍💼",
+	// },
+];
+
+interface Props {
+	actual:
+		| "Inicio"
+		| "Ventas"
+		| "Productos"
+		| "Proveedores"
+		| "Insumos"
+		| "Categorias";
+}
+
+const { actual } = Astro.props;
+---
+
+<nav transition:name="nav" transition:animate="none">
+	<a href="/dashboard">
+		<Logo />
+		<h1>Naturale POS</h1>
+	</a>
+
+	<ul>
+		{
+			links.map((link) => (
+				<li
+					transition:name={actual === link.name ? "nav-link-active" : "none"}
+					class={actual === link.name ? "active" : ""}
+					transition:animate={slide({ duration: 300 })}
+				>
+					<a href={link.url}>
+						{link.icon} {link.name}
+					</a>
+				</li>
+			))
+		}
+	</ul>
+</nav>
+
+<style>
+	nav {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem;
+		background-color: var(--accent-color);
+		border-radius: var(--border-radius);
+	}
+
+	ul {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+	}
+
+	li {
+		padding-inline: 0.5rem;
+	}
+
+	a[href="/dashboard"] {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		text-decoration: none;
+		color: var(--text-color);
+
+		& :global(svg) {
+			width: 3rem;
+		}
+	}
+
+	li.active {
+		color: var(--accent-color);
+		background-color: var(--text-color);
+		border-radius: var(--border-radius);
+		padding: 0.5rem;
+
+		a {
+			color: inherit;
+		}
+	}
+</style>

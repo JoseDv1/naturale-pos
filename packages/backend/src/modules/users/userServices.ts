@@ -9,15 +9,18 @@ interface UserCredentials {
 
 export async function register(data: UserCredentials) {
 	const hashedPassword = await Bun.password.hash(data.password);
+	const username = data.username.toLowerCase();
 	return await db.user.create({
 		data: {
 			...data,
+			username,
 			password: hashedPassword,
 		},
 	});
 }
 
 export async function login({ username, password }: Omit<UserCredentials, "name">) {
+	username = username.toLowerCase();
 	const user = await db.user.findUniqueOrThrow({
 		where: { username },
 		omit: {

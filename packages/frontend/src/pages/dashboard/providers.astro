@@ -1,6 +1,8 @@
 ---
 import Navbar from "@/components/Navbar.astro";
 import Layout from "@/layouts/Layout.astro";
+import ProvidersList from "@/components/Providers/ProvidersList.svelte";
+import ProvidersHeader from "@/components/Providers/ProvidersHeader.svelte";
 
 // Authenticated routes
 const token = Astro.cookies.get("token");
@@ -11,4 +13,6 @@ if (!token) {
 
 <Layout title="Proveedores">
 	<Navbar actual="Proveedores" />
+	<ProvidersHeader client:load />
+	<ProvidersList client:load />
 </Layout>

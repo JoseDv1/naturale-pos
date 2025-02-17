@@ -35,7 +35,7 @@ export const userRouter = new Hono()
 				role: user.role,
 				exp: tokenDuration()
 			}, Bun.env.JWT_SECRET!);
-			setCookie(c, "token", token, { httpOnly: true, secure: Bun.env.NODE_ENV === "production", sameSite: "strict" });
+			setCookie(c, "token", token, { httpOnly: true, secure: Bun.env.NODE_ENV === "production", sameSite: "strict", expires: new Date(tokenDuration() * 1000), maxAge: 60 * 60 * 24 });
 			return c.json(user);
 
 		})

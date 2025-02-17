@@ -12,6 +12,14 @@ enum Role {
   USER
 }
 
+enum PAYMENT_METHOD {
+  CASH
+  CARD
+  TRANSFER
+
+  @@map("payment_methods")
+}
+
 model User {
   id       String @id @default(cuid())
   username String @unique
@@ -39,13 +47,14 @@ model Product {
 }
 
 model Sale {
-  id        Int             @id @default(autoincrement())
-  total     Float
-  date      DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  products  ProductOnSale[]
-  userId    String?
-  user      User?           @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  id            Int             @id @default(autoincrement())
+  total         Float           @default(0)
+  date          DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  paymentMethod PAYMENT_METHOD  @default(CASH)
+  products      ProductOnSale[]
+  userId        String?
+  user          User?           @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: SetNull)
 
   @@map("sales")
 }

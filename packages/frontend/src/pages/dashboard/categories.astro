@@ -1,6 +1,8 @@
 ---
 import Navbar from "@/components/Navbar.astro";
 import Layout from "@/layouts/Layout.astro";
+import CategoriesList from "@/components/Categories/CategoriesList.svelte";
+import CategoriesHeader from "@/components/Categories/CategoriesHeader.svelte";
 
 // Authenticated routes
 const token = Astro.cookies.get("token");
@@ -11,4 +13,6 @@ if (!token) {
 
 <Layout title="Categorias">
 	<Navbar actual="Categorias" />
+	<CategoriesHeader client:load />
+	<CategoriesList client:load />
 </Layout>

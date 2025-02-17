@@ -7,7 +7,7 @@ interface ProductsOnSale {
 	unitPrice: number;
 }
 
-export async function addProductOnSale(saleId: number, productId: string, data: Omit<ProductsOnSale, 'saleId' | 'productId'>) {
+export async function addProductOnSale(saleId: number, productId: string, data: Omit<ProductsOnSale, 'saleId' | 'productId' | 'unitPrice'>) {
 	const { price: defaultPrice } = await db.product.findUniqueOrThrow({
 		where: { id: productId }
 	})
@@ -44,7 +44,7 @@ export async function addProductOnSale(saleId: number, productId: string, data: 
 				}
 			},
 			total: {
-				increment: data.quantity * data.unitPrice
+				increment: data.quantity * defaultPrice
 			},
 		},
 		include: {

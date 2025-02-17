@@ -1,6 +1,8 @@
 ---
 import Navbar from "@/components/Navbar.astro";
 import Layout from "@/layouts/Layout.astro";
+import SalesList from "@/components/Sales/SalesList.svelte";
+import SalesHeader from "@/components/Sales/SalesHeader.svelte";
 
 // Authenticated routes
 const token = Astro.cookies.get("token");
@@ -11,4 +13,16 @@ if (!token) {
 
 <Layout title="Ventas">
 	<Navbar actual="Ventas" />
+	<section>
+		<SalesHeader client:only="svelte" />
+		<SalesList client:only="svelte" />
+	</section>
 </Layout>
+
+<style>
+	section {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+</style>

@@ -60,10 +60,12 @@ const { actual } = Astro.props;
 ---
 
 <nav transition:name="nav" transition:animate="none">
-	<a href="/dashboard">
-		<Logo />
-		<h1>Naturale POS</h1>
-	</a>
+	<div class="wrapper">
+		<a href="/dashboard">
+			<Logo />
+			<h1>Naturale POS</h1>
+		</a>
+	</div>
 
 	<ul>
 		{
@@ -91,12 +93,21 @@ const { actual } = Astro.props;
 		padding: 1rem;
 		background-color: var(--accent-color);
 		border-radius: var(--border-radius);
+		margin-bottom: 1rem;
+	}
+
+	.wrapper {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	ul {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
+		justify-content: center;
 	}
 
 	li {
@@ -104,11 +115,11 @@ const { actual } = Astro.props;
 	}
 
 	a[href="/dashboard"] {
-		flex: 1;
 		display: flex;
 		align-items: center;
 		text-decoration: none;
 		color: var(--text-color);
+		justify-content: center;
 
 		& :global(svg) {
 			width: 3rem;

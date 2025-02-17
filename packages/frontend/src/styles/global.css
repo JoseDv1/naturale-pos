@@ -12,10 +12,11 @@
 	--color-info: var(--blue);
 
 	--background-color: var(--light-green);
-	--accent-color: hsl(from var(--light-green) h s 80% / 75%);
+	--accent-color: hsl(from var(--light-green) h s 80%);
 	--text-color: var(--dark-green);
 
 	--border-radius: 1rem;
+	--box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.33);
 
 
 	background-color: var(--background-color);
@@ -41,20 +42,87 @@ button {
 	border: none;
 	cursor: pointer;
 	font-size: 1rem;
+	text-shadow: 0 0 5px rgba(0, 0, 0, 0.25);
 
 	&:hover {
 		background-color: hsl(from var(--dark-green) h s 50%)
 	}
+
+	&.danger {
+		background-color: hsl(from var(--color-error) h s 75%);
+	}
+
+	&.warning {
+		background-color: hsl(from var(--color-warning) h s 75%);
+	}
+
+	&.success {
+		background-color: hsl(from var(--color-success) h s 75%);
+	}
+
+	&.info {
+		background-color: hsl(from var(--color-info) h s 75%);
+	}
 }
 
-input {
+
+input,
+textarea,
+select {
 	padding: 0.5rem 1rem;
 	border-radius: var(--border-radius);
 	border: none;
+	field-sizing: content;
 	font-size: 1.2rem;
 	color: var(--text-color);
+	resize: none;
 
 	&:focus {
 		outline: 1px solid var(--dark-green);
+	}
+}
+
+dialog:not(.detail) {
+	inset: unset;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	padding: 1rem;
+	z-index: 1100;
+	border-radius: var(--border-radius);
+	background-color: var(--accent-color);
+	border: 3px solid var(--accent-color);
+	color: var(--text-color);
+	width: clamp(300px, 80%, 1000px);
+	max-height: 80dvh;
+	box-shadow: var(--box-shadow);
+
+	/*Exit state */
+	transform: translate(-50%, -50%) scale(0);
+	transform-origin: center;
+	opacity: 0;
+	transition: all 0.3s ease-in-out allow-discrete;
+
+	&:popover-open {
+		transform: translate(-50%, -50%) scale(1);
+		opacity: 1;
+
+		@starting-style {
+			transform: translate(-50%, -50%) scale(0);
+			opacity: 0;
+		}
+	}
+
+	&>button[popovertargetaction="hide"]:first-child {
+		margin: 0.5rem;
+		z-index: 1001;
+		color: hsl(from var(--color-error) h s 70%);
+		font-size: 1.5rem;
+		line-height: 1rem;
+		cursor: pointer;
+		position: absolute;
+		background-color: transparent;
+		top: 0;
+		right: 0;
 	}
 }

@@ -16,7 +16,7 @@ const paramSchema = z.object({
 export const productOnSaleRouter = new Hono()
 	.post('/:productId',
 		zValidator('param', paramSchema),
-		zValidator('json', productOnSaleSchema),
+		zValidator('json', productOnSaleSchema.omit({ unitPrice: true })),
 		async (c) => {
 			const { saleId, productId } = c.req.valid('param');
 			const data = c.req.valid('json');
@@ -28,8 +28,8 @@ export const productOnSaleRouter = new Hono()
 		zValidator('param', paramSchema),
 		async (c) => {
 			const { saleId, productId } = c.req.valid('param');
-			await removeProductOnSale(saleId, productId);
-			return c.json({ message: 'Product removed from sale' });
+			const sale = await removeProductOnSale(saleId, productId);
+			return c.json(sale);
 		}
 	)
 	.put('/:productId',

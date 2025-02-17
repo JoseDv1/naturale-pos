@@ -18,7 +18,9 @@ export async function getCategoryById(id: number) {
 }
 
 export async function getCategories() {
-	return await db.category.findMany();
+	return await db.category.findMany({
+		orderBy: { id: 'asc' }
+	});
 }
 
 export async function updateCategory(id: number, data: Partial<CategoryData>) {

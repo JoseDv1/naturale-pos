@@ -33,7 +33,6 @@
 					<button
 						popovertargetaction="show"
 						popovertarget={`edit-product-${product.id}`}
-						class="warning"
 					>
 						✏️ Editar</button
 					>

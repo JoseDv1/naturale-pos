@@ -25,8 +25,9 @@
 					<button
 						popovertargetaction="show"
 						popovertarget={`edit-provider-${provider.id}`}
-						class="warning">✏️ Editar</button
 					>
+						✏️ Editar
+					</button>
 					<button
 						popovertargetaction="show"
 						popovertarget={`delete-provider-${provider.id}`}

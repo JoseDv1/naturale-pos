@@ -8,9 +8,6 @@ interface ProductsOnSupply {
 }
 
 export async function addProductOnSupply(supplyId: number, productId: string, data: Omit<ProductsOnSupply, 'supplyId' | 'productId'>) {
-	const { price: defaultPrice } = await db.product.findUniqueOrThrow({
-		where: { id: productId }
-	})
 	return await db.supply.update({
 		where: { id: supplyId },
 		data: {
@@ -19,7 +16,7 @@ export async function addProductOnSupply(supplyId: number, productId: string, da
 					where: { supplyId_productId: { supplyId, productId } },
 					create: {
 						quantity: data.quantity,
-						price: defaultPrice,
+						price: data.unitPrice,
 						productId,
 					},
 					update: {

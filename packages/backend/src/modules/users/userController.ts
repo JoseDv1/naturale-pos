@@ -4,7 +4,7 @@ import { HTTPException } from 'hono/http-exception';
 import { zValidator } from '@/lib/zValidator';
 import { z } from 'zod';
 import { sign } from "hono/jwt"
-import { setCookie } from "hono/cookie"
+import { deleteCookie, setCookie } from "hono/cookie"
 import { jwt, jwtGuard, JwtPayload } from '@/lib/jwt';
 
 const tokenDuration = () => Math.floor(Date.now() / 1000) + 60 * 60 * 24 // 24 hours
@@ -51,12 +51,11 @@ export const userRouter = new Hono()
 			await changePassword({ username, newPassword });
 			return c.json({ message: "Password changed" });
 		})
-	.get('/me',
+	.get('/logout',
 		jwt(),
-		async (c) => {
-			const { sub: userId }: JwtPayload = c.get("jwtPayload")
-			const user = await getUserById(userId);
-			return c.json(user);
+		(c) => {
+			deleteCookie(c, "token");
+			return c.json({ message: "Logged out" });
 		})
 	.get("/",
 		jwt(),

@@ -1,14 +1,14 @@
 ---
 import Logo from "@/../public/favicon.svg";
 import { slide } from "astro:transitions";
+import { decodeJwt } from "jose/jwt/decode";
+import LogoutButton from "./Auth/LogoutButton.svelte";
 
-interface Links {
+const links: {
 	name: string;
 	url: string;
 	icon: string;
-}
-
-const links: Links[] = [
+}[] = [
 	{
 		name: "Inicio",
 		url: "/dashboard",
@@ -45,7 +45,6 @@ const links: Links[] = [
 	// 	icon: "👨‍💼",
 	// },
 ];
-
 interface Props {
 	actual:
 		| "Inicio"
@@ -53,13 +52,17 @@ interface Props {
 		| "Productos"
 		| "Proveedores"
 		| "Insumos"
-		| "Categorias";
+		| "Categorias"
+		| "Usuarios";
 }
-
 const { actual } = Astro.props;
+
+const isAdmin = decodeJwt(Astro.cookies.get("token")!.value).role === "ADMIN";
 ---
 
 <nav transition:name="nav" transition:animate="none">
+	<LogoutButton client:load />
+
 	<div class="wrapper">
 		<a href="/dashboard">
 			<Logo />
@@ -81,6 +84,17 @@ const { actual } = Astro.props;
 				</li>
 			))
 		}
+		{
+			isAdmin && (
+				<li
+					transition:name={actual === "Usuarios" ? "nav-link-active" : "none"}
+					class={actual === "Usuarios" ? "active" : ""}
+					transition:animate={slide({ duration: 300 })}
+				>
+					<a href="/dashboard/users">👨‍💼 Usuarios</a>
+				</li>
+			)
+		}
 	</ul>
 </nav>
 
@@ -91,6 +105,7 @@ const { actual } = Astro.props;
 		justify-content: space-between;
 		align-items: center;
 		padding: 1rem;
+		gap: 1rem;
 		background-color: var(--accent-color);
 		border-radius: var(--border-radius);
 		margin-bottom: 1rem;

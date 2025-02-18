@@ -1,6 +1,8 @@
 ---
 import Navbar from "@/components/Navbar.astro";
 import Layout from "@/layouts/Layout.astro";
+import SuppliesHeader from "@/components/Supplies/SuppliesHeader.svelte";
+import SuppliesList from "@/components/Supplies/SuppliesList.svelte";
 
 // Authenticated routes
 const token = Astro.cookies.get("token");
@@ -11,4 +13,6 @@ if (!token) {
 
 <Layout title="Insumos">
 	<Navbar actual="Insumos" />
+	<SuppliesHeader client:only="svelte" />
+	<SuppliesList client:only="svelte" />
 </Layout>

@@ -22,7 +22,6 @@
 					<button
 						popovertargetaction="show"
 						popovertarget={`edit-category-${category.id}`}
-						class="warning"
 					>
 						✏️ Editar</button
 					>

@@ -1,0 +1,15 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Navbar from "@/components/Navbar.astro";
+import { decodeJwt } from "jose/jwt/decode";
+import UsersList from "@/components/Users/UsersList.svelte";
+const isAdmin = decodeJwt(Astro.cookies.get("token")!.value).role === "ADMIN";
+if (!isAdmin) {
+	return Astro.redirect("/dashboard");
+}
+---
+
+<Layout title="Usuarios">
+	<Navbar actual="Usuarios" />
+	<UsersList client:only="svelte" />
+</Layout>

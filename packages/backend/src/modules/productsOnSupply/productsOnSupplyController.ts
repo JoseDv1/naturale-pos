@@ -28,8 +28,8 @@ export const productOnSupplyRouter = new Hono()
 		zValidator('param', paramSchema),
 		async (c) => {
 			const { supplyId, productId } = c.req.valid('param');
-			await removeProductOnSupply(supplyId, productId);
-			return c.json({ message: 'Product removed from supply' });
+			const supply = await removeProductOnSupply(supplyId, productId);
+			return c.json(supply);
 		}
 	)
 	.put('/:productId',

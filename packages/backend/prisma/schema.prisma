@@ -85,7 +85,7 @@ model Provider {
 model Supply {
   id             Int               @id @default(autoincrement())
   providerId     String            @default("0")
-  total          Float
+  total          Float             @default(0)
   date           DateTime          @default(now())
   supplyProducts ProductOnSupply[]
   provider       Provider          @relation(fields: [providerId], references: [id], onUpdate: Cascade, onDelete: SetDefault)

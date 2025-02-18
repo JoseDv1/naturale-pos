@@ -5,7 +5,6 @@ import { createSupply, getSupplyById, getSupplies, deleteSupply } from './suppli
 
 const supplySchema = z.object({
 	providerId: z.string(),
-	total: z.number(),
 });
 
 const paramSchema = z.object({ id: z.string().regex(/^\d+$/).transform(Number) });
@@ -26,8 +25,8 @@ export const supplyRouter = new Hono()
 	.post('/',
 		zValidator('json', supplySchema),
 		async (c) => {
-			const data = c.req.valid('json');
-			const supply = await createSupply(data);
+			const { providerId } = c.req.valid('json');
+			const supply = await createSupply(providerId);
 			return c.json(supply);
 		})
 	.delete('/:id',

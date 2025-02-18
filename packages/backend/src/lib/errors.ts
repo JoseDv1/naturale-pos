@@ -37,6 +37,10 @@ export async function errorHandler(error: Error | HTTPResponseError, ctx: Contex
 					message: `A record with ${field} ${value} already exists`,
 				}, 409)
 			case prismaErrors.ForeignKeyConstraintViolation:
+				const relation = error.meta?.relationName ?? "relation"
+				return ctx.json({
+					message: `Cannot delete record because of existing ${relation}`,
+				}, 409)
 
 
 			default:

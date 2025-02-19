@@ -3,10 +3,11 @@ services:
   db:
     image: "postgres:17"
     environment:
-      - POSTGRES_USER=naturale
-      - POSTGRES_PASSWORD=naturale
-      - POSTGRES_DB=naturale
+      - POSTGRES_USER=${POSTGRES_DB}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - ./db_data:/var/lib/postgresql/data
+      - ./db_backups:/var/db_backups

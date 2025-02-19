@@ -1,5 +1,5 @@
 import { writable } from "svelte/store";
-import { fetchSales, createProductOnSale, createSale, deleteProductOnSale, deleteSale, updateProductOnSale, type Sale } from "../api/sales";
+import { fetchSales, createProductOnSale, createSale, deleteProductOnSale, deleteSale, updateProductOnSale, type Sale, changePaymentMethod } from "../api/sales";
 import { syncStoreWithUrl } from "../utils/stores";
 
 const params = new URLSearchParams(window.location.search);
@@ -23,6 +23,15 @@ export async function addSale() {
 export async function removeSale(saleId: number) {
 	await deleteSale(saleId.toString());
 	sales.update(sales => sales.filter(sale => sale.id !== saleId));
+}
+
+export async function swapPaymentMethod(saleId: number, paymentMethod: Sale['paymentMethod']) {
+	await changePaymentMethod(saleId.toString(), paymentMethod)
+	sales.update((oldSales) => {
+		const sale = oldSales.findIndex(sale => sale.id === saleId)
+		oldSales[sale].paymentMethod = paymentMethod
+		return oldSales
+	})
 }
 
 // Product on sale

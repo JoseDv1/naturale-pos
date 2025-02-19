@@ -4,6 +4,7 @@
 	import AddProductForm from "./AddProductForm.svelte";
 	import SaleDetailItem from "./SaleDetailItem.svelte";
 	import DeleteSaleDialog from "../DeleteSaleDialog.svelte";
+	import ChangePaymentMethodDialog from "./ChangePaymentMethodDialog.svelte";
 
 	interface Props {
 		sale: Sale;
@@ -11,6 +12,7 @@
 
 	let { sale }: Props = $props();
 	let delSaleDialEl = $state<HTMLDialogElement>();
+	let changePaymentMethodDialEl = $state<HTMLDialogElement>();
 </script>
 
 <div class="wrapper">
@@ -23,6 +25,14 @@
 		<button popovertargetaction="show" popovertarget={`add-detail-${sale.id}`}>
 			➕ Añadir producto</button
 		>
+
+		<button
+			popovertargetaction="show"
+			popovertarget={`change-payment-method-${sale.id}`}
+			onclick={() => changePaymentMethodDialEl?.showPopover()}
+			>💳 Cambiar metodo de pago</button
+		>
+
 		<button
 			popovertargetaction="show"
 			popovertarget={`delete-sale-${sale.id}`}
@@ -61,6 +71,11 @@
 
 	<AddProductForm saleId={sale.id} />
 	<DeleteSaleDialog saleId={sale.id} bind:thisEl={delSaleDialEl!} />
+	<ChangePaymentMethodDialog
+		saleId={sale.id}
+		bind:thisEl={changePaymentMethodDialEl!}
+		paymentMethod={sale.paymentMethod}
+	/>
 </div>
 
 <style>

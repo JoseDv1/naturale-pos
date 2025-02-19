@@ -30,6 +30,17 @@ export async function deleteSale(saleId: string) {
 	return await res.json();
 }
 
+export async function changePaymentMethod(saleId: string, paymentMethod: Sale['paymentMethod']) {
+	const res = await apiClient.api.sales[":id"].$put({
+		param: {
+			id: saleId
+		},
+		json: {
+			paymentMethod
+		}
+	})
+}
+
 // -------- Product on Sales API --------
 export async function createProductOnSale(saleId: string, data: {
 	productId: string,

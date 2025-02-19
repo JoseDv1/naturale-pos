@@ -29,21 +29,6 @@ const links: {
 		url: "/dashboard/categories",
 		icon: "📂",
 	},
-	{
-		name: "Proveedores",
-		url: "/dashboard/providers",
-		icon: "👨‍🌾",
-	},
-	{
-		name: "Insumos",
-		url: "/dashboard/supplies",
-		icon: "🧾",
-	},
-	// {
-	// 	name: "Usuarios",
-	// 	url: "/dashboard/users",
-	// 	icon: "👨‍💼",
-	// },
 ];
 interface Props {
 	actual:
@@ -86,6 +71,20 @@ const isAdmin = decodeJwt(Astro.cookies.get("token")!.value).role === "ADMIN";
 		}
 		{
 			isAdmin && (
+				<li
+					transition:name={actual === "Proveedores" ? "nav-link-active" : "none"}
+					class={actual === "Proveedores" ? "active" : ""}
+					transition:animate={slide({ duration: 300 })}
+				>
+					<a href="/dashboard/providers"> 👨‍🌾 Proveedores</a>
+				</li>
+				<li
+					transition:name={actual === "Insumos" ? "nav-link-active" : "none"}
+					class={actual === "Insumos" ? "active" : ""}
+					transition:animate={slide({ duration: 300 })}
+				>
+					<a href="/dashboard/supplies">🧾 Insumos</a>
+				</li>
 				<li
 					transition:name={actual === "Usuarios" ? "nav-link-active" : "none"}
 					class={actual === "Usuarios" ? "active" : ""}

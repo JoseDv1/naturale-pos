@@ -9,10 +9,23 @@ const supplySchema = z.object({
 
 const paramSchema = z.object({ id: z.string().regex(/^\d+$/).transform(Number) });
 
+const querySchema = z.object({
+	date:
+		z.string().transform(
+			(value) => {
+				const date = new Date(value);
+				if (isNaN(date.getTime())) throw new Error('Invalid date');
+				return date
+			})
+})
+
+
 export const supplyRouter = new Hono()
 	.get('/',
+		zValidator('query', querySchema),
 		async (c) => {
-			const supplies = await getSupplies();
+			const { date } = c.req.valid('query');
+			const supplies = await getSupplies(date);
 			return c.json(supplies);
 		})
 	.get('/:id',

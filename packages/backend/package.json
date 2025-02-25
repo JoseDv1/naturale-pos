@@ -1,7 +1,12 @@
 {
 	"name": "backend",
 	"scripts": {
-		"dev": "bun run --hot src/index.ts"
+		"start": "bun run --env-file=../../.env src/index.ts",
+		"dev": "bun run --hot src/index.ts",
+		"build": "bun run --env-file=../../.env build.ts",
+		"postinstall": "bunx prisma generate",
+		"db:deploy": "bun run --env-file=../../.env prisma migrate deploy",
+		"studio": "bun run --env-file=../../.env prisma studio"
 	},
 	"dependencies": {
 		"@hono/zod-validator": "^0.4.2",

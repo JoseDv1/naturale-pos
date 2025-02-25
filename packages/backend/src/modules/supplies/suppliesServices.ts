@@ -30,8 +30,17 @@ export async function getSupplyById(id: number) {
 	});
 }
 
-export async function getSupplies() {
+export async function getSupplies(date: Date) {
+	const reqDate = new Date(date)
+	const endOfDay = new Date(date).setDate(reqDate.getDate() + 1)
+
 	return await db.supply.findMany({
+		where: {
+			date: {
+				gte: new Date(reqDate),
+				lte: new Date(endOfDay)
+			}
+		},
 		include: {
 			provider: true,
 			supplyProducts: {
@@ -39,7 +48,11 @@ export async function getSupplies() {
 					product: true
 				}
 			}
+		},
+		orderBy: {
+			date: 'desc'
 		}
+
 	});
 }
 

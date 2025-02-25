@@ -32,10 +32,10 @@ export async function login({ username, password }: Omit<UserCredentials, "name"
 	return user;
 }
 
-export async function changePassword({ username, newPassword }: { username: string; newPassword: string; }) {
+export async function changePassword({ id, newPassword }: { id: string; newPassword: string; }) {
 	const hashedPassword = await Bun.password.hash(newPassword);
 	return await db.user.update({
-		where: { username },
+		where: { id },
 		data: { password: hashedPassword },
 	});
 }

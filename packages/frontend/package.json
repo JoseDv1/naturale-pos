@@ -13,7 +13,6 @@
 		"@astrojs/svelte": "^7.0.4",
 		"astro": "^5.3.0",
 		"hono-astro-adapter": "^1.0.17",
-		"jose": "^5.10.0",
 		"svelte": "^5.20.0",
 		"typescript": "^5.7.3"
 	}

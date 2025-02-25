@@ -21,7 +21,7 @@ export const userRouter = new Hono()
 				role: user.role,
 				exp: tokenDuration(),
 			}, Bun.env.JWT_SECRET!);
-			setCookie(c, "token", token, { httpOnly: true, secure: Bun.env.NODE_ENV === "production", sameSite: "strict", expires: new Date(tokenDuration() * 1000), maxAge: 60 * 60 * 24 });
+			setCookie(c, "token", token, { httpOnly: true, secure: Bun.env.NODE_ENV === "production", sameSite: "Lax", expires: new Date(tokenDuration() * 1000), maxAge: 60 * 60 * 24 });
 			return c.json(user);
 
 		})
@@ -35,20 +35,20 @@ export const userRouter = new Hono()
 				role: user.role,
 				exp: tokenDuration()
 			}, Bun.env.JWT_SECRET!);
-			setCookie(c, "token", token, { httpOnly: true, secure: Bun.env.NODE_ENV === "production", sameSite: "strict", expires: new Date(tokenDuration() * 1000), maxAge: 60 * 60 * 24 });
+			setCookie(c, "token", token, { httpOnly: true, secure: Bun.env.NODE_ENV === "production", sameSite: "Lax", expires: new Date(tokenDuration() * 1000), maxAge: 60 * 60 * 24, });
 			return c.json(user);
 
 		})
 	.post('/change-password',
 		jwt(),
-		zValidator("json", z.object({ username: z.string(), newPassword: z.string() })),
+		zValidator("json", z.object({ newPassword: z.string() })),
 		async (c) => {
 			const { sub: userId }: JwtPayload = c.get("jwtPayload")
 			const user = await getUserById(userId);
 			const hasPermission = user.id === userId; // Only the user can change their own password
 			if (!hasPermission) throw new HTTPException(403, { message: "Forbidden" });
-			const { username, newPassword } = c.req.valid("json")
-			await changePassword({ username, newPassword });
+			const { newPassword } = c.req.valid("json")
+			await changePassword({ id: userId, newPassword });
 			return c.json({ message: "Password changed" });
 		})
 	.get('/logout',

@@ -2,22 +2,30 @@ import { PrismaClient } from '@prisma/client'
 const db = new PrismaClient()
 async function seed() {
 	console.log('Seeding...')
-	console.log('Creating Default Provider...')
-	await db.provider.create({
-		data: {
-			name: "Default Provider",
-			id: "0"
-		}
-	})
-	console.log('Default Provider Created!')
-	console.log('Creating Default Category...')
-	await db.category.create({
-		data: {
-			name: "Default Category",
-			id: 0
-		}
-	})
-	console.log('Default Category Created!')
+
+	await db.$transaction([
+		db.provider.create({
+			data: {
+				name: "Default Provider",
+				id: "0"
+			}
+		}),
+		db.category.create({
+			data: {
+				name: "Default Category",
+				id: 0
+			}
+		}),
+		db.user.create({
+			data: {
+				name: "Admin",
+				username: "admin",
+				password: await Bun.password.hash("admin"),
+				role: "ADMIN"
+			}
+		})
+	])
+
 }
 
 seed()

@@ -2,5 +2,9 @@
 	"name": "naturale-pos",
 	"workspaces": [
 		"packages/*"
-	]
+	],
+	"scripts": {
+		"dev": "bun run --env-file=.env --filter '*' dev",
+		"build": "bun run --env-file=.env --filter '*' build"
+	}
 }

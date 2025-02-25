@@ -8,3 +8,12 @@ export async function fetchUsers() {
 	const res = await apiClient.api.users.$get()
 	return await res.json()
 }
+
+export async function changePassword(password: string) {
+	await apiClient.api.users["change-password"].$post({
+		json: {
+			newPassword: password
+		}
+	})
+	await apiClient.api.users.logout.$get()
+}

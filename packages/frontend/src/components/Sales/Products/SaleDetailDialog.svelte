@@ -13,6 +13,7 @@
 	let { sale }: Props = $props();
 	let delSaleDialEl = $state<HTMLDialogElement>();
 	let changePaymentMethodDialEl = $state<HTMLDialogElement>();
+	let addPRoductDialEl = $state<HTMLDialogElement>();
 </script>
 
 <div class="wrapper">
@@ -22,7 +23,11 @@
 	</h2>
 
 	<header>
-		<button popovertargetaction="show" popovertarget={`add-detail-${sale.id}`}>
+		<button
+			popovertargetaction="show"
+			popovertarget={`add-detail-${sale.id}`}
+			onclick={() => addPRoductDialEl?.showPopover()}
+		>
 			➕ Añadir producto</button
 		>
 
@@ -69,7 +74,7 @@
 		</p>
 	</footer>
 
-	<AddProductForm saleId={sale.id} />
+	<AddProductForm saleId={sale.id} bind:thisEl={addPRoductDialEl!} />
 	<DeleteSaleDialog saleId={sale.id} bind:thisEl={delSaleDialEl!} />
 	<ChangePaymentMethodDialog
 		saleId={sale.id}

@@ -6,9 +6,10 @@
 
 	interface Props {
 		saleId: number;
+		thisEl: HTMLDialogElement | null;
 	}
 
-	let { saleId }: Props = $props();
+	let { saleId, thisEl = $bindable() }: Props = $props();
 
 	const search = writable("");
 	const searchedProducts = derived(
@@ -54,7 +55,7 @@
 	}
 </script>
 
-<dialog popover="auto" id={`add-detail-${saleId}`}>
+<dialog popover="auto" id={`add-detail-${saleId}`} bind:this={thisEl}>
 	<button
 		popovertarget={`add-detail-${saleId}`}
 		popovertargetaction="hide"

@@ -1,16 +1,25 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import RegisterForm from "@/components/Auth/RegisterForm.svelte";
+import { verify } from "hono/jwt";
+
+const token = Astro.cookies.get("token");
+if (!token) return Astro.redirect("/login");
+try {
+	const payload = await verify(token.value, import.meta.env.JWT_SECRET);
+	const isAdmin = payload.role === "ADMIN";
+	if (!isAdmin) {
+		return Astro.redirect("/dashboard");
+	}
+} catch (error) {
+	return Astro.redirect("/login");
+}
 ---
 
 <Layout title="Inicio">
 	<main>
 		<h1 transition:name="title">Naturale POS | Registrarse</h1>
 		<RegisterForm client:load />
-
-		<p transition:name="footer">
-			Ya tienes una cuenta? <a href="/login">Inicia Sesion</a>
-		</p>
 	</main>
 </Layout>
 

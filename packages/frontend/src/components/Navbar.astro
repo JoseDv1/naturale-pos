@@ -1,13 +1,13 @@
 ---
 import Logo from "@/../public/favicon.svg";
 import { slide } from "astro:transitions";
-import { decodeJwt } from "jose/jwt/decode";
 import LogoutButton from "./Auth/LogoutButton.svelte";
-
+import { verify } from "hono/jwt";
 const links: {
 	name: string;
 	url: string;
 	icon: string;
+	admin?: boolean;
 }[] = [
 	{
 		name: "Inicio",
@@ -20,6 +20,11 @@ const links: {
 		icon: "💸",
 	},
 	{
+		name: "Insumos",
+		url: "/dashboard/supplies",
+		icon: "🧾",
+	},
+	{
 		name: "Productos",
 		url: "/dashboard/products",
 		icon: "📦",
@@ -28,6 +33,18 @@ const links: {
 		name: "Categorias",
 		url: "/dashboard/categories",
 		icon: "📂",
+	},
+	{
+		name: "Proveedores",
+		url: "/dashboard/providers",
+		icon: "🚚",
+	},
+
+	{
+		name: "Usuarios",
+		url: "/dashboard/users",
+		icon: "👨‍💼",
+		admin: true,
 	},
 ];
 interface Props {
@@ -42,7 +59,15 @@ interface Props {
 }
 const { actual } = Astro.props;
 
-const isAdmin = decodeJwt(Astro.cookies.get("token")!.value).role === "ADMIN";
+let isAdmin = false;
+
+try {
+	const token = Astro.cookies.get("token");
+	const payload = await verify(token!.value, import.meta.env.JWT_SECRET);
+	isAdmin = payload.role === "ADMIN";
+} catch (error) {
+	Astro.redirect("/login");
+}
 ---
 
 <nav transition:name="nav" transition:animate="none">
@@ -57,42 +82,37 @@ const isAdmin = decodeJwt(Astro.cookies.get("token")!.value).role === "ADMIN";
 
 	<ul>
 		{
-			links.map((link) => (
-				<li
-					transition:name={actual === link.name ? "nav-link-active" : "none"}
-					class={actual === link.name ? "active" : ""}
-					transition:animate={slide({ duration: 300 })}
-				>
-					<a href={link.url}>
-						{link.icon} {link.name}
-					</a>
-				</li>
-			))
+			links
+				.filter((l) => !l.admin)
+				.map((link) => (
+					<li
+						transition:name={actual === link.name ? "nav-link-active" : "none"}
+						class={actual === link.name ? "active" : ""}
+						transition:animate={slide({ duration: 300 })}
+					>
+						<a href={link.url}>
+							{link.icon} {link.name}
+						</a>
+					</li>
+				))
 		}
 		{
-			isAdmin && (
-				<li
-					transition:name={actual === "Proveedores" ? "nav-link-active" : "none"}
-					class={actual === "Proveedores" ? "active" : ""}
-					transition:animate={slide({ duration: 300 })}
-				>
-					<a href="/dashboard/providers"> 👨‍🌾 Proveedores</a>
-				</li>
-				<li
-					transition:name={actual === "Insumos" ? "nav-link-active" : "none"}
-					class={actual === "Insumos" ? "active" : ""}
-					transition:animate={slide({ duration: 300 })}
-				>
-					<a href="/dashboard/supplies">🧾 Insumos</a>
-				</li>
-				<li
-					transition:name={actual === "Usuarios" ? "nav-link-active" : "none"}
-					class={actual === "Usuarios" ? "active" : ""}
-					transition:animate={slide({ duration: 300 })}
-				>
-					<a href="/dashboard/users">👨‍💼 Usuarios</a>
-				</li>
-			)
+			isAdmin &&
+				links
+					.filter((link) => link.admin)
+					.map((link) => (
+						<li
+							transition:name={
+								actual === link.name ? "nav-link-active" : "none"
+							}
+							class={actual === link.name ? "active" : ""}
+							transition:animate={slide({ duration: 300 })}
+						>
+							<a href={link.url}>
+								{link.icon} {link.name}
+							</a>
+						</li>
+					))
 		}
 	</ul>
 </nav>

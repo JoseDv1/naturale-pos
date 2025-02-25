@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { apiClient } from "@/lib/api";
+	import { navigate } from "astro:transitions/client";
 	let error = $state<string>("");
 
 	async function handleLogin(e: SubmitEvent) {
@@ -13,7 +14,7 @@
 
 		const res = await apiClient.api.users.login.$post({ json: data });
 		if (res.ok) {
-			window.location.href = "/dashboard";
+			navigate("/dashboard");
 		} else {
 			const status = res.status;
 			switch (status) {

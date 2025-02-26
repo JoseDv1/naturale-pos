@@ -10,6 +10,7 @@
 	}
 
 	let { supply, delSupplyDialog }: Props = $props();
+	let addProductDialog = $state<HTMLDialogElement>();
 </script>
 
 <div class="wrapper">
@@ -25,6 +26,7 @@
 		<button
 			popovertargetaction="show"
 			popovertarget={`add-detail-${supply.id}`}
+			onclick={() => addProductDialog!.showPopover()}
 		>
 			➕ Añadir producto
 		</button>
@@ -54,7 +56,7 @@
 		</p>
 	</footer>
 
-	<AddSupplyProductForm supplyId={supply.id} />
+	<AddSupplyProductForm supplyId={supply.id} bind:thisEl={addProductDialog!} />
 </div>
 
 <style>

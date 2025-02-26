@@ -8,9 +8,41 @@ import { supplyRouter } from "@/modules/supplies/suppliesController";
 import { productOnSaleRouter } from "@/modules/productsOnSale/productsOnSalesController";
 import { productOnSupplyRouter } from "@/modules/productsOnSupply/productsOnSupplyController";
 import { jwt } from "./lib/jwt";
+import { promisify } from "node:util"
+import { execFile } from "child_process"
+import { HTTPException } from "hono/http-exception";
+const execFileAsync = promisify(execFile)
+import path = require("node:path");
 
 export const apiRoutes = new Hono()
 	.route('/users', userRouter)
+	.get("/backups",
+		async (ctx) => {
+			const databaseContainerName = Bun.env.DATABASE_CONTAINER
+			const command = `exec ${databaseContainerName} ls -l /var/db_backups`
+			const child = await execFileAsync("docker", command.split(" "))
+			if (child.stderr) throw new HTTPException(500, { message: child.stderr })
+			console.log(child.stdout)
+			const files = child.stdout.split("\n")
+				.filter((file) => file.includes(".dump"))
+				.map((file) => {
+					const rows = file.split(" ")
+					const name = rows.at(-1)
+					const size = rows.at(-5)
+					return { name, size: size + " bytes" }
+				})
+			return ctx.json({ files })
+		}
+	)
+	.post('/backups',
+		async (ctx) => {
+			const databaseContainerName = Bun.env.DATABASE_CONTAINER!
+			const filePath = "./backup.sh"
+			const args = ["-c", databaseContainerName]
+			const child = await execFileAsync(filePath, args) // This is relative where the server is running
+			if (child.stderr) throw new HTTPException(500, { message: child.stderr })
+			return ctx.json({ message: child.stdout })
+		})
 	.use(jwt())
 	.route('/products', productRouter)
 	.route('/categories', categoryRouter)

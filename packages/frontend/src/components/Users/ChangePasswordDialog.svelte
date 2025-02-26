@@ -19,7 +19,7 @@
 			return;
 		}
 
-		await changePassword(password);
+		await changePassword(password.toString());
 		thisEl?.hidePopover();
 		window.location.reload();
 	};
@@ -31,13 +31,13 @@
 		<label for="password"
 			>Contraseña
 
-			<input type="password" id="password" />
+			<input type="password" id="password" name="password" />
 		</label>
 
 		<label for="confirm-password"
 			>Confirmar Contraseña
 
-			<input type="password" id="confirm-password" />
+			<input type="password" id="confirm-password" name="confirm-password" />
 		</label>
 
 		<button type="submit">Cambiar Contraseña</button>

@@ -6,10 +6,10 @@
 
 	interface Props {
 		supplyId: number;
+		thisEl: HTMLDialogElement | null;
 	}
 
-	let { supplyId }: Props = $props();
-	let addDetailPopEl = $state<HTMLDialogElement>();
+	let { supplyId, thisEl = $bindable() }: Props = $props();
 	const search = writable("");
 	const searchedProducts = derivable(
 		[search, products],
@@ -123,7 +123,7 @@
 	}
 </script>
 
-<dialog popover="auto" id={`add-detail-${supplyId}`} bind:this={addDetailPopEl}>
+<dialog popover="auto" id={`add-detail-${supplyId}`} bind:this={thisEl!}>
 	<div class="popover">
 		<h2>Añadir producto al suministro #{supplyId}</h2>
 		<form

@@ -24,7 +24,6 @@ if (existsSync("../frontend/dist/server/entry.mjs")) {
   const { handler: ssrHandler } = await import("../../frontend/dist/server/entry.mjs") // Relative to file
   app.use("/*", serveStatic({ root: "../frontend/dist/client/" })) // Relative to root
   app.use((ctx) => {
-    console.log("SSR")
     return ssrHandler(ctx)
   })
 } else {

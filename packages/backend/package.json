@@ -1,7 +1,7 @@
 {
 	"name": "backend",
 	"scripts": {
-		"start": "bun run --env-file=../../.env src/index.ts",
+		"start": "bun run --env-file=../../.env dist/index.js",
 		"dev": "bun run --hot src/index.ts",
 		"build": "bun run --env-file=../../.env build.ts",
 		"postinstall": "bunx prisma generate",

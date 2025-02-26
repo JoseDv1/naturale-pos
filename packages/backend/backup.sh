@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Script genérico para crear un backup de una base de datos PostgreSQL en un contenedor Docker.
 # Uso obligatorio: -c (nombre del contenedor), -d (nombre de la base de datos) y -u (usuario de PostgreSQL)
 # Uso opcional: -b (directorio de backups dentro del contenedor), por defecto: /var/db_backups

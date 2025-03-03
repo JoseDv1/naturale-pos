@@ -14,6 +14,23 @@
 	let delSaleDialEl = $state<HTMLDialogElement>();
 	let changePaymentMethodDialEl = $state<HTMLDialogElement>();
 	let addPRoductDialEl = $state<HTMLDialogElement>();
+
+	function handlePrint() {
+		const hideFrame = document.createElement("iframe") as HTMLIFrameElement;
+
+		const setPrint = () => {
+			const closePrint = () => {
+				document.body.removeChild(hideFrame);
+			};
+			hideFrame.contentWindow!.onbeforeunload = closePrint;
+			hideFrame.contentWindow!.onafterprint = closePrint;
+			hideFrame.contentWindow!.print();
+		};
+		hideFrame.onload = setPrint;
+		hideFrame.style.display = "none";
+		hideFrame.src = `/dashboard/sales/${sale.id}/print`;
+		document.body.appendChild(hideFrame);
+	}
 </script>
 
 <div class="wrapper">
@@ -43,6 +60,8 @@
 			popovertarget={`delete-sale-${sale.id}`}
 			onclick={() => delSaleDialEl?.showPopover()}>🗑️ Eliminar venta</button
 		>
+
+		<button onclick={() => handlePrint()}>🖨️ Imprimir </button>
 	</header>
 
 	<section>

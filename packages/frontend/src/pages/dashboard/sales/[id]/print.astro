@@ -1,0 +1,107 @@
+---
+import type { Sale } from "@/lib/api/sales";
+import { fullDateFormatter, moneyFormatter } from "@/lib/utils/formatters";
+import "@/styles/reset.css";
+import Logo from "@/../public/logo.svg";
+const { id } = Astro.params;
+if (!id) throw new Error("Missing id");
+
+const cookie = Astro.cookies.get("token");
+if (!cookie) return Astro.redirect("/login");
+
+const url = new URL(`/api/sales/${id}`, Astro.url);
+const res = await fetch(url, {
+	headers: {
+		Cookie: `token=${cookie.value}`,
+	},
+});
+const sale: Sale = await res.json();
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Venta {sale.id}</title>
+	</head>
+	<body>
+		<Logo />
+		<h1>Venta #{sale.id}</h1>
+		<main>
+			<header class="row">
+				<b>Producto</b>
+				<b>Cantidad</b>
+				<b>Precio</b>
+				<b>Subtotal</b>
+			</header>
+			<ul>
+				{
+					sale.products.map((item) => (
+						<li class="row">
+							<p>{item.product.name}</p>
+							<p>{item.quantity} x</p>
+							<p>{moneyFormatter(item.product.price)}</p>
+							<p>{moneyFormatter(item.quantity * item.product.price)}</p>
+						</li>
+					))
+				}
+			</ul>
+			<hr />
+			<footer>
+				<p><b>Total: </b>{moneyFormatter(sale.total)}</p>
+				<p>{fullDateFormatter(new Date(sale.date))}</p>
+			</footer>
+		</main>
+	</body>
+</html>
+
+<style is:global>
+	@page {
+		size: 80mm 297mm;
+		margin: 0mm 3mm 10mm;
+	}
+
+	svg {
+		margin-block: -2cm -3cm;
+	}
+
+	body {
+		font-family: Arial, sans-serif;
+		max-width: 80mm;
+	}
+
+	.row {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.25cm;
+
+		* {
+			flex: 1;
+		}
+
+		p:nth-child(2) {
+			text-align: right;
+		}
+	}
+
+	main ul {
+		margin-top: 0.2cm;
+		font-size: 3mm;
+		display: flex;
+		flex-direction: column;
+		gap: 0.2cm;
+	}
+
+	hr,
+	footer,
+	h1 {
+		margin-block: 0.5cm;
+		text-align: right;
+	}
+
+	h1 {
+		text-align: center;
+	}
+</style>

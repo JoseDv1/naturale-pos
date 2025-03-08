@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@/lib/zValidator';
-import { createSale, getSaleById, getSales, deleteSale, updateSale } from './salesServices';
+import { createSale, getSaleById, getSales, deleteSale, updateSale, getSalesReport } from './salesServices';
 import { $Enums } from '@prisma/client';
 import { jwt, JwtPayload } from '@/lib/jwt';
 
@@ -29,6 +29,13 @@ export const saleRouter = new Hono()
 			const { date } = c.req.valid('query');
 			const sales = await getSales(date);
 			return c.json(sales);
+		})
+	.get('/report',
+		zValidator('query', z.object({ from: z.string(), to: z.string() })),
+		async (c) => {
+			const { from, to } = c.req.valid('query');
+			const report = await getSalesReport(from, to);
+			return c.json(report);
 		})
 	.get('/:id',
 		zValidator('param', paramSchema),
@@ -58,4 +65,5 @@ export const saleRouter = new Hono()
 			const data = c.req.valid('json');
 			const sale = await updateSale(id, data);
 			return c.json(sale);
-		});
+		})
+

@@ -105,3 +105,29 @@ export async function deleteSupply(id: number) {
 
 	return transactionsResult[transactionsResult.length - 1];
 }
+
+export async function getSuppliesReport(from: string, to: string) {
+	const toDate = new Date(to).setDate(new Date(to).getDate() + 1)
+
+	return await db.supply.findMany({
+		where: {
+			date: {
+				gte: new Date(from),
+				lte: new Date(toDate)
+			}
+		},
+		include: {
+			provider: true,
+			supplyProducts: {
+				include: {
+					product: true
+				}
+			}
+		},
+		orderBy: {
+			date: 'desc'
+		}
+	});
+
+
+}

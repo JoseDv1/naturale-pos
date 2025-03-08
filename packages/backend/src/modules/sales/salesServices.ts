@@ -129,3 +129,26 @@ export async function updateSale(id: number, data: Prisma.SaleUpdateInput) {
 	});
 
 }
+
+
+export async function getSalesReport(from: string, to: string) {
+	const toDate = new Date(to).setDate(new Date(to).getDate() + 1)
+	return await db.sale.findMany({
+		where: {
+			date: {
+				gte: new Date(from),
+				lte: new Date(toDate)
+			}
+		},
+		include: {
+			products: {
+				include: {
+					product: true,
+				}
+			}
+		},
+		orderBy: {
+			date: 'desc'
+		}
+	});
+}

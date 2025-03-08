@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@/lib/zValidator';
-import { createSupply, getSupplyById, getSupplies, deleteSupply } from './suppliesServices';
+import { createSupply, getSupplyById, getSupplies, deleteSupply, getSuppliesReport } from './suppliesServices';
 
 const supplySchema = z.object({
 	providerId: z.string(),
@@ -27,6 +27,13 @@ export const supplyRouter = new Hono()
 			const { date } = c.req.valid('query');
 			const supplies = await getSupplies(date);
 			return c.json(supplies);
+		})
+	.get('/report',
+		zValidator('query', z.object({ from: z.string(), to: z.string() })),
+		async (c) => {
+			const { from, to } = c.req.valid('query');
+			const report = await getSuppliesReport(from, to);
+			return c.json(report);
 		})
 	.get('/:id',
 		zValidator('param', paramSchema),

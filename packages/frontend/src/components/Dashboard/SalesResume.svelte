@@ -1,7 +1,9 @@
 <script lang="ts">
-	import type { Sale } from "@/lib/api/sales";
 	import { setSales, dateStore, sales } from "@/lib/stores/sales";
 	import { moneyFormatter } from "@/lib/utils/formatters";
+	import GenerateReportDialog from "./GenerateReportDialog.svelte";
+
+	let reportDialog = $state<HTMLDialogElement>();
 </script>
 
 <main>
@@ -53,6 +55,13 @@
 				</p>
 			</article>
 		{/await}
+
+		<button
+			onclick={() => {
+				reportDialog!.showPopover();
+			}}>Generar Reporte</button
+		>
+		<GenerateReportDialog bind:thisEl={reportDialog!} />
 	</section>
 </main>
 

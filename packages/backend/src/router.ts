@@ -12,7 +12,10 @@ import { promisify } from "node:util"
 import { execFile } from "child_process"
 import { HTTPException } from "hono/http-exception";
 const execFileAsync = promisify(execFile)
-import path = require("node:path");
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
+import { getSuppliesReport } from "./modules/supplies/suppliesServices";
+import { getSalesReport } from "./modules/sales/salesServices";
 
 export const apiRoutes = new Hono()
 	.route('/users', userRouter)
@@ -43,6 +46,15 @@ export const apiRoutes = new Hono()
 			if (child.stderr) throw new HTTPException(500, { message: child.stderr })
 			return ctx.json({ message: child.stdout })
 		})
+	.get("/reports",
+		zValidator("query", z.object({ from: z.string().date(), to: z.string().date() })),
+		async (ctx) => {
+			const { from, to } = ctx.req.valid("query")
+			const supplies = await getSuppliesReport(from, to)
+			const sales = await getSalesReport(from, to)
+			return ctx.json({ supplies, sales })
+		}
+	)
 	.use(jwt())
 	.route('/products', productRouter)
 	.route('/categories', categoryRouter)

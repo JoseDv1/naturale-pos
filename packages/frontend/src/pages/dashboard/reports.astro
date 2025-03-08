@@ -1,0 +1,258 @@
+---
+import "@/styles/reset.css";
+import Logo from "@/../public/logo.svg";
+
+import type { Sale } from "@/lib/api/sales";
+import type { Supply } from "@/lib/api/supplies";
+import { moneyFormatter } from "@/lib/utils/formatters";
+
+interface Data {
+	sales: Omit<Sale, "user">[];
+	supplies: Supply[];
+}
+// Formatter
+const dateFormatter = new Intl.DateTimeFormat("es-CO", {
+	year: "numeric",
+	month: "2-digit",
+	day: "2-digit",
+}).format;
+
+const fullDateFormatter = new Intl.DateTimeFormat("es-CO", {
+	year: "numeric",
+	month: "long",
+	day: "2-digit",
+}).format;
+
+const cookie = Astro.cookies.get("token");
+if (!cookie) return Astro.redirect("/login");
+
+// Get the search params from the requst URL
+const searchParams = new URLSearchParams(Astro.url.search);
+const from = searchParams.get("from");
+const to = searchParams.get("to");
+if (!from || !to) {
+	return Astro.redirect("/dashboard/");
+}
+
+const isSameDay = from === to;
+
+const url = new URL(`/api/reports?from=${from}&to=${to}`, Astro.url);
+const response = await fetch(url, {
+	headers: {
+		Cookie: `token=${cookie.value}`,
+	},
+});
+
+const data: Data = await response.json();
+
+const totalSales = data.sales.reduce((acc, sale) => acc + sale.total, 0);
+const totalSupplies = data.supplies.reduce(
+	(acc, supply) => acc + supply.total,
+	0
+);
+
+const groupSalesByDate = Object.groupBy(
+	data.sales,
+	(sale) => new Date(sale.date).toISOString().split("T")[0]
+);
+
+console.log(groupSalesByDate);
+
+const salesByDate = Object.entries(groupSalesByDate).map(([date, sales]) => {
+	const total = sales!.reduce((acc, sale) => acc + sale.total, 0);
+	return { date, total };
+});
+
+const groupSuppliesByDate = Object.groupBy(
+	data.supplies,
+	(supply) => new Date(supply.date).toISOString().split("T")[0]
+);
+
+const suppliesByDate = Object.entries(groupSuppliesByDate).map(
+	([date, supplies]) => {
+		const total = supplies!.reduce((acc, supply) => acc + supply.total, 0);
+		return { date, total };
+	}
+);
+
+const SoldProucts = data.sales.reduce((acc: Record<string, number>, sale) => {
+	const products = sale.products.map((item) => {
+		return {
+			name: item.product.name,
+			quantity: item.quantity,
+		};
+	});
+	products.forEach((product) => {
+		if (!acc[product.name]) {
+			acc[product.name] = 0;
+		}
+		acc[product.name] += product.quantity;
+	});
+	return acc;
+}, {});
+
+const supplyProducts = data.supplies.reduce(
+	(acc: Record<string, number>, supply) => {
+		const products = supply.supplyProducts.map((item) => {
+			return {
+				name: item.product.name,
+				quantity: item.quantity,
+			};
+		});
+		products.forEach((product) => {
+			if (!acc[product.name]) {
+				acc[product.name] = 0;
+			}
+			acc[product.name] += product.quantity;
+		});
+
+		return acc;
+	},
+	{}
+);
+---
+
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	</head>
+	<body>
+		<Logo />
+
+		<h1>
+			{
+				isSameDay
+					? `Reporte del dia `
+					: `Reporte del dia ${fullDateFormatter(new Date(from).setDate(new Date(from).getDate() + 1))} hasta el dia ${fullDateFormatter(new Date(to).setDate(new Date(to).getDate() + 1))}`
+			}
+		</h1>
+
+		<!-- Resumen -->
+		<section>
+			<h2>Resumen</h2>
+			<p>
+				<b>Ventas totales:</b>
+				{moneyFormatter(totalSales)}
+			</p>
+
+			<p>
+				<b>Gastos totales:</b>
+				{moneyFormatter(totalSupplies)}
+			</p>
+
+			<p>
+				<b>Diferencia:</b>
+				{moneyFormatter(totalSales - totalSupplies)}
+			</p>
+		</section>
+
+		<!-- Ventas -->
+		<section>
+			<h2>Ventas</h2>
+			<ul>
+				{
+					salesByDate.map(({ date, total }) => (
+						<li>
+							<p>
+								<b>{date}:</b> {moneyFormatter(total)}
+							</p>
+						</li>
+					))
+				}
+			</ul>
+		</section>
+
+		<!-- Insumos -->
+		<section>
+			<h2>Insumos</h2>
+			<ul>
+				{
+					suppliesByDate.map(({ date, total }) => (
+						<li>
+							<p>
+								<b>{date}:</b> {moneyFormatter(total)}
+							</p>
+						</li>
+					))
+				}
+			</ul>
+		</section>
+		<!-- Productos vendidos -->
+		<section>
+			<h2>Productos vendidos</h2>
+			<ul>
+				{
+					Object.entries(SoldProucts).map(([product, total]) => (
+						<li>
+							<p>
+								<b>{product}:</b> {total}
+							</p>
+						</li>
+					))
+				}
+			</ul>
+		</section>
+		<!-- Insumos Recibidos-->
+		<section>
+			<h2>Insumos Recibidos</h2>
+			<ul>
+				{
+					Object.entries(supplyProducts).map(([product, total]) => (
+						<li>
+							<p>
+								<b>{product}:</b> {total}
+							</p>
+						</li>
+					))
+				}
+			</ul>
+		</section>
+	</body>
+</html>
+
+<style>
+	@page {
+		size: 80mm 297mm;
+		margin: 0mm 3mm 10mm;
+	}
+
+	svg {
+		margin-block: -2cm;
+	}
+
+	body {
+		font-family:
+			Arial,
+			Helvetica,
+			sans-serif,
+			-apple-system,
+			BlinkMacSystemFont,
+			"Segoe UI",
+			Roboto,
+			Oxygen,
+			Ubuntu,
+			Cantarell,
+			"Open Sans",
+			"Helvetica Neue",
+			sans-serif;
+		max-width: 80mm;
+		font-size: 12px;
+	}
+
+	h1 {
+		text-align: center;
+	}
+
+	section {
+		margin-block: 0.5rem;
+		border: 1px solid #000;
+		padding: 1rem;
+	}
+
+	ul {
+		list-style: none;
+		padding: 0;
+	}
+</style>

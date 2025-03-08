@@ -28,13 +28,6 @@ export const supplyRouter = new Hono()
 			const supplies = await getSupplies(date);
 			return c.json(supplies);
 		})
-	.get('/report',
-		zValidator('query', z.object({ from: z.string(), to: z.string() })),
-		async (c) => {
-			const { from, to } = c.req.valid('query');
-			const report = await getSuppliesReport(from, to);
-			return c.json(report);
-		})
 	.get('/:id',
 		zValidator('param', paramSchema),
 		async (c) => {

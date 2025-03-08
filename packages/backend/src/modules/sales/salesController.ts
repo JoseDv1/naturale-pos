@@ -30,13 +30,6 @@ export const saleRouter = new Hono()
 			const sales = await getSales(date);
 			return c.json(sales);
 		})
-	.get('/report',
-		zValidator('query', z.object({ from: z.string(), to: z.string() })),
-		async (c) => {
-			const { from, to } = c.req.valid('query');
-			const report = await getSalesReport(from, to);
-			return c.json(report);
-		})
 	.get('/:id',
 		zValidator('param', paramSchema),
 		async (c) => {

@@ -10,12 +10,6 @@ interface Data {
 	sales: Omit<Sale, "user">[];
 	supplies: Supply[];
 }
-// Formatter
-const dateFormatter = new Intl.DateTimeFormat("es-CO", {
-	year: "numeric",
-	month: "2-digit",
-	day: "2-digit",
-}).format;
 
 const fullDateFormatter = new Intl.DateTimeFormat("es-CO", {
 	year: "numeric",
@@ -26,7 +20,7 @@ const fullDateFormatter = new Intl.DateTimeFormat("es-CO", {
 const cookie = Astro.cookies.get("token");
 if (!cookie) return Astro.redirect("/login");
 
-// Get the search params from the requst URL
+// Get the search params from the request URL
 const searchParams = new URLSearchParams(Astro.url.search);
 const from = searchParams.get("from");
 const to = searchParams.get("to");

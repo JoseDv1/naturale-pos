@@ -1,5 +1,6 @@
 FROM oven/bun:1.2-alpine AS base 
-
+ENV NODE_ENV=production
+ENV ASTRO_TELEMETRY_DISABLED=true
 WORKDIR /usr/src/app
 COPY package.json bun.lock ./
 COPY /packages/backend/package.json ./packages/backend/package.json
@@ -11,8 +12,6 @@ RUN bun install --production
 
 # ----------------- Build -----------------
 FROM base AS build
-ENV ASTRO_TELEMETRY_DISABLED=true
-ENV NODE_ENV=production
 COPY ./packages ./packages
 RUN bun run build --filter '*' build
 

@@ -39,7 +39,6 @@ let response;
 try {
 	const url = new URL(`/api/reports?from=${from}&to=${to}`, Astro.url);
 	// Change the port manually due to a bug where the port is not set correctly in docker containers
-
 	url.port = "3000";
 	response = await fetch(url, {
 		headers: {

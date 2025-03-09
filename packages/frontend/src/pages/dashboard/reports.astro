@@ -6,6 +6,8 @@ import type { Sale } from "@/lib/api/sales";
 import type { Supply } from "@/lib/api/supplies";
 import { moneyFormatter } from "@/lib/utils/formatters";
 
+export const prerender = false;
+
 interface Data {
 	sales: Omit<Sale, "user">[];
 	supplies: Supply[];
@@ -21,21 +23,32 @@ const cookie = Astro.cookies.get("token");
 if (!cookie) return Astro.redirect("/login");
 
 // Get the search params from the request URL
-const searchParams = new URLSearchParams(Astro.url.search);
+const searchParams = new URLSearchParams(
+	new URL(Astro.request.url).searchParams
+);
 const from = searchParams.get("from");
 const to = searchParams.get("to");
+
 if (!from || !to) {
-	return Astro.redirect("/dashboard/");
+	return Astro.redirect("/404");
 }
 
 const isSameDay = from === to;
 
-const url = new URL(`/api/reports?from=${from}&to=${to}`, Astro.url);
-const response = await fetch(url, {
-	headers: {
-		Cookie: `token=${cookie.value}`,
-	},
-});
+let response;
+try {
+	const url = new URL(`/api/reports?from=${from}&to=${to}`, Astro.url);
+	// Change the port manually due to a bug where the port is not set correctly in docker containers
+
+	url.port = "3000";
+	response = await fetch(url, {
+		headers: {
+			Cookie: `token=${cookie.value}`,
+		},
+	});
+} catch (error) {
+	return Astro.redirect("/404");
+}
 
 const data: Data = await response.json();
 
@@ -49,8 +62,6 @@ const groupSalesByDate = Object.groupBy(
 	data.sales,
 	(sale) => new Date(sale.date).toISOString().split("T")[0]
 );
-
-console.log(groupSalesByDate);
 
 const salesByDate = Object.entries(groupSalesByDate).map(([date, sales]) => {
 	const total = sales!.reduce((acc, sale) => acc + sale.total, 0);

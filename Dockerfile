@@ -30,6 +30,8 @@ COPY --from=base /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/packages/frontend/dist ./packages/frontend/dist
 COPY --from=build /usr/src/app/packages/backend/dist ./packages/backend/dist
 ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
 EXPOSE 3000
 WORKDIR /usr/src/app/packages/backend
 CMD ["bun", "./dist/index.js"]

@@ -32,7 +32,7 @@ export const productRouter = new Hono()
 	.post('/',
 		zValidator('json', productSchema),
 		async (c) => {
-			const data = await c.req.valid('json');
+			const data = c.req.valid('json');
 			const product = await createProduct(data);
 			return c.json(product);
 		})
@@ -41,7 +41,7 @@ export const productRouter = new Hono()
 		zValidator('json', productSchema.partial()),
 		async (c) => {
 			const { id } = c.req.valid("param")
-			const data = await c.req.valid('json');
+			const data = c.req.valid('json');
 			const product = await updateProduct(id, data);
 			return c.json(product);
 		})

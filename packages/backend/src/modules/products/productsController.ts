@@ -9,6 +9,7 @@ const productSchema = z.object({
 	description: z.string().optional(),
 	price: z.number(),
 	categoryId: z.number(),
+	stock: z.number().default(0), // Assuming stock is a required field with a default value
 });
 
 const paramSchema = z.object({ id: z.string() });

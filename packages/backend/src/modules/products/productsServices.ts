@@ -5,6 +5,7 @@ interface ProductData {
 	description?: string;
 	price: number;
 	categoryId: number;
+	stock: number;
 }
 
 export async function createProduct(data: ProductData) {

@@ -26,6 +26,7 @@ export async function updateProduct(
 		description?: string;
 		price?: number;
 		categoryId?: number;
+		stock?: number;
 	}
 ) {
 	const res = await apiClient.api.products[":id"].$put({ param: { id }, json: data });

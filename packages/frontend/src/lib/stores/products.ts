@@ -46,6 +46,7 @@ export async function editProduct(
 		description?: string;
 		price?: number;
 		categoryId?: number;
+		stock?: number;
 	}
 ) {
 	const updatedProduct = await updateProduct(id, data);

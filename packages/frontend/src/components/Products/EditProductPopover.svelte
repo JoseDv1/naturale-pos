@@ -18,6 +18,7 @@
 			description: formData.get("description") as string,
 			price: Number(formData.get("price")),
 			categoryId: Number(formData.get("category")),
+			stock: Number(formData.get("stock")),
 		};
 		await editProduct(product.id, data);
 		form.reset();
@@ -58,6 +59,16 @@
 				autocomplete="off"
 				step="0.01"
 				defaultValue={product.price}
+			/>
+		</label>
+
+		<label>
+			<span>Stock</span>
+			<input
+				type="number"
+				name="stock"
+				autocomplete="off"
+				defaultValue={product.stock}
 			/>
 		</label>
 

@@ -1,0 +1,25 @@
+{
+  "name": "naturale-pos",
+  "version": "1.0.0",
+  "description": "Local-first POS system for healthy market and café",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "db:migrate": "bunx prisma migrate dev",
+    "db:generate": "bunx prisma generate",
+    "db:studio": "bunx prisma studio",
+    "build:frontend": "cd frontend && bun run build",
+    "build:server": "bun build --compile --minify --outfile dist/pos src/index.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "7",
+    "hono": "^4.4.7",
+    "prisma-adapter-bun-sqlite": "^0.8.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.1.17",
+    "prisma": "7",
+    "typescript": "^5.5.2"
+  }
+}

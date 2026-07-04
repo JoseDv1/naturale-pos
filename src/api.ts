@@ -9,6 +9,7 @@ import expenses from './routes/expenses';
 import transfers from './routes/transfers';
 import reports from './routes/reports';
 import tables from './routes/tables';
+import { authMiddleware } from './middleware/auth';
 
 const api = new Hono();
 
@@ -27,6 +28,23 @@ api.get('/status', async (c) => {
       database: 'disconnected',
       error: error instanceof Error ? error.message : String(error)
     }, 500);
+  }
+});
+
+// Gatekeeper Middleware to protect all routes except status and auth
+api.use('*', async (c, next) => {
+  const path = c.req.path;
+  if (
+    path === '/api/status' || 
+    path === '/status' || 
+    path.startsWith('/api/auth/') || 
+    path.startsWith('/auth/') || 
+    path === '/api/auth' || 
+    path === '/auth'
+  ) {
+    await next();
+  } else {
+    await authMiddleware(c, next);
   }
 });
 

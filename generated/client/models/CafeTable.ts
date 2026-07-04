@@ -27,7 +27,7 @@ export type AggregateCafeTable = {
 export type CafeTableMinAggregateOutputType = {
   id: string | null
   name: string | null
-  status: string | null
+  status: $Enums.TableStatus | null
   currentSaleId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -36,7 +36,7 @@ export type CafeTableMinAggregateOutputType = {
 export type CafeTableMaxAggregateOutputType = {
   id: string | null
   name: string | null
-  status: string | null
+  status: $Enums.TableStatus | null
   currentSaleId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -156,7 +156,7 @@ export type CafeTableGroupByArgs<ExtArgs extends runtime.Types.Extensions.Intern
 export type CafeTableGroupByOutputType = {
   id: string
   name: string
-  status: string
+  status: $Enums.TableStatus
   currentSaleId: string | null
   createdAt: Date
   updatedAt: Date
@@ -186,7 +186,7 @@ export type CafeTableWhereInput = {
   NOT?: Prisma.CafeTableWhereInput | Prisma.CafeTableWhereInput[]
   id?: Prisma.StringFilter<"CafeTable"> | string
   name?: Prisma.StringFilter<"CafeTable"> | string
-  status?: Prisma.StringFilter<"CafeTable"> | string
+  status?: Prisma.EnumTableStatusFilter<"CafeTable"> | $Enums.TableStatus
   currentSaleId?: Prisma.StringNullableFilter<"CafeTable"> | string | null
   createdAt?: Prisma.DateTimeFilter<"CafeTable"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CafeTable"> | Date | string
@@ -212,7 +212,7 @@ export type CafeTableWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.CafeTableWhereInput | Prisma.CafeTableWhereInput[]
   OR?: Prisma.CafeTableWhereInput[]
   NOT?: Prisma.CafeTableWhereInput | Prisma.CafeTableWhereInput[]
-  status?: Prisma.StringFilter<"CafeTable"> | string
+  status?: Prisma.EnumTableStatusFilter<"CafeTable"> | $Enums.TableStatus
   createdAt?: Prisma.DateTimeFilter<"CafeTable"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CafeTable"> | Date | string
   currentSale?: Prisma.XOR<Prisma.SaleNullableScalarRelationFilter, Prisma.SaleWhereInput> | null
@@ -237,7 +237,7 @@ export type CafeTableScalarWhereWithAggregatesInput = {
   NOT?: Prisma.CafeTableScalarWhereWithAggregatesInput | Prisma.CafeTableScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"CafeTable"> | string
   name?: Prisma.StringWithAggregatesFilter<"CafeTable"> | string
-  status?: Prisma.StringWithAggregatesFilter<"CafeTable"> | string
+  status?: Prisma.EnumTableStatusWithAggregatesFilter<"CafeTable"> | $Enums.TableStatus
   currentSaleId?: Prisma.StringNullableWithAggregatesFilter<"CafeTable"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"CafeTable"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"CafeTable"> | Date | string
@@ -246,7 +246,7 @@ export type CafeTableScalarWhereWithAggregatesInput = {
 export type CafeTableCreateInput = {
   id?: string
   name: string
-  status?: string
+  status?: $Enums.TableStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   currentSale?: Prisma.SaleCreateNestedOneWithoutActiveForTableInput
@@ -256,7 +256,7 @@ export type CafeTableCreateInput = {
 export type CafeTableUncheckedCreateInput = {
   id?: string
   name: string
-  status?: string
+  status?: $Enums.TableStatus
   currentSaleId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -266,7 +266,7 @@ export type CafeTableUncheckedCreateInput = {
 export type CafeTableUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTableStatusFieldUpdateOperationsInput | $Enums.TableStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentSale?: Prisma.SaleUpdateOneWithoutActiveForTableNestedInput
@@ -276,7 +276,7 @@ export type CafeTableUpdateInput = {
 export type CafeTableUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTableStatusFieldUpdateOperationsInput | $Enums.TableStatus
   currentSaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -286,7 +286,7 @@ export type CafeTableUncheckedUpdateInput = {
 export type CafeTableCreateManyInput = {
   id?: string
   name: string
-  status?: string
+  status?: $Enums.TableStatus
   currentSaleId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -295,7 +295,7 @@ export type CafeTableCreateManyInput = {
 export type CafeTableUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTableStatusFieldUpdateOperationsInput | $Enums.TableStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -303,7 +303,7 @@ export type CafeTableUpdateManyMutationInput = {
 export type CafeTableUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTableStatusFieldUpdateOperationsInput | $Enums.TableStatus
   currentSaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -389,10 +389,14 @@ export type CafeTableUncheckedUpdateOneWithoutCurrentSaleNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CafeTableUpdateToOneWithWhereWithoutCurrentSaleInput, Prisma.CafeTableUpdateWithoutCurrentSaleInput>, Prisma.CafeTableUncheckedUpdateWithoutCurrentSaleInput>
 }
 
+export type EnumTableStatusFieldUpdateOperationsInput = {
+  set?: $Enums.TableStatus
+}
+
 export type CafeTableCreateWithoutSalesInput = {
   id?: string
   name: string
-  status?: string
+  status?: $Enums.TableStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   currentSale?: Prisma.SaleCreateNestedOneWithoutActiveForTableInput
@@ -401,7 +405,7 @@ export type CafeTableCreateWithoutSalesInput = {
 export type CafeTableUncheckedCreateWithoutSalesInput = {
   id?: string
   name: string
-  status?: string
+  status?: $Enums.TableStatus
   currentSaleId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -415,7 +419,7 @@ export type CafeTableCreateOrConnectWithoutSalesInput = {
 export type CafeTableCreateWithoutCurrentSaleInput = {
   id?: string
   name: string
-  status?: string
+  status?: $Enums.TableStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   sales?: Prisma.SaleCreateNestedManyWithoutTableInput
@@ -424,7 +428,7 @@ export type CafeTableCreateWithoutCurrentSaleInput = {
 export type CafeTableUncheckedCreateWithoutCurrentSaleInput = {
   id?: string
   name: string
-  status?: string
+  status?: $Enums.TableStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   sales?: Prisma.SaleUncheckedCreateNestedManyWithoutTableInput
@@ -449,7 +453,7 @@ export type CafeTableUpdateToOneWithWhereWithoutSalesInput = {
 export type CafeTableUpdateWithoutSalesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTableStatusFieldUpdateOperationsInput | $Enums.TableStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   currentSale?: Prisma.SaleUpdateOneWithoutActiveForTableNestedInput
@@ -458,7 +462,7 @@ export type CafeTableUpdateWithoutSalesInput = {
 export type CafeTableUncheckedUpdateWithoutSalesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTableStatusFieldUpdateOperationsInput | $Enums.TableStatus
   currentSaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -478,7 +482,7 @@ export type CafeTableUpdateToOneWithWhereWithoutCurrentSaleInput = {
 export type CafeTableUpdateWithoutCurrentSaleInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTableStatusFieldUpdateOperationsInput | $Enums.TableStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sales?: Prisma.SaleUpdateManyWithoutTableNestedInput
@@ -487,7 +491,7 @@ export type CafeTableUpdateWithoutCurrentSaleInput = {
 export type CafeTableUncheckedUpdateWithoutCurrentSaleInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTableStatusFieldUpdateOperationsInput | $Enums.TableStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sales?: Prisma.SaleUncheckedUpdateManyWithoutTableNestedInput
@@ -587,7 +591,7 @@ export type $CafeTablePayload<ExtArgs extends runtime.Types.Extensions.InternalA
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
-    status: string
+    status: $Enums.TableStatus
     currentSaleId: string | null
     createdAt: Date
     updatedAt: Date
@@ -1018,7 +1022,7 @@ export interface Prisma__CafeTableClient<T, Null = never, ExtArgs extends runtim
 export interface CafeTableFieldRefs {
   readonly id: Prisma.FieldRef<"CafeTable", 'String'>
   readonly name: Prisma.FieldRef<"CafeTable", 'String'>
-  readonly status: Prisma.FieldRef<"CafeTable", 'String'>
+  readonly status: Prisma.FieldRef<"CafeTable", 'TableStatus'>
   readonly currentSaleId: Prisma.FieldRef<"CafeTable", 'String'>
   readonly createdAt: Prisma.FieldRef<"CafeTable", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"CafeTable", 'DateTime'>

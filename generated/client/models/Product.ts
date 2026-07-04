@@ -27,14 +27,14 @@ export type AggregateProduct = {
 }
 
 export type ProductAvgAggregateOutputType = {
-  price: number | null
-  cost: number | null
+  price: runtime.Decimal | null
+  cost: runtime.Decimal | null
   stock: number | null
 }
 
 export type ProductSumAggregateOutputType = {
-  price: number | null
-  cost: number | null
+  price: runtime.Decimal | null
+  cost: runtime.Decimal | null
   stock: number | null
 }
 
@@ -43,11 +43,11 @@ export type ProductMinAggregateOutputType = {
   sku: string | null
   name: string | null
   description: string | null
-  price: number | null
-  cost: number | null
+  price: runtime.Decimal | null
+  cost: runtime.Decimal | null
   stock: number | null
   categoryId: string | null
-  department: string | null
+  department: $Enums.Department | null
   isRawMaterial: boolean | null
   active: boolean | null
   createdAt: Date | null
@@ -59,11 +59,11 @@ export type ProductMaxAggregateOutputType = {
   sku: string | null
   name: string | null
   description: string | null
-  price: number | null
-  cost: number | null
+  price: runtime.Decimal | null
+  cost: runtime.Decimal | null
   stock: number | null
   categoryId: string | null
-  department: string | null
+  department: $Enums.Department | null
   isRawMaterial: boolean | null
   active: boolean | null
   createdAt: Date | null
@@ -240,11 +240,11 @@ export type ProductGroupByOutputType = {
   sku: string
   name: string
   description: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal
+  cost: runtime.Decimal
   stock: number
   categoryId: string
-  department: string
+  department: $Enums.Department
   isRawMaterial: boolean
   active: boolean
   createdAt: Date
@@ -279,11 +279,11 @@ export type ProductWhereInput = {
   sku?: Prisma.StringFilter<"Product"> | string
   name?: Prisma.StringFilter<"Product"> | string
   description?: Prisma.StringNullableFilter<"Product"> | string | null
-  price?: Prisma.FloatFilter<"Product"> | number
-  cost?: Prisma.FloatFilter<"Product"> | number
+  price?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFilter<"Product"> | number
   categoryId?: Prisma.StringFilter<"Product"> | string
-  department?: Prisma.StringFilter<"Product"> | string
+  department?: Prisma.EnumDepartmentFilter<"Product"> | $Enums.Department
   isRawMaterial?: Prisma.BoolFilter<"Product"> | boolean
   active?: Prisma.BoolFilter<"Product"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -324,11 +324,11 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ProductWhereInput | Prisma.ProductWhereInput[]
   name?: Prisma.StringFilter<"Product"> | string
   description?: Prisma.StringNullableFilter<"Product"> | string | null
-  price?: Prisma.FloatFilter<"Product"> | number
-  cost?: Prisma.FloatFilter<"Product"> | number
+  price?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFilter<"Product"> | number
   categoryId?: Prisma.StringFilter<"Product"> | string
-  department?: Prisma.StringFilter<"Product"> | string
+  department?: Prisma.EnumDepartmentFilter<"Product"> | $Enums.Department
   isRawMaterial?: Prisma.BoolFilter<"Product"> | boolean
   active?: Prisma.BoolFilter<"Product"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -369,11 +369,11 @@ export type ProductScalarWhereWithAggregatesInput = {
   sku?: Prisma.StringWithAggregatesFilter<"Product"> | string
   name?: Prisma.StringWithAggregatesFilter<"Product"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
-  price?: Prisma.FloatWithAggregatesFilter<"Product"> | number
-  cost?: Prisma.FloatWithAggregatesFilter<"Product"> | number
+  price?: Prisma.DecimalWithAggregatesFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalWithAggregatesFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntWithAggregatesFilter<"Product"> | number
   categoryId?: Prisma.StringWithAggregatesFilter<"Product"> | string
-  department?: Prisma.StringWithAggregatesFilter<"Product"> | string
+  department?: Prisma.EnumDepartmentWithAggregatesFilter<"Product"> | $Enums.Department
   isRawMaterial?: Prisma.BoolWithAggregatesFilter<"Product"> | boolean
   active?: Prisma.BoolWithAggregatesFilter<"Product"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
@@ -385,10 +385,10 @@ export type ProductCreateInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -405,11 +405,11 @@ export type ProductUncheckedCreateInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
   categoryId: string
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -425,10 +425,10 @@ export type ProductUpdateInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -445,11 +445,11 @@ export type ProductUncheckedUpdateInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
   categoryId?: Prisma.StringFieldUpdateOperationsInput | string
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -465,11 +465,11 @@ export type ProductCreateManyInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
   categoryId: string
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -481,10 +481,10 @@ export type ProductUpdateManyMutationInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -496,11 +496,11 @@ export type ProductUncheckedUpdateManyInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
   categoryId?: Prisma.StringFieldUpdateOperationsInput | string
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -629,12 +629,12 @@ export type ProductUncheckedUpdateManyWithoutCategoryNestedInput = {
   deleteMany?: Prisma.ProductScalarWhereInput | Prisma.ProductScalarWhereInput[]
 }
 
-export type FloatFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
+export type DecimalFieldUpdateOperationsInput = {
+  set?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type IntFieldUpdateOperationsInput = {
@@ -643,6 +643,10 @@ export type IntFieldUpdateOperationsInput = {
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type EnumDepartmentFieldUpdateOperationsInput = {
+  set?: $Enums.Department
 }
 
 export type ProductCreateNestedOneWithoutExpenseItemsInput = {
@@ -708,10 +712,10 @@ export type ProductCreateWithoutCategoryInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -727,10 +731,10 @@ export type ProductUncheckedCreateWithoutCategoryInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -774,11 +778,11 @@ export type ProductScalarWhereInput = {
   sku?: Prisma.StringFilter<"Product"> | string
   name?: Prisma.StringFilter<"Product"> | string
   description?: Prisma.StringNullableFilter<"Product"> | string | null
-  price?: Prisma.FloatFilter<"Product"> | number
-  cost?: Prisma.FloatFilter<"Product"> | number
+  price?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFilter<"Product"> | number
   categoryId?: Prisma.StringFilter<"Product"> | string
-  department?: Prisma.StringFilter<"Product"> | string
+  department?: Prisma.EnumDepartmentFilter<"Product"> | $Enums.Department
   isRawMaterial?: Prisma.BoolFilter<"Product"> | boolean
   active?: Prisma.BoolFilter<"Product"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
@@ -790,10 +794,10 @@ export type ProductCreateWithoutExpenseItemsInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -809,11 +813,11 @@ export type ProductUncheckedCreateWithoutExpenseItemsInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
   categoryId: string
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -844,10 +848,10 @@ export type ProductUpdateWithoutExpenseItemsInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -863,11 +867,11 @@ export type ProductUncheckedUpdateWithoutExpenseItemsInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
   categoryId?: Prisma.StringFieldUpdateOperationsInput | string
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -882,10 +886,10 @@ export type ProductCreateWithoutSaleItemsInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -901,11 +905,11 @@ export type ProductUncheckedCreateWithoutSaleItemsInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
   categoryId: string
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -936,10 +940,10 @@ export type ProductUpdateWithoutSaleItemsInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -955,11 +959,11 @@ export type ProductUncheckedUpdateWithoutSaleItemsInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
   categoryId?: Prisma.StringFieldUpdateOperationsInput | string
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -974,10 +978,10 @@ export type ProductCreateWithoutTransfersFromInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -993,11 +997,11 @@ export type ProductUncheckedCreateWithoutTransfersFromInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
   categoryId: string
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -1017,10 +1021,10 @@ export type ProductCreateWithoutTransfersToInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -1036,11 +1040,11 @@ export type ProductUncheckedCreateWithoutTransfersToInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
   categoryId: string
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -1071,10 +1075,10 @@ export type ProductUpdateWithoutTransfersFromInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1090,11 +1094,11 @@ export type ProductUncheckedUpdateWithoutTransfersFromInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
   categoryId?: Prisma.StringFieldUpdateOperationsInput | string
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1120,10 +1124,10 @@ export type ProductUpdateWithoutTransfersToInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1139,11 +1143,11 @@ export type ProductUncheckedUpdateWithoutTransfersToInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
   categoryId?: Prisma.StringFieldUpdateOperationsInput | string
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1158,10 +1162,10 @@ export type ProductCreateManyCategoryInput = {
   sku: string
   name: string
   description?: string | null
-  price: number
-  cost: number
+  price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost: runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: number
-  department: string
+  department: $Enums.Department
   isRawMaterial?: boolean
   active?: boolean
   createdAt?: Date | string
@@ -1173,10 +1177,10 @@ export type ProductUpdateWithoutCategoryInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1192,10 +1196,10 @@ export type ProductUncheckedUpdateWithoutCategoryInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1211,10 +1215,10 @@ export type ProductUncheckedUpdateManyWithoutCategoryInput = {
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  price?: Prisma.FloatFieldUpdateOperationsInput | number
-  cost?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   stock?: Prisma.IntFieldUpdateOperationsInput | number
-  department?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   isRawMaterial?: Prisma.BoolFieldUpdateOperationsInput | boolean
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1381,11 +1385,11 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     sku: string
     name: string
     description: string | null
-    price: number
-    cost: number
+    price: runtime.Decimal
+    cost: runtime.Decimal
     stock: number
     categoryId: string
-    department: string
+    department: $Enums.Department
     isRawMaterial: boolean
     active: boolean
     createdAt: Date
@@ -1822,11 +1826,11 @@ export interface ProductFieldRefs {
   readonly sku: Prisma.FieldRef<"Product", 'String'>
   readonly name: Prisma.FieldRef<"Product", 'String'>
   readonly description: Prisma.FieldRef<"Product", 'String'>
-  readonly price: Prisma.FieldRef<"Product", 'Float'>
-  readonly cost: Prisma.FieldRef<"Product", 'Float'>
+  readonly price: Prisma.FieldRef<"Product", 'Decimal'>
+  readonly cost: Prisma.FieldRef<"Product", 'Decimal'>
   readonly stock: Prisma.FieldRef<"Product", 'Int'>
   readonly categoryId: Prisma.FieldRef<"Product", 'String'>
-  readonly department: Prisma.FieldRef<"Product", 'String'>
+  readonly department: Prisma.FieldRef<"Product", 'Department'>
   readonly isRawMaterial: Prisma.FieldRef<"Product", 'Boolean'>
   readonly active: Prisma.FieldRef<"Product", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Product", 'DateTime'>

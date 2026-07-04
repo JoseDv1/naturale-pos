@@ -28,12 +28,12 @@ export type AggregateExpenseItem = {
 
 export type ExpenseItemAvgAggregateOutputType = {
   quantity: number | null
-  unitCost: number | null
+  unitCost: runtime.Decimal | null
 }
 
 export type ExpenseItemSumAggregateOutputType = {
   quantity: number | null
-  unitCost: number | null
+  unitCost: runtime.Decimal | null
 }
 
 export type ExpenseItemMinAggregateOutputType = {
@@ -41,7 +41,7 @@ export type ExpenseItemMinAggregateOutputType = {
   expenseId: string | null
   productId: string | null
   quantity: number | null
-  unitCost: number | null
+  unitCost: runtime.Decimal | null
 }
 
 export type ExpenseItemMaxAggregateOutputType = {
@@ -49,7 +49,7 @@ export type ExpenseItemMaxAggregateOutputType = {
   expenseId: string | null
   productId: string | null
   quantity: number | null
-  unitCost: number | null
+  unitCost: runtime.Decimal | null
 }
 
 export type ExpenseItemCountAggregateOutputType = {
@@ -188,7 +188,7 @@ export type ExpenseItemGroupByOutputType = {
   expenseId: string
   productId: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal
   _count: ExpenseItemCountAggregateOutputType | null
   _avg: ExpenseItemAvgAggregateOutputType | null
   _sum: ExpenseItemSumAggregateOutputType | null
@@ -219,7 +219,7 @@ export type ExpenseItemWhereInput = {
   expenseId?: Prisma.StringFilter<"ExpenseItem"> | string
   productId?: Prisma.StringFilter<"ExpenseItem"> | string
   quantity?: Prisma.IntFilter<"ExpenseItem"> | number
-  unitCost?: Prisma.FloatFilter<"ExpenseItem"> | number
+  unitCost?: Prisma.DecimalFilter<"ExpenseItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   expense?: Prisma.XOR<Prisma.ExpenseScalarRelationFilter, Prisma.ExpenseWhereInput>
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
 }
@@ -242,7 +242,7 @@ export type ExpenseItemWhereUniqueInput = Prisma.AtLeast<{
   expenseId?: Prisma.StringFilter<"ExpenseItem"> | string
   productId?: Prisma.StringFilter<"ExpenseItem"> | string
   quantity?: Prisma.IntFilter<"ExpenseItem"> | number
-  unitCost?: Prisma.FloatFilter<"ExpenseItem"> | number
+  unitCost?: Prisma.DecimalFilter<"ExpenseItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   expense?: Prisma.XOR<Prisma.ExpenseScalarRelationFilter, Prisma.ExpenseWhereInput>
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
 }, "id">
@@ -268,13 +268,13 @@ export type ExpenseItemScalarWhereWithAggregatesInput = {
   expenseId?: Prisma.StringWithAggregatesFilter<"ExpenseItem"> | string
   productId?: Prisma.StringWithAggregatesFilter<"ExpenseItem"> | string
   quantity?: Prisma.IntWithAggregatesFilter<"ExpenseItem"> | number
-  unitCost?: Prisma.FloatWithAggregatesFilter<"ExpenseItem"> | number
+  unitCost?: Prisma.DecimalWithAggregatesFilter<"ExpenseItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemCreateInput = {
   id?: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
   expense: Prisma.ExpenseCreateNestedOneWithoutItemsInput
   product: Prisma.ProductCreateNestedOneWithoutExpenseItemsInput
 }
@@ -284,13 +284,13 @@ export type ExpenseItemUncheckedCreateInput = {
   expenseId: string
   productId: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   expense?: Prisma.ExpenseUpdateOneRequiredWithoutItemsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutExpenseItemsNestedInput
 }
@@ -300,7 +300,7 @@ export type ExpenseItemUncheckedUpdateInput = {
   expenseId?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemCreateManyInput = {
@@ -308,13 +308,13 @@ export type ExpenseItemCreateManyInput = {
   expenseId: string
   productId: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemUncheckedUpdateManyInput = {
@@ -322,7 +322,7 @@ export type ExpenseItemUncheckedUpdateManyInput = {
   expenseId?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemListRelationFilter = {
@@ -456,7 +456,7 @@ export type ExpenseItemUncheckedUpdateManyWithoutExpenseNestedInput = {
 export type ExpenseItemCreateWithoutProductInput = {
   id?: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
   expense: Prisma.ExpenseCreateNestedOneWithoutItemsInput
 }
 
@@ -464,7 +464,7 @@ export type ExpenseItemUncheckedCreateWithoutProductInput = {
   id?: string
   expenseId: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemCreateOrConnectWithoutProductInput = {
@@ -500,13 +500,13 @@ export type ExpenseItemScalarWhereInput = {
   expenseId?: Prisma.StringFilter<"ExpenseItem"> | string
   productId?: Prisma.StringFilter<"ExpenseItem"> | string
   quantity?: Prisma.IntFilter<"ExpenseItem"> | number
-  unitCost?: Prisma.FloatFilter<"ExpenseItem"> | number
+  unitCost?: Prisma.DecimalFilter<"ExpenseItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemCreateWithoutExpenseInput = {
   id?: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
   product: Prisma.ProductCreateNestedOneWithoutExpenseItemsInput
 }
 
@@ -514,7 +514,7 @@ export type ExpenseItemUncheckedCreateWithoutExpenseInput = {
   id?: string
   productId: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemCreateOrConnectWithoutExpenseInput = {
@@ -546,13 +546,13 @@ export type ExpenseItemCreateManyProductInput = {
   id?: string
   expenseId: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   expense?: Prisma.ExpenseUpdateOneRequiredWithoutItemsNestedInput
 }
 
@@ -560,27 +560,27 @@ export type ExpenseItemUncheckedUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   expenseId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemUncheckedUpdateManyWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   expenseId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemCreateManyExpenseInput = {
   id?: string
   productId: string
   quantity: number
-  unitCost: number
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemUpdateWithoutExpenseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   product?: Prisma.ProductUpdateOneRequiredWithoutExpenseItemsNestedInput
 }
 
@@ -588,14 +588,14 @@ export type ExpenseItemUncheckedUpdateWithoutExpenseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 export type ExpenseItemUncheckedUpdateManyWithoutExpenseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
 
@@ -663,7 +663,7 @@ export type $ExpenseItemPayload<ExtArgs extends runtime.Types.Extensions.Interna
     expenseId: string
     productId: string
     quantity: number
-    unitCost: number
+    unitCost: runtime.Decimal
   }, ExtArgs["result"]["expenseItem"]>
   composites: {}
 }
@@ -1093,7 +1093,7 @@ export interface ExpenseItemFieldRefs {
   readonly expenseId: Prisma.FieldRef<"ExpenseItem", 'String'>
   readonly productId: Prisma.FieldRef<"ExpenseItem", 'String'>
   readonly quantity: Prisma.FieldRef<"ExpenseItem", 'Int'>
-  readonly unitCost: Prisma.FieldRef<"ExpenseItem", 'Float'>
+  readonly unitCost: Prisma.FieldRef<"ExpenseItem", 'Decimal'>
 }
     
 

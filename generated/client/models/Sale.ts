@@ -27,18 +27,18 @@ export type AggregateSale = {
 }
 
 export type SaleAvgAggregateOutputType = {
-  total: number | null
+  total: runtime.Decimal | null
 }
 
 export type SaleSumAggregateOutputType = {
-  total: number | null
+  total: runtime.Decimal | null
 }
 
 export type SaleMinAggregateOutputType = {
   id: string | null
   userId: string | null
-  total: number | null
-  status: string | null
+  total: runtime.Decimal | null
+  status: $Enums.SaleStatus | null
   createdAt: Date | null
   updatedAt: Date | null
   tableId: string | null
@@ -47,8 +47,8 @@ export type SaleMinAggregateOutputType = {
 export type SaleMaxAggregateOutputType = {
   id: string | null
   userId: string | null
-  total: number | null
-  status: string | null
+  total: runtime.Decimal | null
+  status: $Enums.SaleStatus | null
   createdAt: Date | null
   updatedAt: Date | null
   tableId: string | null
@@ -194,8 +194,8 @@ export type SaleGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 export type SaleGroupByOutputType = {
   id: string
   userId: string
-  total: number
-  status: string
+  total: runtime.Decimal
+  status: $Enums.SaleStatus
   createdAt: Date
   updatedAt: Date
   tableId: string | null
@@ -227,8 +227,8 @@ export type SaleWhereInput = {
   NOT?: Prisma.SaleWhereInput | Prisma.SaleWhereInput[]
   id?: Prisma.StringFilter<"Sale"> | string
   userId?: Prisma.StringFilter<"Sale"> | string
-  total?: Prisma.FloatFilter<"Sale"> | number
-  status?: Prisma.StringFilter<"Sale"> | string
+  total?: Prisma.DecimalFilter<"Sale"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFilter<"Sale"> | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFilter<"Sale"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Sale"> | Date | string
   tableId?: Prisma.StringNullableFilter<"Sale"> | string | null
@@ -260,8 +260,8 @@ export type SaleWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.SaleWhereInput[]
   NOT?: Prisma.SaleWhereInput | Prisma.SaleWhereInput[]
   userId?: Prisma.StringFilter<"Sale"> | string
-  total?: Prisma.FloatFilter<"Sale"> | number
-  status?: Prisma.StringFilter<"Sale"> | string
+  total?: Prisma.DecimalFilter<"Sale"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFilter<"Sale"> | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFilter<"Sale"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Sale"> | Date | string
   tableId?: Prisma.StringNullableFilter<"Sale"> | string | null
@@ -293,8 +293,8 @@ export type SaleScalarWhereWithAggregatesInput = {
   NOT?: Prisma.SaleScalarWhereWithAggregatesInput | Prisma.SaleScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Sale"> | string
   userId?: Prisma.StringWithAggregatesFilter<"Sale"> | string
-  total?: Prisma.FloatWithAggregatesFilter<"Sale"> | number
-  status?: Prisma.StringWithAggregatesFilter<"Sale"> | string
+  total?: Prisma.DecimalWithAggregatesFilter<"Sale"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusWithAggregatesFilter<"Sale"> | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Sale"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Sale"> | Date | string
   tableId?: Prisma.StringNullableWithAggregatesFilter<"Sale"> | string | null
@@ -302,8 +302,8 @@ export type SaleScalarWhereWithAggregatesInput = {
 
 export type SaleCreateInput = {
   id?: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSalesInput
@@ -316,8 +316,8 @@ export type SaleCreateInput = {
 export type SaleUncheckedCreateInput = {
   id?: string
   userId: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   tableId?: string | null
@@ -328,8 +328,8 @@ export type SaleUncheckedCreateInput = {
 
 export type SaleUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSalesNestedInput
@@ -342,8 +342,8 @@ export type SaleUpdateInput = {
 export type SaleUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -355,8 +355,8 @@ export type SaleUncheckedUpdateInput = {
 export type SaleCreateManyInput = {
   id?: string
   userId: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   tableId?: string | null
@@ -364,8 +364,8 @@ export type SaleCreateManyInput = {
 
 export type SaleUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -373,8 +373,8 @@ export type SaleUpdateManyMutationInput = {
 export type SaleUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -480,6 +480,10 @@ export type SaleUncheckedUpdateManyWithoutUserNestedInput = {
   deleteMany?: Prisma.SaleScalarWhereInput | Prisma.SaleScalarWhereInput[]
 }
 
+export type EnumSaleStatusFieldUpdateOperationsInput = {
+  set?: $Enums.SaleStatus
+}
+
 export type SaleCreateNestedOneWithoutItemsInput = {
   create?: Prisma.XOR<Prisma.SaleCreateWithoutItemsInput, Prisma.SaleUncheckedCreateWithoutItemsInput>
   connectOrCreate?: Prisma.SaleCreateOrConnectWithoutItemsInput
@@ -568,8 +572,8 @@ export type SaleUncheckedUpdateManyWithoutTableNestedInput = {
 
 export type SaleCreateWithoutUserInput = {
   id?: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.SaleItemCreateNestedManyWithoutSaleInput
@@ -580,8 +584,8 @@ export type SaleCreateWithoutUserInput = {
 
 export type SaleUncheckedCreateWithoutUserInput = {
   id?: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   tableId?: string | null
@@ -621,8 +625,8 @@ export type SaleScalarWhereInput = {
   NOT?: Prisma.SaleScalarWhereInput | Prisma.SaleScalarWhereInput[]
   id?: Prisma.StringFilter<"Sale"> | string
   userId?: Prisma.StringFilter<"Sale"> | string
-  total?: Prisma.FloatFilter<"Sale"> | number
-  status?: Prisma.StringFilter<"Sale"> | string
+  total?: Prisma.DecimalFilter<"Sale"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFilter<"Sale"> | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFilter<"Sale"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Sale"> | Date | string
   tableId?: Prisma.StringNullableFilter<"Sale"> | string | null
@@ -630,8 +634,8 @@ export type SaleScalarWhereInput = {
 
 export type SaleCreateWithoutItemsInput = {
   id?: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSalesInput
@@ -643,8 +647,8 @@ export type SaleCreateWithoutItemsInput = {
 export type SaleUncheckedCreateWithoutItemsInput = {
   id?: string
   userId: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   tableId?: string | null
@@ -670,8 +674,8 @@ export type SaleUpdateToOneWithWhereWithoutItemsInput = {
 
 export type SaleUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSalesNestedInput
@@ -683,8 +687,8 @@ export type SaleUpdateWithoutItemsInput = {
 export type SaleUncheckedUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -694,8 +698,8 @@ export type SaleUncheckedUpdateWithoutItemsInput = {
 
 export type SaleCreateWithoutPaymentsInput = {
   id?: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSalesInput
@@ -707,8 +711,8 @@ export type SaleCreateWithoutPaymentsInput = {
 export type SaleUncheckedCreateWithoutPaymentsInput = {
   id?: string
   userId: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   tableId?: string | null
@@ -734,8 +738,8 @@ export type SaleUpdateToOneWithWhereWithoutPaymentsInput = {
 
 export type SaleUpdateWithoutPaymentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSalesNestedInput
@@ -747,8 +751,8 @@ export type SaleUpdateWithoutPaymentsInput = {
 export type SaleUncheckedUpdateWithoutPaymentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -758,8 +762,8 @@ export type SaleUncheckedUpdateWithoutPaymentsInput = {
 
 export type SaleCreateWithoutActiveForTableInput = {
   id?: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSalesInput
@@ -771,8 +775,8 @@ export type SaleCreateWithoutActiveForTableInput = {
 export type SaleUncheckedCreateWithoutActiveForTableInput = {
   id?: string
   userId: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   tableId?: string | null
@@ -787,8 +791,8 @@ export type SaleCreateOrConnectWithoutActiveForTableInput = {
 
 export type SaleCreateWithoutTableInput = {
   id?: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSalesInput
@@ -800,8 +804,8 @@ export type SaleCreateWithoutTableInput = {
 export type SaleUncheckedCreateWithoutTableInput = {
   id?: string
   userId: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.SaleItemUncheckedCreateNestedManyWithoutSaleInput
@@ -831,8 +835,8 @@ export type SaleUpdateToOneWithWhereWithoutActiveForTableInput = {
 
 export type SaleUpdateWithoutActiveForTableInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSalesNestedInput
@@ -844,8 +848,8 @@ export type SaleUpdateWithoutActiveForTableInput = {
 export type SaleUncheckedUpdateWithoutActiveForTableInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -871,8 +875,8 @@ export type SaleUpdateManyWithWhereWithoutTableInput = {
 
 export type SaleCreateManyUserInput = {
   id?: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   tableId?: string | null
@@ -880,8 +884,8 @@ export type SaleCreateManyUserInput = {
 
 export type SaleUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.SaleItemUpdateManyWithoutSaleNestedInput
@@ -892,8 +896,8 @@ export type SaleUpdateWithoutUserInput = {
 
 export type SaleUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -904,8 +908,8 @@ export type SaleUncheckedUpdateWithoutUserInput = {
 
 export type SaleUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -914,16 +918,16 @@ export type SaleUncheckedUpdateManyWithoutUserInput = {
 export type SaleCreateManyTableInput = {
   id?: string
   userId: string
-  total: number
-  status?: string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.SaleStatus
   createdAt?: Date | string
   updatedAt?: Date | string
 }
 
 export type SaleUpdateWithoutTableInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSalesNestedInput
@@ -935,8 +939,8 @@ export type SaleUpdateWithoutTableInput = {
 export type SaleUncheckedUpdateWithoutTableInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.SaleItemUncheckedUpdateManyWithoutSaleNestedInput
@@ -947,8 +951,8 @@ export type SaleUncheckedUpdateWithoutTableInput = {
 export type SaleUncheckedUpdateManyWithoutTableInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
-  total?: Prisma.FloatFieldUpdateOperationsInput | number
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumSaleStatusFieldUpdateOperationsInput | $Enums.SaleStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1073,8 +1077,8 @@ export type $SalePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     userId: string
-    total: number
-    status: string
+    total: runtime.Decimal
+    status: $Enums.SaleStatus
     createdAt: Date
     updatedAt: Date
     tableId: string | null
@@ -1508,8 +1512,8 @@ export interface Prisma__SaleClient<T, Null = never, ExtArgs extends runtime.Typ
 export interface SaleFieldRefs {
   readonly id: Prisma.FieldRef<"Sale", 'String'>
   readonly userId: Prisma.FieldRef<"Sale", 'String'>
-  readonly total: Prisma.FieldRef<"Sale", 'Float'>
-  readonly status: Prisma.FieldRef<"Sale", 'String'>
+  readonly total: Prisma.FieldRef<"Sale", 'Decimal'>
+  readonly status: Prisma.FieldRef<"Sale", 'SaleStatus'>
   readonly createdAt: Prisma.FieldRef<"Sale", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Sale", 'DateTime'>
   readonly tableId: Prisma.FieldRef<"Sale", 'String'>

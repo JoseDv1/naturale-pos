@@ -28,14 +28,14 @@ export type AggregateProductTransfer = {
 
 export type ProductTransferAvgAggregateOutputType = {
   quantity: number | null
-  unitCost: number | null
-  totalCost: number | null
+  unitCost: runtime.Decimal | null
+  totalCost: runtime.Decimal | null
 }
 
 export type ProductTransferSumAggregateOutputType = {
   quantity: number | null
-  unitCost: number | null
-  totalCost: number | null
+  unitCost: runtime.Decimal | null
+  totalCost: runtime.Decimal | null
 }
 
 export type ProductTransferMinAggregateOutputType = {
@@ -43,10 +43,10 @@ export type ProductTransferMinAggregateOutputType = {
   productId: string | null
   targetProductId: string | null
   quantity: number | null
-  unitCost: number | null
-  totalCost: number | null
-  fromDepartment: string | null
-  toDepartment: string | null
+  unitCost: runtime.Decimal | null
+  totalCost: runtime.Decimal | null
+  fromDepartment: $Enums.Department | null
+  toDepartment: $Enums.Department | null
   userId: string | null
   createdAt: Date | null
 }
@@ -56,10 +56,10 @@ export type ProductTransferMaxAggregateOutputType = {
   productId: string | null
   targetProductId: string | null
   quantity: number | null
-  unitCost: number | null
-  totalCost: number | null
-  fromDepartment: string | null
-  toDepartment: string | null
+  unitCost: runtime.Decimal | null
+  totalCost: runtime.Decimal | null
+  fromDepartment: $Enums.Department | null
+  toDepartment: $Enums.Department | null
   userId: string | null
   createdAt: Date | null
 }
@@ -222,10 +222,10 @@ export type ProductTransferGroupByOutputType = {
   productId: string
   targetProductId: string | null
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal
+  totalCost: runtime.Decimal
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   userId: string
   createdAt: Date
   _count: ProductTransferCountAggregateOutputType | null
@@ -258,10 +258,10 @@ export type ProductTransferWhereInput = {
   productId?: Prisma.StringFilter<"ProductTransfer"> | string
   targetProductId?: Prisma.StringNullableFilter<"ProductTransfer"> | string | null
   quantity?: Prisma.IntFilter<"ProductTransfer"> | number
-  unitCost?: Prisma.FloatFilter<"ProductTransfer"> | number
-  totalCost?: Prisma.FloatFilter<"ProductTransfer"> | number
-  fromDepartment?: Prisma.StringFilter<"ProductTransfer"> | string
-  toDepartment?: Prisma.StringFilter<"ProductTransfer"> | string
+  unitCost?: Prisma.DecimalFilter<"ProductTransfer"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFilter<"ProductTransfer"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFilter<"ProductTransfer"> | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFilter<"ProductTransfer"> | $Enums.Department
   userId?: Prisma.StringFilter<"ProductTransfer"> | string
   createdAt?: Prisma.DateTimeFilter<"ProductTransfer"> | Date | string
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
@@ -293,10 +293,10 @@ export type ProductTransferWhereUniqueInput = Prisma.AtLeast<{
   productId?: Prisma.StringFilter<"ProductTransfer"> | string
   targetProductId?: Prisma.StringNullableFilter<"ProductTransfer"> | string | null
   quantity?: Prisma.IntFilter<"ProductTransfer"> | number
-  unitCost?: Prisma.FloatFilter<"ProductTransfer"> | number
-  totalCost?: Prisma.FloatFilter<"ProductTransfer"> | number
-  fromDepartment?: Prisma.StringFilter<"ProductTransfer"> | string
-  toDepartment?: Prisma.StringFilter<"ProductTransfer"> | string
+  unitCost?: Prisma.DecimalFilter<"ProductTransfer"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFilter<"ProductTransfer"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFilter<"ProductTransfer"> | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFilter<"ProductTransfer"> | $Enums.Department
   userId?: Prisma.StringFilter<"ProductTransfer"> | string
   createdAt?: Prisma.DateTimeFilter<"ProductTransfer"> | Date | string
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
@@ -330,10 +330,10 @@ export type ProductTransferScalarWhereWithAggregatesInput = {
   productId?: Prisma.StringWithAggregatesFilter<"ProductTransfer"> | string
   targetProductId?: Prisma.StringNullableWithAggregatesFilter<"ProductTransfer"> | string | null
   quantity?: Prisma.IntWithAggregatesFilter<"ProductTransfer"> | number
-  unitCost?: Prisma.FloatWithAggregatesFilter<"ProductTransfer"> | number
-  totalCost?: Prisma.FloatWithAggregatesFilter<"ProductTransfer"> | number
-  fromDepartment?: Prisma.StringWithAggregatesFilter<"ProductTransfer"> | string
-  toDepartment?: Prisma.StringWithAggregatesFilter<"ProductTransfer"> | string
+  unitCost?: Prisma.DecimalWithAggregatesFilter<"ProductTransfer"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalWithAggregatesFilter<"ProductTransfer"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentWithAggregatesFilter<"ProductTransfer"> | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentWithAggregatesFilter<"ProductTransfer"> | $Enums.Department
   userId?: Prisma.StringWithAggregatesFilter<"ProductTransfer"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ProductTransfer"> | Date | string
 }
@@ -341,10 +341,10 @@ export type ProductTransferScalarWhereWithAggregatesInput = {
 export type ProductTransferCreateInput = {
   id?: string
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   createdAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutTransfersFromInput
   targetProduct?: Prisma.ProductCreateNestedOneWithoutTransfersToInput
@@ -356,10 +356,10 @@ export type ProductTransferUncheckedCreateInput = {
   productId: string
   targetProductId?: string | null
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   userId: string
   createdAt?: Date | string
 }
@@ -367,10 +367,10 @@ export type ProductTransferUncheckedCreateInput = {
 export type ProductTransferUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutTransfersFromNestedInput
   targetProduct?: Prisma.ProductUpdateOneWithoutTransfersToNestedInput
@@ -382,10 +382,10 @@ export type ProductTransferUncheckedUpdateInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   targetProductId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -395,10 +395,10 @@ export type ProductTransferCreateManyInput = {
   productId: string
   targetProductId?: string | null
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   userId: string
   createdAt?: Date | string
 }
@@ -406,10 +406,10 @@ export type ProductTransferCreateManyInput = {
 export type ProductTransferUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -418,10 +418,10 @@ export type ProductTransferUncheckedUpdateManyInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   targetProductId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -616,10 +616,10 @@ export type ProductTransferUncheckedUpdateManyWithoutTargetProductNestedInput = 
 export type ProductTransferCreateWithoutUserInput = {
   id?: string
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   createdAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutTransfersFromInput
   targetProduct?: Prisma.ProductCreateNestedOneWithoutTransfersToInput
@@ -630,10 +630,10 @@ export type ProductTransferUncheckedCreateWithoutUserInput = {
   productId: string
   targetProductId?: string | null
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   createdAt?: Date | string
 }
 
@@ -670,10 +670,10 @@ export type ProductTransferScalarWhereInput = {
   productId?: Prisma.StringFilter<"ProductTransfer"> | string
   targetProductId?: Prisma.StringNullableFilter<"ProductTransfer"> | string | null
   quantity?: Prisma.IntFilter<"ProductTransfer"> | number
-  unitCost?: Prisma.FloatFilter<"ProductTransfer"> | number
-  totalCost?: Prisma.FloatFilter<"ProductTransfer"> | number
-  fromDepartment?: Prisma.StringFilter<"ProductTransfer"> | string
-  toDepartment?: Prisma.StringFilter<"ProductTransfer"> | string
+  unitCost?: Prisma.DecimalFilter<"ProductTransfer"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFilter<"ProductTransfer"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFilter<"ProductTransfer"> | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFilter<"ProductTransfer"> | $Enums.Department
   userId?: Prisma.StringFilter<"ProductTransfer"> | string
   createdAt?: Prisma.DateTimeFilter<"ProductTransfer"> | Date | string
 }
@@ -681,10 +681,10 @@ export type ProductTransferScalarWhereInput = {
 export type ProductTransferCreateWithoutProductInput = {
   id?: string
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   createdAt?: Date | string
   targetProduct?: Prisma.ProductCreateNestedOneWithoutTransfersToInput
   user: Prisma.UserCreateNestedOneWithoutTransfersInput
@@ -694,10 +694,10 @@ export type ProductTransferUncheckedCreateWithoutProductInput = {
   id?: string
   targetProductId?: string | null
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   userId: string
   createdAt?: Date | string
 }
@@ -714,10 +714,10 @@ export type ProductTransferCreateManyProductInputEnvelope = {
 export type ProductTransferCreateWithoutTargetProductInput = {
   id?: string
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   createdAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutTransfersFromInput
   user: Prisma.UserCreateNestedOneWithoutTransfersInput
@@ -727,10 +727,10 @@ export type ProductTransferUncheckedCreateWithoutTargetProductInput = {
   id?: string
   productId: string
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   userId: string
   createdAt?: Date | string
 }
@@ -781,20 +781,20 @@ export type ProductTransferCreateManyUserInput = {
   productId: string
   targetProductId?: string | null
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   createdAt?: Date | string
 }
 
 export type ProductTransferUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutTransfersFromNestedInput
   targetProduct?: Prisma.ProductUpdateOneWithoutTransfersToNestedInput
@@ -805,10 +805,10 @@ export type ProductTransferUncheckedUpdateWithoutUserInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   targetProductId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -817,10 +817,10 @@ export type ProductTransferUncheckedUpdateManyWithoutUserInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   targetProductId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -828,10 +828,10 @@ export type ProductTransferCreateManyProductInput = {
   id?: string
   targetProductId?: string | null
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   userId: string
   createdAt?: Date | string
 }
@@ -840,10 +840,10 @@ export type ProductTransferCreateManyTargetProductInput = {
   id?: string
   productId: string
   quantity: number
-  unitCost: number
-  totalCost: number
-  fromDepartment: string
-  toDepartment: string
+  unitCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost: runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment: $Enums.Department
+  toDepartment: $Enums.Department
   userId: string
   createdAt?: Date | string
 }
@@ -851,10 +851,10 @@ export type ProductTransferCreateManyTargetProductInput = {
 export type ProductTransferUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   targetProduct?: Prisma.ProductUpdateOneWithoutTransfersToNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutTransfersNestedInput
@@ -864,10 +864,10 @@ export type ProductTransferUncheckedUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   targetProductId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -876,10 +876,10 @@ export type ProductTransferUncheckedUpdateManyWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   targetProductId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -887,10 +887,10 @@ export type ProductTransferUncheckedUpdateManyWithoutProductInput = {
 export type ProductTransferUpdateWithoutTargetProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutTransfersFromNestedInput
   user?: Prisma.UserUpdateOneRequiredWithoutTransfersNestedInput
@@ -900,10 +900,10 @@ export type ProductTransferUncheckedUpdateWithoutTargetProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -912,10 +912,10 @@ export type ProductTransferUncheckedUpdateManyWithoutTargetProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
-  unitCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalCost?: Prisma.FloatFieldUpdateOperationsInput | number
-  fromDepartment?: Prisma.StringFieldUpdateOperationsInput | string
-  toDepartment?: Prisma.StringFieldUpdateOperationsInput | string
+  unitCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  totalCost?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  fromDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  toDepartment?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1012,10 +1012,10 @@ export type $ProductTransferPayload<ExtArgs extends runtime.Types.Extensions.Int
     productId: string
     targetProductId: string | null
     quantity: number
-    unitCost: number
-    totalCost: number
-    fromDepartment: string
-    toDepartment: string
+    unitCost: runtime.Decimal
+    totalCost: runtime.Decimal
+    fromDepartment: $Enums.Department
+    toDepartment: $Enums.Department
     userId: string
     createdAt: Date
   }, ExtArgs["result"]["productTransfer"]>
@@ -1448,10 +1448,10 @@ export interface ProductTransferFieldRefs {
   readonly productId: Prisma.FieldRef<"ProductTransfer", 'String'>
   readonly targetProductId: Prisma.FieldRef<"ProductTransfer", 'String'>
   readonly quantity: Prisma.FieldRef<"ProductTransfer", 'Int'>
-  readonly unitCost: Prisma.FieldRef<"ProductTransfer", 'Float'>
-  readonly totalCost: Prisma.FieldRef<"ProductTransfer", 'Float'>
-  readonly fromDepartment: Prisma.FieldRef<"ProductTransfer", 'String'>
-  readonly toDepartment: Prisma.FieldRef<"ProductTransfer", 'String'>
+  readonly unitCost: Prisma.FieldRef<"ProductTransfer", 'Decimal'>
+  readonly totalCost: Prisma.FieldRef<"ProductTransfer", 'Decimal'>
+  readonly fromDepartment: Prisma.FieldRef<"ProductTransfer", 'Department'>
+  readonly toDepartment: Prisma.FieldRef<"ProductTransfer", 'Department'>
   readonly userId: Prisma.FieldRef<"ProductTransfer", 'String'>
   readonly createdAt: Prisma.FieldRef<"ProductTransfer", 'DateTime'>
 }

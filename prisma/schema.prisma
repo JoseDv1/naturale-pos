@@ -7,18 +7,65 @@ generator client {
   output   = "../generated/client"
 }
 
+// -----------------------------------------------------------------------------
+// Enums para robustez y validación de tipos
+// -----------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  CASHIER
+}
+
+enum Department {
+  MARKET
+  CAFE
+  GENERAL
+}
+
+enum ExpenseCategory {
+  rent
+  utilities
+  supplies
+  INTERNAL_TRANSFER
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+  TRANSFER_OUT
+  OPEN
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  INTERNAL
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+}
+
+// -----------------------------------------------------------------------------
+// Modelos
+// -----------------------------------------------------------------------------
+
 model User {
   id           String            @id @default(uuid())
   username     String            @unique
   passwordHash String
   name         String
-  role         String            // 'ADMIN' | 'CASHIER'
+  role         UserRole          @default(CASHIER)
   active       Boolean           @default(true)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   sales        Sale[]
   expenses     Expense[]
   transfers    ProductTransfer[]
+
+  @@index([active]) // Búsqueda rápida de usuarios activos
 }
 
 model Category {
@@ -35,12 +82,12 @@ model Product {
   sku            String            @unique
   name           String
   description    String?
-  price          Float
-  cost           Float
+  price          Decimal           // Cambiado de Float a Decimal para precisión monetaria
+  cost           Decimal           // Cambiado de Float a Decimal para precisión monetaria
   stock          Int               @default(0)
   categoryId     String
   category       Category          @relation(fields: [categoryId], references: [id])
-  department     String            // 'MARKET' | 'CAFE'
+  department     Department
   isRawMaterial  Boolean           @default(false)
   active         Boolean           @default(true)
   createdAt      DateTime          @default(now())
@@ -49,20 +96,27 @@ model Product {
   expenseItems   ExpenseItem[]
   transfersFrom  ProductTransfer[] @relation("TransferSource")
   transfersTo    ProductTransfer[] @relation("TransferTarget")
+
+  @@index([categoryId])            // Índice para consultas de categorías
+  @@index([active])                // Índice para filtros de productos activos
+  @@index([sku, active])           // Índice compuesto para búsqueda rápida en caja
 }
 
 model Expense {
-  id          String        @id @default(uuid())
+  id          String          @id @default(uuid())
   description String
-  amount      Float
-  category    String        @default("supplies") // 'rent', 'utilities', 'supplies', 'INTERNAL_TRANSFER'
-  department  String        @default("GENERAL")  // 'MARKET', 'CAFE', 'GENERAL'
+  amount      Decimal         // Cambiado de Float a Decimal
+  category    ExpenseCategory @default(supplies)
+  department  Department      @default(GENERAL)
   userId      String?
-  user        User?         @relation(fields: [userId], references: [id])
-  date        DateTime      @default(now())
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  user        User?           @relation(fields: [userId], references: [id])
+  date        DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   items       ExpenseItem[]
+
+  @@index([userId])               // Índice para auditorías por usuario
+  @@index([date])                 // Índice para filtros temporales/reportes mensuales
 }
 
 model ExpenseItem {
@@ -72,15 +126,18 @@ model ExpenseItem {
   productId String
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
-  unitCost  Float
+  unitCost  Decimal // Cambiado de Float a Decimal
+
+  @@index([expenseId])
+  @@index([productId])
 }
 
 model Sale {
   id             String        @id @default(uuid())
   userId         String
   user           User          @relation(fields: [userId], references: [id])
-  total          Float
-  status         String        @default("COMPLETED") // 'COMPLETED', 'CANCELLED', 'TRANSFER_OUT', 'OPEN'
+  total          Decimal       // Cambiado de Float a Decimal
+  status         SaleStatus    @default(COMPLETED)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   items          SaleItem[]
@@ -88,6 +145,10 @@ model Sale {
   tableId        String?
   table          CafeTable?    @relation("TableSales", fields: [tableId], references: [id])
   activeForTable CafeTable?    @relation("TableActiveSale")
+
+  @@index([userId])             // Índice para reportes de ventas por cajero
+  @@index([tableId])            // Índice para mesas
+  @@index([createdAt])          // Índice para reportes del día (cierre de caja)
 }
 
 model SaleItem {
@@ -97,41 +158,51 @@ model SaleItem {
   productId String
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
-  price     Float
+  price     Decimal // Cambiado de Float a Decimal
+
+  @@index([saleId])
+  @@index([productId])
 }
 
 model SalePayment {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   saleId    String
-  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  method    String   // 'CASH', 'CARD', 'TRANSFER', 'INTERNAL'
-  amount    Float
-  createdAt DateTime @default(now())
+  sale      Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  method    PaymentMethod
+  amount    Decimal       // Cambiado de Float a Decimal
+  createdAt DateTime      @default(now())
+
+  @@index([saleId])
+  @@index([createdAt])          // Reportes de flujo de caja por método
 }
 
 model ProductTransfer {
-  id              String   @id @default(uuid())
+  id              String     @id @default(uuid())
   productId       String
-  product         Product  @relation("TransferSource", fields: [productId], references: [id])
+  product         Product    @relation("TransferSource", fields: [productId], references: [id])
   targetProductId String?
-  targetProduct   Product? @relation("TransferTarget", fields: [targetProductId], references: [id])
+  targetProduct   Product?   @relation("TransferTarget", fields: [targetProductId], references: [id])
   quantity        Int
-  unitCost        Float
-  totalCost       Float
-  fromDepartment  String   // 'MARKET' | 'CAFE'
-  toDepartment    String   // 'MARKET' | 'CAFE'
+  unitCost        Decimal    // Cambiado de Float a Decimal
+  totalCost       Decimal    // Cambiado de Float a Decimal
+  fromDepartment  Department
+  toDepartment    Department
   userId          String
-  user            User     @relation(fields: [userId], references: [id])
-  createdAt       DateTime @default(now())
+  user            User       @relation(fields: [userId], references: [id])
+  createdAt       DateTime   @default(now())
+
+  @@index([productId])
+  @@index([targetProductId])
+  @@index([userId])
 }
 
 model CafeTable {
-  id             String    @id @default(uuid())
-  name           String    @unique
-  status         String    @default("AVAILABLE") // 'AVAILABLE', 'OCCUPIED'
-  currentSaleId  String?   @unique
-  currentSale    Sale?     @relation("TableActiveSale", fields: [currentSaleId], references: [id], onDelete: SetNull)
-  sales          Sale[]    @relation("TableSales")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id             String      @id @default(uuid())
+  name           String      @unique
+  status         TableStatus @default(AVAILABLE)
+  currentSaleId  String?     @unique
+  currentSale    Sale?       @relation("TableActiveSale", fields: [currentSaleId], references: [id], onDelete: SetNull)
+  sales          Sale[]      @relation("TableSales")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 }

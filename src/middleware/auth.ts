@@ -28,7 +28,7 @@ export const authMiddleware = createMiddleware(async (c, next) => {
       role: payload.role as string,
     });
 
-    await next();
+    return await next();
   } catch (error) {
     return c.json({ error: 'No autorizado: Sesión inválida o expirada' }, 401);
   }
@@ -39,5 +39,5 @@ export const adminMiddleware = createMiddleware(async (c, next) => {
   if (!user || user.role !== 'ADMIN') {
     return c.json({ error: 'Acceso denegado: Se requieren permisos de Administrador' }, 403);
   }
-  await next();
+  return await next();
 });

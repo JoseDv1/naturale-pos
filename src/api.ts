@@ -42,9 +42,9 @@ api.use('*', async (c, next) => {
     path === '/api/auth' || 
     path === '/auth'
   ) {
-    await next();
+    return await next();
   } else {
-    await authMiddleware(c, next);
+    return await authMiddleware(c, next);
   }
 });
 

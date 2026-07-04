@@ -31,16 +31,18 @@ api.get('/status', async (c) => {
   }
 });
 
-// Gatekeeper Middleware to protect all routes except status and auth
+// Gatekeeper Middleware to protect all routes except status, auth and GET /users
 api.use('*', async (c, next) => {
   const path = c.req.path;
+  const method = c.req.method;
   if (
     path === '/api/status' || 
     path === '/status' || 
     path.startsWith('/api/auth/') || 
     path.startsWith('/auth/') || 
     path === '/api/auth' || 
-    path === '/auth'
+    path === '/auth' ||
+    ((path === '/api/users' || path === '/users') && method === 'GET')
   ) {
     return await next();
   } else {

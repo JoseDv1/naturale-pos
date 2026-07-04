@@ -15,7 +15,22 @@
   let isInitializing = $state(true);
 
   onMount(async () => {
-    // 1. Check if session cookie exists by calling server auth/me
+    // 1. Global fetch interceptor to handle session expiration (401 Unauthorized)
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (response.status === 401) {
+        const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request).url;
+        if (!url.includes('/api/auth/login')) {
+          user.set(null);
+          activeTab.set('checkout');
+          window.location.hash = '';
+        }
+      }
+      return response;
+    };
+
+    // 2. Check if session cookie exists by calling server auth/me
     try {
       const meRes = await fetch('/api/auth/me');
       if (meRes.ok) {

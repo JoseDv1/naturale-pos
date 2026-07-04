@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import { prisma } from '../db';
 
 const sales = new Hono();
@@ -17,69 +19,63 @@ sales.get('/', async (c) => {
   return c.json(list);
 });
 
-sales.post('/', async (c) => {
+const saleSchema = z.object({
+  userId: z.string().min(1, 'El usuario es requerido'),
+  total: z.union([z.number(), z.string()]).transform((val) => {
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    if (isNaN(num) || num <= 0) throw new Error('El total debe ser mayor a cero');
+    return num;
+  }),
+  items: z.array(z.object({
+    productId: z.string().min(1, 'ID de producto inválido'),
+    quantity: z.union([z.number(), z.string()]).transform((val) => {
+      const int = typeof val === 'string' ? parseInt(val) : val;
+      if (isNaN(int) || int <= 0) throw new Error('La cantidad debe ser mayor a cero');
+      return int;
+    }),
+    price: z.union([z.number(), z.string()]).transform((val) => {
+      const num = typeof val === 'string' ? parseFloat(val) : val;
+      if (isNaN(num) || num < 0) throw new Error('El precio no puede ser negativo');
+      return num;
+    })
+  })).min(1, 'La venta debe contener al menos un producto'),
+  payments: z.array(z.object({
+    method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
+    amount: z.union([z.number(), z.string()]).transform((val) => {
+      const num = typeof val === 'string' ? parseFloat(val) : val;
+      if (isNaN(num) || num <= 0) throw new Error('El monto del pago debe ser mayor a cero');
+      return num;
+    })
+  })).min(1, 'La venta debe contener al menos un método de pago')
+}).superRefine((data, ctx) => {
+  // Validate item sum matches total
+  const computedTotal = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  if (Math.abs(computedTotal - data.total) > 0.01) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'La suma de los subtotales de productos no coincide con el total de la venta',
+      path: ['items']
+    });
+  }
+
+  // Validate payment sum matches total
+  const paymentSum = data.payments.reduce((sum, pay) => sum + pay.amount, 0);
+  if (Math.abs(paymentSum - data.total) > 0.01) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'La suma de los pagos no coincide con el total de la venta',
+      path: ['payments']
+    });
+  }
+});
+
+sales.post('/', zValidator('json', saleSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
   try {
-    const { userId, total, items, payments } = await c.req.json();
-
-    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
-      return c.json({ error: 'Usuario inválido o requerido' }, 400);
-    }
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return c.json({ error: 'La venta debe contener al menos un producto' }, 400);
-    }
-
-    if (!payments || !Array.isArray(payments) || payments.length === 0) {
-      return c.json({ error: 'La venta debe contener al menos un método de pago' }, 400);
-    }
-
-    const parsedTotal = parseFloat(total);
-    if (isNaN(parsedTotal) || parsedTotal <= 0) {
-      return c.json({ error: 'El total de la venta debe ser mayor a cero' }, 400);
-    }
-
-    // 1. Validate Items
-    let computedTotal = 0;
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (!item.productId || typeof item.productId !== 'string' || item.productId.trim() === '') {
-        return c.json({ error: `Producto en índice ${i} tiene un ID inválido` }, 400);
-      }
-      const qty = parseInt(item.quantity);
-      if (isNaN(qty) || qty <= 0) {
-        return c.json({ error: `La cantidad del producto en índice ${i} debe ser mayor a cero` }, 400);
-      }
-      const price = parseFloat(item.price);
-      if (isNaN(price) || price < 0) {
-        return c.json({ error: `El precio del producto en índice ${i} no puede ser negativo` }, 400);
-      }
-      computedTotal += price * qty;
-    }
-
-    // Verify calculated total matches target total
-    if (Math.abs(computedTotal - parsedTotal) > 0.01) {
-      return c.json({ error: 'La suma de los subtotales de productos no coincide con el total de la venta' }, 400);
-    }
-
-    // 2. Validate Payments
-    const validPaymentMethods = ['CASH', 'CARD', 'TRANSFER', 'INTERNAL'];
-    let paymentSum = 0;
-    for (let i = 0; i < payments.length; i++) {
-      const pay = payments[i];
-      if (!pay.method || !validPaymentMethods.includes(pay.method)) {
-        return c.json({ error: `Método de pago "${pay.method}" no es válido. Opciones: CASH, CARD, TRANSFER, INTERNAL` }, 400);
-      }
-      const amt = parseFloat(pay.amount);
-      if (isNaN(amt) || amt <= 0) {
-        return c.json({ error: `El monto del pago en índice ${i} debe ser mayor a cero` }, 400);
-      }
-      paymentSum += amt;
-    }
-
-    // Verify payments match the total
-    if (Math.abs(paymentSum - parsedTotal) > 0.01) {
-      return c.json({ error: 'La suma de los pagos no coincide con el total de la venta' }, 400);
-    }
+    const { userId, total, items, payments } = c.req.valid('json');
 
     // Execute in a transaction to enforce inventory consistency
     const result = await prisma.$transaction(async (tx) => {

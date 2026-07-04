@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import { prisma } from '../db';
 
 const expenses = new Hono();
@@ -16,39 +18,38 @@ expenses.get('/', async (c) => {
   return c.json(list);
 });
 
-expenses.post('/', async (c) => {
+const expenseSchema = z.object({
+  description: z.string().min(1, 'La descripción del gasto es obligatoria'),
+  amount: z.union([z.number(), z.string()]).transform((val) => {
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    if (isNaN(num) || num <= 0) throw new Error('El monto del gasto debe ser mayor a cero');
+    return num;
+  }),
+  category: z.string().default('supplies'),
+  department: z.string().min(1, 'El departamento del gasto es obligatorio'),
+  userId: z.string().nullable().optional(),
+  items: z.array(z.object({
+    productId: z.string().min(1, 'ID de producto inválido'),
+    quantity: z.union([z.number(), z.string()]).transform((val) => {
+      const int = typeof val === 'string' ? parseInt(val) : val;
+      if (isNaN(int) || int <= 0) throw new Error('La cantidad debe ser mayor a cero');
+      return int;
+    }),
+    unitCost: z.union([z.number(), z.string()]).transform((val) => {
+      const num = typeof val === 'string' ? parseFloat(val) : val;
+      if (isNaN(num) || num <= 0) throw new Error('El costo unitario debe ser mayor a cero');
+      return num;
+    })
+  })).optional()
+});
+
+expenses.post('/', zValidator('json', expenseSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
   try {
-    const { description, amount, category, department, userId, items } = await c.req.json();
-
-    if (!description || typeof description !== 'string' || description.trim() === '') {
-      return c.json({ error: 'La descripción del gasto es obligatoria' }, 400);
-    }
-
-    if (amount === undefined || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      return c.json({ error: 'El monto del gasto debe ser mayor a cero' }, 400);
-    }
-
-    if (!department || typeof department !== 'string' || department.trim() === '') {
-      return c.json({ error: 'El departamento del gasto es obligatorio' }, 400);
-    }
-
-    // If it's a purchase (has items), validate the items in details
-    if (items && Array.isArray(items) && items.length > 0) {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (!item.productId || typeof item.productId !== 'string' || item.productId.trim() === '') {
-          return c.json({ error: `Producto en índice ${i} tiene un ID inválido` }, 400);
-        }
-        const qty = parseInt(item.quantity);
-        if (isNaN(qty) || qty <= 0) {
-          return c.json({ error: `La cantidad del producto en índice ${i} debe ser mayor a cero` }, 400);
-        }
-        const unitCost = parseFloat(item.unitCost);
-        if (isNaN(unitCost) || unitCost <= 0) {
-          return c.json({ error: `El costo unitario del producto en índice ${i} debe ser mayor a cero` }, 400);
-        }
-      }
-    }
+    const { description, amount, category, department, userId, items } = c.req.valid('json');
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create Expense

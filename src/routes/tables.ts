@@ -1,7 +1,36 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import { prisma } from '../db';
 
 const tables = new Hono();
+
+const tableItemsSchema = z.object({
+  items: z.array(z.object({
+    productId: z.string().min(1, 'ID de producto inválido'),
+    quantity: z.union([z.number(), z.string()]).transform((val) => {
+      const int = typeof val === 'string' ? parseInt(val) : val;
+      if (isNaN(int) || int <= 0) throw new Error('La cantidad debe ser mayor a cero');
+      return int;
+    }),
+    price: z.union([z.number(), z.string()]).transform((val) => {
+      const num = typeof val === 'string' ? parseFloat(val) : val;
+      if (isNaN(num) || num < 0) throw new Error('El precio no puede ser negativo');
+      return num;
+    })
+  }))
+});
+
+const tableCheckoutSchema = z.object({
+  payments: z.array(z.object({
+    method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
+    amount: z.union([z.number(), z.string()]).transform((val) => {
+      const num = typeof val === 'string' ? parseFloat(val) : val;
+      if (isNaN(num) || num <= 0) throw new Error('El monto del pago debe ser mayor a cero');
+      return num;
+    })
+  })).min(1, 'Debe ingresar al menos un método de pago')
+});
 
 tables.get('/', async (c) => {
   try {
@@ -77,30 +106,14 @@ tables.post('/:id/open', async (c) => {
   }
 });
 
-tables.put('/:id/save', async (c) => {
+tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
   const id = c.req.param('id');
   try {
-    const { items } = await c.req.json(); // Expected items: Array<{ productId, quantity, price }>
-
-    if (!items || !Array.isArray(items)) {
-      return c.json({ error: 'Lista de productos inválida' }, 400);
-    }
-
-    // Validate items in list
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (!item.productId || typeof item.productId !== 'string' || item.productId.trim() === '') {
-        return c.json({ error: `Producto en índice ${i} tiene un ID inválido` }, 400);
-      }
-      const qty = parseInt(item.quantity);
-      if (isNaN(qty) || qty <= 0) {
-        return c.json({ error: `La cantidad del producto en índice ${i} debe ser mayor a cero` }, 400);
-      }
-      const price = parseFloat(item.price);
-      if (isNaN(price) || price < 0) {
-        return c.json({ error: `El precio del producto en índice ${i} no puede ser negativo` }, 400);
-      }
-    }
+    const { items } = c.req.valid('json');
 
     const result = await prisma.$transaction(async (tx) => {
       const table = await tx.cafeTable.findUnique({
@@ -215,26 +228,14 @@ tables.put('/:id/save', async (c) => {
   }
 });
 
-tables.post('/:id/checkout', async (c) => {
+tables.post('/:id/checkout', zValidator('json', tableCheckoutSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
   const id = c.req.param('id');
   try {
-    const { payments } = await c.req.json(); // Expected payments: Array<{ method, amount }>
-
-    if (!payments || !Array.isArray(payments) || payments.length === 0) {
-      return c.json({ error: 'Debe ingresar al menos un método de pago' }, 400);
-    }
-
-    const validPaymentMethods = ['CASH', 'CARD', 'TRANSFER', 'INTERNAL'];
-    for (let i = 0; i < payments.length; i++) {
-      const pay = payments[i];
-      if (!pay.method || !validPaymentMethods.includes(pay.method)) {
-        return c.json({ error: `Método de pago "${pay.method}" no es válido. Opciones: CASH, CARD, TRANSFER, INTERNAL` }, 400);
-      }
-      const amt = parseFloat(pay.amount);
-      if (isNaN(amt) || amt <= 0) {
-        return c.json({ error: `El monto del pago en índice ${i} debe ser mayor a cero` }, 400);
-      }
-    }
+    const { payments } = c.req.valid('json');
 
     const result = await prisma.$transaction(async (tx) => {
       const table = await tx.cafeTable.findUnique({

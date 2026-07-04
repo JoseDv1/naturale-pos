@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { prisma } from '../db';
+import { adminMiddleware } from '../middleware/auth';
 
 const products = new Hono();
 
@@ -24,7 +25,7 @@ async function generateUniqueSku(): Promise<string> {
   return crypto.randomUUID();
 }
 
-products.post('/', async (c) => {
+products.post('/', adminMiddleware, async (c) => {
   try {
     const { sku, name, description, price, cost, stock, categoryId, department, isRawMaterial } = await c.req.json();
 
@@ -60,7 +61,7 @@ products.post('/', async (c) => {
   }
 });
 
-products.put('/:id', async (c) => {
+products.put('/:id', adminMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const { name, description, price, cost, stock, categoryId, department, isRawMaterial } = await c.req.json();
@@ -85,7 +86,7 @@ products.put('/:id', async (c) => {
   }
 });
 
-products.delete('/:id', async (c) => {
+products.delete('/:id', adminMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const product = await prisma.product.update({

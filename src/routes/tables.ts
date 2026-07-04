@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { prisma } from '../db';
+import { adminMiddleware } from '../middleware/auth';
 
 const tables = new Hono();
 
@@ -354,7 +355,7 @@ tables.post('/:id/cancel', async (c) => {
 });
 
 // POST / - Crear nueva mesa
-tables.post('/', async (c) => {
+tables.post('/', adminMiddleware, async (c) => {
   try {
     const { name } = await c.req.json();
     if (!name || name.trim() === '') {
@@ -381,7 +382,7 @@ tables.post('/', async (c) => {
 });
 
 // DELETE /:id - Eliminar una mesa
-tables.delete('/:id', async (c) => {
+tables.delete('/:id', adminMiddleware, async (c) => {
   const id = c.req.param('id');
   try {
     const table = await prisma.cafeTable.findUnique({ where: { id } });

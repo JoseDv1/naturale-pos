@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { prisma } from '../db';
+import { adminMiddleware } from '../middleware/auth';
 
 const categories = new Hono();
 
@@ -10,7 +11,7 @@ categories.get('/', async (c) => {
   return c.json(list);
 });
 
-categories.post('/', async (c) => {
+categories.post('/', adminMiddleware, async (c) => {
   try {
     const { name, description } = await c.req.json();
     if (!name) return c.json({ error: 'Nombre es requerido' }, 400);

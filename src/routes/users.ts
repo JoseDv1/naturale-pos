@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { prisma } from '../db';
+import { adminMiddleware } from '../middleware/auth';
 
 const users = new Hono();
 
@@ -11,7 +12,7 @@ users.get('/', async (c) => {
   return c.json(list);
 });
 
-users.post('/', async (c) => {
+users.post('/', adminMiddleware, async (c) => {
   try {
     const { username, name, pin, role } = await c.req.json();
     if (!username || !name || !pin || !role) {

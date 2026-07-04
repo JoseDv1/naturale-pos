@@ -167,7 +167,8 @@
   }
 </script>
 
-<div class="tables-view-container flex-column animate-fade-in">
+<!-- Snippets for structuring the markup and ease of understanding -->
+{#snippet headerSection()}
   <div class="tables-header glass-panel">
     <div class="header-left">
       <h2>Salón y Mapa de Mesas 🪑</h2>
@@ -185,104 +186,118 @@
       </button>
     </div>
   </div>
+{/snippet}
+
+{#snippet loadingState()}
+  <div class="loading-state flex-center glass-panel">
+    <div class="spinner"></div>
+    <p>Cargando salón...</p>
+  </div>
+{/snippet}
+
+{#snippet tableCard(table)}
+  <div class="table-card glass-panel animate-scale-up" class:occupied={table.status === 'OCCUPIED'}>
+    <div class="table-card-header">
+      <div class="header-left-side">
+        <span class="table-icon">☕</span>
+        {#if table.status === 'AVAILABLE' && $user?.role === 'ADMIN'}
+          <button class="btn-delete-table" onclick={() => deleteTable(table)} title="Eliminar Mesa">
+            🗑️
+          </button>
+        {/if}
+      </div>
+      <span class="status-indicator" class:occupied={table.status === 'OCCUPIED'}>
+        {table.status === 'OCCUPIED' ? 'Ocupada' : 'Disponible'}
+      </span>
+    </div>
+
+    <div class="table-card-body">
+      <h3>{table.name}</h3>
+      
+      {#if table.status === 'OCCUPIED' && table.currentSale}
+        <div class="order-summary">
+          <span class="items-count">📦 {table.currentSale.items.reduce((sum, i) => sum + i.quantity, 0)} Productos</span>
+          <span class="order-total">${table.currentSale.total.toLocaleString()}</span>
+        </div>
+        <div class="order-time">
+          <span>Abierta: {new Date(table.currentSale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      {:else}
+        <p class="empty-msg">Mesa disponible para nuevos pedidos.</p>
+      {/if}
+    </div>
+
+    <div class="table-card-actions">
+      {#if table.status === 'AVAILABLE'}
+        <button class="btn btn-market w-100" onclick={() => openTable(table)}>
+          Abrir Mesa 🪑
+        </button>
+      {:else}
+        <button class="btn btn-cafe flex-1" onclick={() => resumeTable(table)}>
+          Ver Cuenta / Cobrar 🛒
+        </button>
+        <button class="btn btn-cancel-table" onclick={() => cancelTableOrder(table)} title="Anular cuenta de mesa">
+          ✕
+        </button>
+      {/if}
+    </div>
+  </div>
+{/snippet}
+
+{#snippet addTableModal()}
+  {#if showAddModal}
+    <div class="modal-overlay flex-center animate-fade-in">
+      <div class="modal-container glass-panel animate-scale-up" style="max-width: 400px;">
+        <div class="modal-header">
+          <h2>Registrar Nueva Mesa</h2>
+          <button class="close-modal-btn" onclick={() => showAddModal = false}>✕</button>
+        </div>
+
+        {#if addTableError}
+          <div class="error-banner">{addTableError}</div>
+        {/if}
+
+        <div class="product-form-body">
+          <div class="form-group">
+            <label for="table-name-input">Nombre / Identificador de la Mesa *</label>
+            <input 
+              type="text" 
+              id="table-name-input" 
+              bind:value={newTableName} 
+              placeholder="Ej: Mesa 5, Barra 2" 
+            />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick={() => showAddModal = false}>Cancelar</button>
+          <button class="btn btn-general" onclick={addTable}>Crear Mesa 🪑</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
+<!-- Main Layout -->
+<div class="tables-view-container flex-column animate-fade-in">
+  {@render headerSection()}
 
   {#if errorMsg}
     <div class="error-banner">{errorMsg}</div>
   {/if}
 
   {#if isLoading && tables.length === 0}
-    <div class="loading-state flex-center glass-panel">
-      <div class="spinner"></div>
-      <p>Cargando salón...</p>
-    </div>
+    {@render loadingState()}
   {:else}
     <div class="tables-grid">
       {#each tables as table}
-        <div class="table-card glass-panel animate-scale-up" class:occupied={table.status === 'OCCUPIED'}>
-          <div class="table-card-header">
-            <div class="header-left-side">
-              <span class="table-icon">☕</span>
-              {#if table.status === 'AVAILABLE' && $user?.role === 'ADMIN'}
-                <button class="btn-delete-table" onclick={() => deleteTable(table)} title="Eliminar Mesa">
-                  🗑️
-                </button>
-              {/if}
-            </div>
-            <span class="status-indicator" class:occupied={table.status === 'OCCUPIED'}>
-              {table.status === 'OCCUPIED' ? 'Ocupada' : 'Disponible'}
-            </span>
-          </div>
-
-          <div class="table-card-body">
-            <h3>{table.name}</h3>
-            
-            {#if table.status === 'OCCUPIED' && table.currentSale}
-              <div class="order-summary">
-                <span class="items-count">📦 {table.currentSale.items.reduce((sum, i) => sum + i.quantity, 0)} Productos</span>
-                <span class="order-total">${table.currentSale.total.toLocaleString()}</span>
-              </div>
-              <div class="order-time">
-                <span>Abierta: {new Date(table.currentSale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            {:else}
-              <p class="empty-msg">Mesa disponible para nuevos pedidos.</p>
-            {/if}
-          </div>
-
-          <div class="table-card-actions">
-            {#if table.status === 'AVAILABLE'}
-              <button class="btn btn-market w-100" onclick={() => openTable(table)}>
-                Abrir Mesa 🪑
-              </button>
-            {:else}
-              <button class="btn btn-cafe flex-1" onclick={() => resumeTable(table)}>
-                Ver Cuenta / Cobrar 🛒
-              </button>
-              <button class="btn btn-cancel-table" onclick={() => cancelTableOrder(table)} title="Anular cuenta de mesa">
-                ✕
-              </button>
-            {/if}
-          </div>
-        </div>
+        {@render tableCard(table)}
       {/each}
     </div>
   {/if}
 </div>
 
-<!-- ==========================================
-     NUEVA MESA MODAL
-     ========================================== -->
-{#if showAddModal}
-  <div class="modal-overlay flex-center animate-fade-in">
-    <div class="modal-container glass-panel animate-scale-up" style="max-width: 400px;">
-      <div class="modal-header">
-        <h2>Registrar Nueva Mesa</h2>
-        <button class="close-modal-btn" onclick={() => showAddModal = false}>✕</button>
-      </div>
-
-      {#if addTableError}
-        <div class="error-banner">{addTableError}</div>
-      {/if}
-
-      <div class="product-form-body">
-        <div class="form-group">
-          <label for="table-name-input">Nombre / Identificador de la Mesa *</label>
-          <input 
-            type="text" 
-            id="table-name-input" 
-            bind:value={newTableName} 
-            placeholder="Ej: Mesa 5, Barra 2" 
-          />
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick={() => showAddModal = false}>Cancelar</button>
-        <button class="btn btn-general" onclick={addTable}>Crear Mesa 🪑</button>
-      </div>
-    </div>
-  </div>
-{/if}
+{@render addTableModal()}
 
 <style>
   .tables-view-container {

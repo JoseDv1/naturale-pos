@@ -97,54 +97,70 @@
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 </script>
 
+{#snippet loginHeader()}
+  <div class="login-header">
+    <div class="logo">🌿</div>
+    <h2>Naturale POS</h2>
+    <p>Selecciona tu usuario e ingresa tu PIN</p>
+  </div>
+{/snippet}
+
+{#snippet userSelector()}
+  <div class="form-group">
+    <label for="user-select">Empleado</label>
+    <select id="user-select" bind:value={selectedUsername} disabled={isLoading}>
+      {#each users as u}
+        <option value={u.username}>{u.name} ({u.role})</option>
+      {/each}
+    </select>
+  </div>
+{/snippet}
+
+{#snippet pinDots()}
+  <div class="pin-dots">
+    {#each Array(4) as _, i}
+      <div class="dot" class:filled={pin.length > i}></div>
+    {/each}
+  </div>
+{/snippet}
+
+{#snippet keypad()}
+  <div class="keypad">
+    {#each keys as key}
+      <button class="key-btn" onclick={() => handleKey(key)} disabled={isLoading}>
+        {key}
+      </button>
+    {/each}
+    
+    <button class="key-btn action-key text-danger" onclick={handleClear} disabled={isLoading}>
+      C
+    </button>
+    
+    <button class="key-btn" onclick={() => handleKey('0')} disabled={isLoading}>
+      0
+    </button>
+    
+    <button class="key-btn action-key text-general" onclick={handleBackspace} disabled={isLoading}>
+      ⌫
+    </button>
+  </div>
+{/snippet}
+
 <div class="login-wrapper flex-center">
   <div class="login-container glass-panel animate-scale-up">
-    <div class="login-header">
-      <div class="logo">🌿</div>
-      <h2>Naturale POS</h2>
-      <p>Selecciona tu usuario e ingresa tu PIN</p>
-    </div>
+    {@render loginHeader()}
 
     {#if errorMsg}
       <div class="error-banner animate-fade-in">{errorMsg}</div>
     {/if}
 
-    <div class="form-group">
-      <label for="user-select">Empleado</label>
-      <select id="user-select" bind:value={selectedUsername} disabled={isLoading}>
-        {#each users as u}
-          <option value={u.username}>{u.name} ({u.role})</option>
-        {/each}
-      </select>
-    </div>
+    {@render userSelector()}
 
     <!-- PIN Visual Dots -->
-    <div class="pin-dots">
-      {#each Array(4) as _, i}
-        <div class="dot" class:filled={pin.length > i}></div>
-      {/each}
-    </div>
+    {@render pinDots()}
 
     <!-- Keypad Grid -->
-    <div class="keypad">
-      {#each keys as key}
-        <button class="key-btn" onclick={() => handleKey(key)} disabled={isLoading}>
-          {key}
-        </button>
-      {/each}
-      
-      <button class="key-btn action-key text-danger" onclick={handleClear} disabled={isLoading}>
-        C
-      </button>
-      
-      <button class="key-btn" onclick={() => handleKey('0')} disabled={isLoading}>
-        0
-      </button>
-      
-      <button class="key-btn action-key text-general" onclick={handleBackspace} disabled={isLoading}>
-        ⌫
-      </button>
-    </div>
+    {@render keypad()}
   </div>
 </div>
 

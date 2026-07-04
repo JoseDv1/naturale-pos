@@ -289,7 +289,7 @@
                 </div>
               </div>
               <div class="form-group flex-1">
-                <label>Departamento *</label>
+                <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; margin-bottom: 6px;">Departamento *</span>
                 <div class="segmented-control">
                   <button type="button" class="segment-btn" class:active={opDept === 'GENERAL'} onclick={() => opDept = 'GENERAL'}>
                     🏢 General
@@ -346,8 +346,8 @@
                 <h4>Agregar Producto a la Compra</h4>
                 <div class="adder-row">
                   <div class="form-group flex-1">
-                    <label>Producto *</label>
-                    <select bind:value={currentProductSelected}>
+                    <label for="current-product-select">Producto *</label>
+                    <select id="current-product-select" bind:value={currentProductSelected}>
                       <option value="">-- Selecciona un Producto --</option>
                       {#each $products as prod}
                         <option value={prod.id}>{prod.name} (Stock: {prod.stock})</option>
@@ -355,12 +355,12 @@
                     </select>
                   </div>
                   <div class="form-group" style="width: 100px;">
-                    <label>Cantidad *</label>
-                    <input type="number" bind:value={currentQty} min="1" />
+                    <label for="current-qty-input">Cantidad *</label>
+                    <input type="number" id="current-qty-input" bind:value={currentQty} min="1" />
                   </div>
                   <div class="form-group" style="width: 130px;">
-                    <label>Costo Unitario ($) *</label>
-                    <input type="number" bind:value={currentUnitCost} min="0.01" step="any" />
+                    <label for="current-cost-input">Costo Unitario ($) *</label>
+                    <input type="number" id="current-cost-input" bind:value={currentUnitCost} min="0.01" step="any" />
                   </div>
                   <button class="btn btn-general add-item-btn" onclick={addItemToSupplies}>
                     Agregar ➕

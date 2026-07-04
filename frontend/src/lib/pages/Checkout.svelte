@@ -260,75 +260,333 @@
   }
 </script>
 
+<!-- Snippets for structuring layout elements -->
+{#snippet catalogHeader()}
+  <div class="catalog-header glass-panel">
+    <div class="search-bar-container">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        placeholder="Buscar producto por nombre o escanear código SKU..."
+        bind:value={searchQuery}
+        bind:this={barcodeSearchInput}
+        class="search-input"
+      />
+    </div>
+
+    <div class="tabs-and-filters">
+      <div class="dept-tabs">
+        <button
+          class="tab-btn"
+          class:active={activeDept === 'MARKET'}
+          onclick={() => { activeDept = 'MARKET'; selectedCategory = ''; }}
+        >
+          🍏 Mercado Saludable
+        </button>
+        <button
+          class="tab-btn"
+          class:active={activeDept === 'CAFE'}
+          onclick={() => { activeDept = 'CAFE'; selectedCategory = ''; }}
+        >
+          ☕ Café
+        </button>
+      </div>
+
+      <select bind:value={selectedCategory} class="category-select">
+        <option value="">Todas las Categorías</option>
+        {#each $categories as cat}
+          <option value={cat.id}>{cat.name}</option>
+        {/each}
+      </select>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet productCard(p)}
+  <button class="product-card glass-panel animate-scale-up" onclick={() => addToCart(p)}>
+    <div class="product-header">
+      <span class="badge" class:badge-market={p.department === 'MARKET'} class:badge-cafe={p.department === 'CAFE'}>
+        {p.department === 'MARKET' ? 'Mercado' : 'Café'}
+      </span>
+      {#if p.isRawMaterial}
+        <span class="badge badge-raw">Insumo</span>
+      {/if}
+    </div>
+    <h3 class="product-name">{p.name}</h3>
+    <p class="product-sku">{p.sku}</p>
+    
+    <div class="product-footer">
+      <span class="product-price">${p.price.toLocaleString()}</span>
+      <span class="product-stock" class:out={p.stock <= 0 && !(p.department === 'CAFE' && p.stock >= 900)}>
+        {#if p.department === 'CAFE' && p.stock >= 900}
+          Ilimitado
+        {:else}
+          Stock: {p.stock}
+        {/if}
+      </span>
+    </div>
+  </button>
+{/snippet}
+
+{#snippet tableBanner()}
+  {#if $selectedTable}
+    <div class="table-mode-banner">
+      <span>📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
+      <button class="btn-exit-table" onclick={exitTableMode} title="Salir de la mesa sin guardar cambios locales">
+        Volver ↩
+      </button>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet cartItemRow(item)}
+  <div class="cart-item animate-fade-in">
+    <div class="item-details">
+      <span class="item-name">{item.product.name}</span>
+      <span class="item-price">${item.product.price.toLocaleString()} c/u</span>
+    </div>
+
+    <div class="item-actions">
+      <div class="qty-controls">
+        <button class="qty-btn" onclick={() => updateQuantity(item.product.id, -1)}>-</button>
+        <span class="qty-val">{item.quantity}</span>
+        <button class="qty-btn" onclick={() => updateQuantity(item.product.id, 1)}>+</button>
+      </div>
+      
+      <span class="item-subtotal">${(item.product.price * item.quantity).toLocaleString()}</span>
+      
+      <button class="remove-btn" onclick={() => removeFromCart(item.product.id)}>
+        ❌
+      </button>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet cartFooter()}
+  <div class="cart-footer">
+    <div class="total-row">
+      <span>Total a Pagar</span>
+      <span class="total-amount">${$cartTotal.toLocaleString()}</span>
+    </div>
+    {#if $selectedTable}
+      <div class="table-action-buttons">
+        <button class="btn btn-general checkout-btn flex-1" onclick={openCheckout} disabled={$cart.length === 0}>
+          Cobrar Mesa 💳
+        </button>
+        <button class="btn btn-market save-table-btn" onclick={saveTableOrder} title="Guardar cambios de la mesa">
+          Guardar Mesa 💾
+        </button>
+      </div>
+    {:else}
+      <button class="btn btn-general checkout-btn" onclick={openCheckout} disabled={$cart.length === 0}>
+        Cobrar y Registrar 💳
+      </button>
+    {/if}
+  </div>
+{/snippet}
+
+{#snippet addPaymentSection()}
+  <div class="add-payment-section">
+    <h3>Agregar Método de Pago</h3>
+    <div class="payment-inputs">
+      <div class="method-selector">
+        <button
+          type="button"
+          class="method-btn"
+          class:active={currentMethod === 'CASH'}
+          onclick={() => { currentMethod = 'CASH'; currentAmountInput = remainingToPay.toString(); }}
+        >
+          💵 Efectivo
+        </button>
+        <button
+          type="button"
+          class="method-btn"
+          class:active={currentMethod === 'CARD'}
+          onclick={() => { currentMethod = 'CARD'; currentAmountInput = remainingToPay.toString(); }}
+        >
+          💳 Tarjeta
+        </button>
+        <button
+          type="button"
+          class="method-btn"
+          class:active={currentMethod === 'TRANSFER'}
+          onclick={() => { currentMethod = 'TRANSFER'; currentAmountInput = remainingToPay.toString(); }}
+        >
+          📲 Transferencia
+        </button>
+      </div>
+
+      <div class="amount-input-row">
+        <input
+          type="number"
+          placeholder="Monto"
+          bind:value={currentAmountInput}
+          min="0.01"
+          step="any"
+        />
+        <button class="btn btn-general" onclick={addPayment}>
+          Añadir
+        </button>
+      </div>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet registeredPaymentsList()}
+  <div class="payments-list-section">
+    <h3>Pagos Registrados</h3>
+    <div class="payments-list">
+      {#each payments as pay, i}
+        <div class="payment-tag animate-fade-in">
+          <span>
+            {#if pay.method === 'CASH'}💵 Efectivo
+            {:else if pay.method === 'CARD'}💳 Tarjeta
+            {:else if pay.method === 'TRANSFER'}📲 Transferencia
+            {/if}
+            : <strong>${pay.amount.toLocaleString()}</strong>
+          </span>
+          <button class="remove-payment-btn" onclick={() => removePayment(i)}>✕</button>
+        </div>
+      {:else}
+        <p class="no-payments">No se han agregado pagos aún.</p>
+      {/each}
+    </div>
+  </div>
+{/snippet}
+
+{#snippet successReceiptView()}
+  <div class="receipt-container animate-scale-up">
+    <div class="receipt-header">
+      <span class="success-icon">🎉</span>
+      <h2>¡Venta Registrada!</h2>
+      <p>Ticket: {successReceipt.id.slice(0,8).toUpperCase()}</p>
+      <span class="date">{new Date(successReceipt.createdAt).toLocaleString()}</span>
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <div class="receipt-items">
+      {#each successReceipt.items as item}
+        <div class="receipt-item">
+          <span>{item.product.name} x{item.quantity}</span>
+          <span>${(item.product.price * item.quantity).toLocaleString()}</span>
+        </div>
+      {/each}
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <div class="receipt-total">
+      <span>Total Venta</span>
+      <span>${successReceipt.total.toLocaleString()}</span>
+    </div>
+
+    <div class="receipt-payments">
+      <h4>Detalle de Pago:</h4>
+      {#each successReceipt.payments as pay}
+        <div class="receipt-payment-row">
+          <span>
+            {#if pay.method === 'CASH'}💵 Efectivo
+            {:else if pay.method === 'CARD'}💳 Tarjeta
+            {:else if pay.method === 'TRANSFER'}📲 Transferencia
+            {/if}
+          </span>
+          <span>${pay.amount.toLocaleString()}</span>
+        </div>
+      {/each}
+      {#if successReceipt.change > 0}
+        <div class="receipt-payment-row change-row">
+          <span>Cambio Entregado:</span>
+          <span>${successReceipt.change.toLocaleString()}</span>
+        </div>
+      {/if}
+    </div>
+
+    <button class="btn btn-general print-btn" onclick={closePaymentModal}>
+      Cerrar e Ir a Nueva Venta
+    </button>
+  </div>
+{/snippet}
+
+{#snippet paymentModal()}
+  {#if showPaymentModal}
+    <div class="modal-overlay flex-center animate-fade-in">
+      <div class="modal-container glass-panel animate-scale-up">
+        {#if !successReceipt}
+          <div class="modal-header">
+            <h2>Registrar Pago Dividido</h2>
+            <button class="close-modal-btn" onclick={closePaymentModal}>✕</button>
+          </div>
+
+          {#if errorMessage}
+            <div class="error-banner">{errorMessage}</div>
+          {/if}
+
+          <div class="payment-math-container">
+            <div class="math-card">
+              <span>Total Venta</span>
+              <strong class="text-general">${$cartTotal.toLocaleString()}</strong>
+            </div>
+            <div class="math-card">
+              <span>Registrado</span>
+              <strong class="text-market">${totalPaid.toLocaleString()}</strong>
+            </div>
+            <div class="math-card">
+              <span>Restante</span>
+              <strong class:text-danger={remainingToPay > 0} class:text-market={remainingToPay === 0}>
+                ${remainingToPay.toLocaleString()}
+              </strong>
+            </div>
+          </div>
+
+          <!-- Add Payment Section -->
+          {#if remainingToPay > 0}
+            {@render addPaymentSection()}
+          {/if}
+
+          <!-- List of Registered Payments -->
+          {@render registeredPaymentsList()}
+
+          <!-- Change and Actions -->
+          <div class="modal-footer">
+            {#if cashChange > 0}
+              <div class="change-banner animate-fade-in">
+                <span>Cambio a devolver en Efectivo:</span>
+                <strong>${cashChange.toLocaleString()}</strong>
+              </div>
+            {/if}
+
+            <div class="footer-buttons">
+              <button class="btn btn-secondary" onclick={closePaymentModal}>
+                Cancelar
+              </button>
+              <button
+                class="btn btn-market"
+                onclick={processSale}
+                disabled={remainingToPay > 0.01}
+              >
+                Completar Venta ✔
+              </button>
+            </div>
+          </div>
+        {:else}
+          {@render successReceiptView()}
+        {/if}
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
+<!-- Main Layout Structure -->
 <div class="checkout-layout">
   <!-- Left Side: Product Grid -->
   <div class="catalog-section">
-    <!-- Header with Search & Tabs -->
-    <div class="catalog-header glass-panel">
-      <div class="search-bar-container">
-        <span class="search-icon">🔍</span>
-        <input
-          type="text"
-          placeholder="Buscar producto por nombre o escanear código SKU..."
-          bind:value={searchQuery}
-          bind:this={barcodeSearchInput}
-          class="search-input"
-        />
-      </div>
-
-      <div class="tabs-and-filters">
-        <div class="dept-tabs">
-          <button
-            class="tab-btn"
-            class:active={activeDept === 'MARKET'}
-            onclick={() => { activeDept = 'MARKET'; selectedCategory = ''; }}
-          >
-            🍏 Mercado Saludable
-          </button>
-          <button
-            class="tab-btn"
-            class:active={activeDept === 'CAFE'}
-            onclick={() => { activeDept = 'CAFE'; selectedCategory = ''; }}
-          >
-            ☕ Café
-          </button>
-        </div>
-
-        <select bind:value={selectedCategory} class="category-select">
-          <option value="">Todas las Categorías</option>
-          {#each $categories as cat}
-            <option value={cat.id}>{cat.name}</option>
-          {/each}
-        </select>
-      </div>
-    </div>
+    {@render catalogHeader()}
 
     <!-- Products Grid -->
     <div class="products-grid scroll-y">
       {#each filteredProducts as p}
-        <button class="product-card glass-panel animate-scale-up" onclick={() => addToCart(p)}>
-          <div class="product-header">
-            <span class="badge" class:badge-market={p.department === 'MARKET'} class:badge-cafe={p.department === 'CAFE'}>
-              {p.department === 'MARKET' ? 'Mercado' : 'Café'}
-            </span>
-            {#if p.isRawMaterial}
-              <span class="badge badge-raw">Insumo</span>
-            {/if}
-          </div>
-          <h3 class="product-name">{p.name}</h3>
-          <p class="product-sku">{p.sku}</p>
-          
-          <div class="product-footer">
-            <span class="product-price">${p.price.toLocaleString()}</span>
-            <span class="product-stock" class:out={p.stock <= 0 && !(p.department === 'CAFE' && p.stock >= 900)}>
-              {#if p.department === 'CAFE' && p.stock >= 900}
-                Ilimitado
-              {:else}
-                Stock: {p.stock}
-              {/if}
-            </span>
-          </div>
-        </button>
+        {@render productCard(p)}
       {:else}
         <div class="no-results flex-center glass-panel animate-fade-in">
           <p>No se encontraron productos en esta sección.</p>
@@ -339,14 +597,7 @@
 
   <!-- Right Side: Shopping Cart -->
   <div class="cart-section glass-panel">
-    {#if $selectedTable}
-      <div class="table-mode-banner">
-        <span>📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
-        <button class="btn-exit-table" onclick={exitTableMode} title="Salir de la mesa sin guardar cambios locales">
-          Volver ↩
-        </button>
-      </div>
-    {/if}
+    {@render tableBanner()}
 
     <div class="cart-header">
       <h2>Carrito de Compra</h2>
@@ -357,26 +608,7 @@
 
     <div class="cart-items scroll-y">
       {#each $cart as item}
-        <div class="cart-item animate-fade-in">
-          <div class="item-details">
-            <span class="item-name">{item.product.name}</span>
-            <span class="item-price">${item.product.price.toLocaleString()} c/u</span>
-          </div>
-
-          <div class="item-actions">
-            <div class="qty-controls">
-              <button class="qty-btn" onclick={() => updateQuantity(item.product.id, -1)}>-</button>
-              <span class="qty-val">{item.quantity}</span>
-              <button class="qty-btn" onclick={() => updateQuantity(item.product.id, 1)}>+</button>
-            </div>
-            
-            <span class="item-subtotal">${(item.product.price * item.quantity).toLocaleString()}</span>
-            
-            <button class="remove-btn" onclick={() => removeFromCart(item.product.id)}>
-              ❌
-            </button>
-          </div>
-        </div>
+        {@render cartItemRow(item)}
       {:else}
         <div class="empty-cart flex-center">
           🛒 Carrito Vacío
@@ -384,210 +616,11 @@
       {/each}
     </div>
 
-    <div class="cart-footer">
-      <div class="total-row">
-        <span>Total a Pagar</span>
-        <span class="total-amount">${$cartTotal.toLocaleString()}</span>
-      </div>
-      {#if $selectedTable}
-        <div class="table-action-buttons">
-          <button class="btn btn-general checkout-btn flex-1" onclick={openCheckout} disabled={$cart.length === 0}>
-            Cobrar Mesa 💳
-          </button>
-          <button class="btn btn-market save-table-btn" onclick={saveTableOrder} title="Guardar cambios de la mesa">
-            Guardar Mesa 💾
-          </button>
-        </div>
-      {:else}
-        <button class="btn btn-general checkout-btn" onclick={openCheckout} disabled={$cart.length === 0}>
-          Cobrar y Registrar 💳
-        </button>
-      {/if}
-    </div>
+    {@render cartFooter()}
   </div>
 </div>
 
-<!-- ==========================================
-     CHECKOUT / PAYMENT DIALOG MODAL
-     ========================================== -->
-{#if showPaymentModal}
-  <div class="modal-overlay flex-center animate-fade-in">
-    <div class="modal-container glass-panel animate-scale-up">
-      {#if !successReceipt}
-        <div class="modal-header">
-          <h2>Registrar Pago Dividido</h2>
-          <button class="close-modal-btn" onclick={closePaymentModal}>✕</button>
-        </div>
-
-        {#if errorMessage}
-          <div class="error-banner">{errorMessage}</div>
-        {/if}
-
-        <div class="payment-math-container">
-          <div class="math-card">
-            <span>Total Venta</span>
-            <strong class="text-general">${$cartTotal.toLocaleString()}</strong>
-          </div>
-          <div class="math-card">
-            <span>Registrado</span>
-            <strong class="text-market">${totalPaid.toLocaleString()}</strong>
-          </div>
-          <div class="math-card">
-            <span>Restante</span>
-            <strong class:text-danger={remainingToPay > 0} class:text-market={remainingToPay === 0}>
-              ${remainingToPay.toLocaleString()}
-            </strong>
-          </div>
-        </div>
-
-        <!-- Add Payment Section -->
-        {#if remainingToPay > 0}
-          <div class="add-payment-section">
-            <h3>Agregar Método de Pago</h3>
-            <div class="payment-inputs">
-              <div class="method-selector">
-                <button
-                  type="button"
-                  class="method-btn"
-                  class:active={currentMethod === 'CASH'}
-                  onclick={() => { currentMethod = 'CASH'; currentAmountInput = remainingToPay.toString(); }}
-                >
-                  💵 Efectivo
-                </button>
-                <button
-                  type="button"
-                  class="method-btn"
-                  class:active={currentMethod === 'CARD'}
-                  onclick={() => { currentMethod = 'CARD'; currentAmountInput = remainingToPay.toString(); }}
-                >
-                  💳 Tarjeta
-                </button>
-                <button
-                  type="button"
-                  class="method-btn"
-                  class:active={currentMethod === 'TRANSFER'}
-                  onclick={() => { currentMethod = 'TRANSFER'; currentAmountInput = remainingToPay.toString(); }}
-                >
-                  📲 Transferencia
-                </button>
-              </div>
-
-              <div class="amount-input-row">
-                <input
-                  type="number"
-                  placeholder="Monto"
-                  bind:value={currentAmountInput}
-                  min="0.01"
-                  step="any"
-                />
-                <button class="btn btn-general" onclick={addPayment}>
-                  Añadir
-                </button>
-              </div>
-            </div>
-          </div>
-        {/if}
-
-        <!-- List of Registered Payments -->
-        <div class="payments-list-section">
-          <h3>Pagos Registrados</h3>
-          <div class="payments-list">
-            {#each payments as pay, i}
-              <div class="payment-tag animate-fade-in">
-                <span>
-                  {#if pay.method === 'CASH'}💵 Efectivo
-                  {:else if pay.method === 'CARD'}💳 Tarjeta
-                  {:else if pay.method === 'TRANSFER'}📲 Transferencia
-                  {/if}
-                  : <strong>${pay.amount.toLocaleString()}</strong>
-                </span>
-                <button class="remove-payment-btn" onclick={() => removePayment(i)}>✕</button>
-              </div>
-            {:else}
-              <p class="no-payments">No se han agregado pagos aún.</p>
-            {/each}
-          </div>
-        </div>
-
-        <!-- Change and Actions -->
-        <div class="modal-footer">
-          {#if cashChange > 0}
-            <div class="change-banner animate-fade-in">
-              <span>Cambio a devolver en Efectivo:</span>
-              <strong>${cashChange.toLocaleString()}</strong>
-            </div>
-          {/if}
-
-          <div class="footer-buttons">
-            <button class="btn btn-secondary" onclick={closePaymentModal}>
-              Cancelar
-            </button>
-            <button
-              class="btn btn-market"
-              onclick={processSale}
-              disabled={remainingToPay > 0.01}
-            >
-              Completar Venta ✔
-            </button>
-          </div>
-        </div>
-      {:else}
-        <!-- SUCCESS RECEIPT VIEW -->
-        <div class="receipt-container animate-scale-up">
-          <div class="receipt-header">
-            <span class="success-icon">🎉</span>
-            <h2>¡Venta Registrada!</h2>
-            <p>Ticket: {successReceipt.id.slice(0,8).toUpperCase()}</p>
-            <span class="date">{new Date(successReceipt.createdAt).toLocaleString()}</span>
-          </div>
-
-          <div class="receipt-divider"></div>
-
-          <div class="receipt-items">
-            {#each successReceipt.items as item}
-              <div class="receipt-item">
-                <span>{item.product.name} x{item.quantity}</span>
-                <span>${(item.product.price * item.quantity).toLocaleString()}</span>
-              </div>
-            {/each}
-          </div>
-
-          <div class="receipt-divider"></div>
-
-          <div class="receipt-total">
-            <span>Total Venta</span>
-            <span>${successReceipt.total.toLocaleString()}</span>
-          </div>
-
-          <div class="receipt-payments">
-            <h4>Detalle de Pago:</h4>
-            {#each successReceipt.payments as pay}
-              <div class="receipt-payment-row">
-                <span>
-                  {#if pay.method === 'CASH'}💵 Efectivo
-                  {:else if pay.method === 'CARD'}💳 Tarjeta
-                  {:else if pay.method === 'TRANSFER'}📲 Transferencia
-                  {/if}
-                </span>
-                <span>${pay.amount.toLocaleString()}</span>
-              </div>
-            {/each}
-            {#if successReceipt.change > 0}
-              <div class="receipt-payment-row change-row">
-                <span>Cambio Entregado:</span>
-                <span>${successReceipt.change.toLocaleString()}</span>
-              </div>
-            {/if}
-          </div>
-
-          <button class="btn btn-general print-btn" onclick={closePaymentModal}>
-            Cerrar e Ir a Nueva Venta
-          </button>
-        </div>
-      {/if}
-    </div>
-  </div>
-{/if}
+{@render paymentModal()}
 
 <style>
   .checkout-layout {

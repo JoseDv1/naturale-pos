@@ -150,8 +150,8 @@
   }
 </script>
 
-<div class="dashboard-container flex-column animate-fade-in">
-  <!-- Header -->
+<!-- Snippets for structuring layout elements -->
+{#snippet headerSection()}
   <div class="dashboard-header glass-panel">
     <div class="header-left">
       <h2>Inicio y Resumen General 📈</h2>
@@ -161,63 +161,108 @@
       🔄 Actualizar Datos
     </button>
   </div>
+{/snippet}
+
+{#snippet loadingState()}
+  <div class="loading-state flex-center glass-panel">
+    <div class="spinner"></div>
+    <p>Cargando resumen operacional...</p>
+  </div>
+{/snippet}
+
+{#snippet kpiCard(title, value, desc, icon, textClass)}
+  <div class="kpi-card glass-panel animate-scale-up">
+    <div class="kpi-icon">{icon}</div>
+    <div class="kpi-content">
+      <span class="kpi-title">{title}</span>
+      <strong class="kpi-value {textClass}">{value}</strong>
+      <span class="kpi-desc">{desc}</span>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet deptCard(name, netProfit, revenue, expenses, nameClass, bgClass, widthPercent)}
+  <div class="dept-card">
+    <div class="dept-title-row">
+      <span class="dept-name {nameClass}">{name}</span>
+      <strong class="dept-net-profit">${netProfit.toLocaleString()}</strong>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar {bgClass}" style="width: {widthPercent}%"></div>
+    </div>
+    <div class="dept-details">
+      <span>Ventas: ${revenue.toLocaleString()}</span>
+      <span>Gastos: ${expenses.toLocaleString()}</span>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet paymentRow(method, amount)}
+  <div class="payment-row">
+    <div class="payment-label">
+      <span>
+        {#if method === 'CASH'}💵 Efectivo
+        {:else if method === 'CARD'}💳 Tarjeta
+        {:else if method === 'TRANSFER'}📲 Transferencia
+        {:else}🔄 Interno
+        {/if}
+      </span>
+      <strong>${amount.toLocaleString()}</strong>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar bg-general" style="width: {dashboardData.CONSOLIDATED.revenue > 0 ? (amount / dashboardData.CONSOLIDATED.revenue) * 100 : 0}%"></div>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet alertItemRow(item)}
+  <div class="alert-item animate-fade-in">
+    <div class="alert-info">
+      <strong class="product-name">{item.name}</strong>
+      <span class="product-sku">SKU: {item.sku} | Cat: {item.category.name}</span>
+    </div>
+    <div class="alert-badge" class:badge-zero={item.stock === 0} class:badge-low={item.stock > 0}>
+      {item.stock === 0 ? 'Sin Stock' : `${item.stock} unidades`}
+    </div>
+  </div>
+{/snippet}
+
+{#snippet todoItemRow(todo)}
+  <div class="todo-item" class:completed={todo.completed}>
+    <label class="todo-label">
+      <input type="checkbox" checked={todo.completed} onchange={() => toggleTodo(todo.id)} />
+      <span class="todo-text">{todo.text}</span>
+    </label>
+    <button class="remove-todo-btn" onclick={() => deleteTodo(todo.id)}>✕</button>
+  </div>
+{/snippet}
+
+<!-- Main View -->
+<div class="dashboard-container flex-column animate-fade-in">
+  {@render headerSection()}
 
   {#if errorMsg}
     <div class="error-banner">{errorMsg}</div>
   {/if}
 
   {#if isLoading && !dashboardData}
-    <div class="loading-state flex-center glass-panel">
-      <div class="spinner"></div>
-      <p>Cargando resumen operacional...</p>
-    </div>
+    {@render loadingState()}
   {:else if dashboardData}
     <!-- Main Dashboard Grid -->
     <div class="dashboard-grid">
       
       <!-- 1. KPI Panel (Row of 4 Cards) -->
       <div class="kpis-row">
-        <!-- Sales Card -->
-        <div class="kpi-card glass-panel animate-scale-up">
-          <div class="kpi-icon">💰</div>
-          <div class="kpi-content">
-            <span class="kpi-title">Ingresos Brutos</span>
-            <strong class="kpi-value text-general">${dashboardData.CONSOLIDATED.revenue.toLocaleString()}</strong>
-            <span class="kpi-desc">Total ventas no anuladas</span>
-          </div>
-        </div>
-
-        <!-- Expenses Card -->
-        <div class="kpi-card glass-panel animate-scale-up">
-          <div class="kpi-icon">💸</div>
-          <div class="kpi-content">
-            <span class="kpi-title">Egresos Totales</span>
-            <strong class="kpi-value text-danger">${dashboardData.CONSOLIDATED.expenses.toLocaleString()}</strong>
-            <span class="kpi-desc">Operacionales e insumos</span>
-          </div>
-        </div>
-
-        <!-- Net Profit Card -->
-        <div class="kpi-card glass-panel animate-scale-up">
-          <div class="kpi-icon">🌿</div>
-          <div class="kpi-content">
-            <span class="kpi-title">Utilidad Neta</span>
-            <strong class="kpi-value" class:text-general={dashboardData.CONSOLIDATED.netProfit >= 0} class:text-danger={dashboardData.CONSOLIDATED.netProfit < 0}>
-              ${dashboardData.CONSOLIDATED.netProfit.toLocaleString()}
-            </strong>
-            <span class="kpi-desc">Ingresos - Costos - Gastos</span>
-          </div>
-        </div>
-
-        <!-- Margin Card -->
-        <div class="kpi-card glass-panel animate-scale-up">
-          <div class="kpi-icon">📊</div>
-          <div class="kpi-content">
-            <span class="kpi-title">Margen Neto</span>
-            <strong class="kpi-value text-general">{margin.toFixed(1)}%</strong>
-            <span class="kpi-desc">Retorno por cada peso vendido</span>
-          </div>
-        </div>
+        {@render kpiCard('Ingresos Brutos', `$${dashboardData.CONSOLIDATED.revenue.toLocaleString()}`, 'Total ventas no anuladas', '💰', 'text-general')}
+        {@render kpiCard('Egresos Totales', `$${dashboardData.CONSOLIDATED.expenses.toLocaleString()}`, 'Operacionales e insumos', '💸', 'text-danger')}
+        {@render kpiCard(
+          'Utilidad Neta', 
+          `$${dashboardData.CONSOLIDATED.netProfit.toLocaleString()}`, 
+          'Ingresos - Costos - Gastos', 
+          '🌿', 
+          dashboardData.CONSOLIDATED.netProfit >= 0 ? 'text-general' : 'text-danger'
+        )}
+        {@render kpiCard('Margen Neto', `${margin.toFixed(1)}%`, 'Retorno por cada peso vendido', '📊', 'text-general')}
       </div>
 
       <!-- 2. Middle Row: Departments & Payments -->
@@ -226,35 +271,24 @@
         <div class="dashboard-col glass-panel flex-column animate-scale-up">
           <h3>Desglose por Departamento</h3>
           <div class="dept-comparison">
-            <!-- Market -->
-            <div class="dept-card">
-              <div class="dept-title-row">
-                <span class="dept-name text-market">🍏 Mercado Saludable</span>
-                <strong class="dept-net-profit">${dashboardData.MARKET.netProfit.toLocaleString()}</strong>
-              </div>
-              <div class="progress-bar-container">
-                <div class="progress-bar bg-market" style="width: {dashboardData.CONSOLIDATED.revenue > 0 ? (dashboardData.MARKET.revenue / dashboardData.CONSOLIDATED.revenue) * 100 : 0}%"></div>
-              </div>
-              <div class="dept-details">
-                <span>Ventas: ${dashboardData.MARKET.revenue.toLocaleString()}</span>
-                <span>Gastos: ${dashboardData.MARKET.expenses.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <!-- Café -->
-            <div class="dept-card">
-              <div class="dept-title-row">
-                <span class="dept-name text-cafe">☕ Barra de Café</span>
-                <strong class="dept-net-profit">${dashboardData.CAFE.netProfit.toLocaleString()}</strong>
-              </div>
-              <div class="progress-bar-container">
-                <div class="progress-bar bg-cafe" style="width: {dashboardData.CONSOLIDATED.revenue > 0 ? (dashboardData.CAFE.revenue / dashboardData.CONSOLIDATED.revenue) * 100 : 0}%"></div>
-              </div>
-              <div class="dept-details">
-                <span>Ventas: ${dashboardData.CAFE.revenue.toLocaleString()}</span>
-                <span>Gastos: ${dashboardData.CAFE.expenses.toLocaleString()}</span>
-              </div>
-            </div>
+            {@render deptCard(
+              '🍏 Mercado Saludable', 
+              dashboardData.MARKET.netProfit, 
+              dashboardData.MARKET.revenue, 
+              dashboardData.MARKET.expenses, 
+              'text-market', 
+              'bg-market', 
+              dashboardData.CONSOLIDATED.revenue > 0 ? (dashboardData.MARKET.revenue / dashboardData.CONSOLIDATED.revenue) * 100 : 0
+            )}
+            {@render deptCard(
+              '☕ Barra de Café', 
+              dashboardData.CAFE.netProfit, 
+              dashboardData.CAFE.revenue, 
+              dashboardData.CAFE.expenses, 
+              'text-cafe', 
+              'bg-cafe', 
+              dashboardData.CONSOLIDATED.revenue > 0 ? (dashboardData.CAFE.revenue / dashboardData.CONSOLIDATED.revenue) * 100 : 0
+            )}
           </div>
         </div>
 
@@ -263,23 +297,7 @@
           <h3>Distribución de Métodos de Pago</h3>
           <div class="payment-distribution">
             {#each Object.entries(dashboardData.paymentMethods) as [method, amount]}
-              {#if amount > 0 || true}
-                <div class="payment-row">
-                  <div class="payment-label">
-                    <span>
-                      {#if method === 'CASH'}💵 Efectivo
-                      {:else if method === 'CARD'}💳 Tarjeta
-                      {:else if method === 'TRANSFER'}📲 Transferencia
-                      {:else}🔄 Interno
-                      {/if}
-                    </span>
-                    <strong>${amount.toLocaleString()}</strong>
-                  </div>
-                  <div class="progress-bar-container">
-                    <div class="progress-bar bg-general" style="width: {dashboardData.CONSOLIDATED.revenue > 0 ? (amount / dashboardData.CONSOLIDATED.revenue) * 100 : 0}%"></div>
-                  </div>
-                </div>
-              {/if}
+              {@render paymentRow(method, amount)}
             {/each}
           </div>
         </div>
@@ -292,15 +310,7 @@
           <h3>Alertas de Inventario Crítico ⚠️</h3>
           <div class="alerts-list scroll-y">
             {#each lowStockAlerts as item}
-              <div class="alert-item animate-fade-in">
-                <div class="alert-info">
-                  <strong class="product-name">{item.name}</strong>
-                  <span class="product-sku">SKU: {item.sku} | Cat: {item.category.name}</span>
-                </div>
-                <div class="alert-badge" class:badge-zero={item.stock === 0} class:badge-low={item.stock > 0}>
-                  {item.stock === 0 ? 'Sin Stock' : `${item.stock} unidades`}
-                </div>
-              </div>
+              {@render alertItemRow(item)}
             {:else}
               <div class="empty-alerts flex-center">
                 ✨ ¡Todo al día! No hay productos con bajo inventario.
@@ -348,13 +358,7 @@
           </div>
           <div class="todos-list scroll-y">
             {#each todos as todo (todo.id)}
-              <div class="todo-item" class:completed={todo.completed}>
-                <label class="todo-label">
-                  <input type="checkbox" checked={todo.completed} onchange={() => toggleTodo(todo.id)} />
-                  <span class="todo-text">{todo.text}</span>
-                </label>
-                <button class="remove-todo-btn" onclick={() => deleteTodo(todo.id)}>✕</button>
-              </div>
+              {@render todoItemRow(todo)}
             {:else}
               <div class="empty-todos flex-center">
                 ✨ ¡No hay tareas pendientes! Disfruta tu día.

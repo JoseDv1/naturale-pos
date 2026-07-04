@@ -21,14 +21,64 @@ sales.post('/', async (c) => {
   try {
     const { userId, total, items, payments } = await c.req.json();
 
-    if (!userId || !items || !items.length || !payments || !payments.length) {
-      return c.json({ error: 'Información de venta incompleta' }, 400);
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return c.json({ error: 'Usuario inválido o requerido' }, 400);
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return c.json({ error: 'La venta debe contener al menos un producto' }, 400);
+    }
+
+    if (!payments || !Array.isArray(payments) || payments.length === 0) {
+      return c.json({ error: 'La venta debe contener al menos un método de pago' }, 400);
+    }
+
+    const parsedTotal = parseFloat(total);
+    if (isNaN(parsedTotal) || parsedTotal <= 0) {
+      return c.json({ error: 'El total de la venta debe ser mayor a cero' }, 400);
+    }
+
+    // 1. Validate Items
+    let computedTotal = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item.productId || typeof item.productId !== 'string' || item.productId.trim() === '') {
+        return c.json({ error: `Producto en índice ${i} tiene un ID inválido` }, 400);
+      }
+      const qty = parseInt(item.quantity);
+      if (isNaN(qty) || qty <= 0) {
+        return c.json({ error: `La cantidad del producto en índice ${i} debe ser mayor a cero` }, 400);
+      }
+      const price = parseFloat(item.price);
+      if (isNaN(price) || price < 0) {
+        return c.json({ error: `El precio del producto en índice ${i} no puede ser negativo` }, 400);
+      }
+      computedTotal += price * qty;
+    }
+
+    // Verify calculated total matches target total
+    if (Math.abs(computedTotal - parsedTotal) > 0.01) {
+      return c.json({ error: 'La suma de los subtotales de productos no coincide con el total de la venta' }, 400);
+    }
+
+    // 2. Validate Payments
+    const validPaymentMethods = ['CASH', 'CARD', 'TRANSFER', 'INTERNAL'];
+    let paymentSum = 0;
+    for (let i = 0; i < payments.length; i++) {
+      const pay = payments[i];
+      if (!pay.method || !validPaymentMethods.includes(pay.method)) {
+        return c.json({ error: `Método de pago "${pay.method}" no es válido. Opciones: CASH, CARD, TRANSFER, INTERNAL` }, 400);
+      }
+      const amt = parseFloat(pay.amount);
+      if (isNaN(amt) || amt <= 0) {
+        return c.json({ error: `El monto del pago en índice ${i} debe ser mayor a cero` }, 400);
+      }
+      paymentSum += amt;
     }
 
     // Verify payments match the total
-    const paymentSum = payments.reduce((acc: number, p: any) => acc + parseFloat(p.amount), 0);
-    if (Math.abs(paymentSum - parseFloat(total)) > 0.01) {
-      return c.json({ error: 'La suma de pagos no coincide con el total' }, 400);
+    if (Math.abs(paymentSum - parsedTotal) > 0.01) {
+      return c.json({ error: 'La suma de los pagos no coincide con el total de la venta' }, 400);
     }
 
     // Execute in a transaction to enforce inventory consistency

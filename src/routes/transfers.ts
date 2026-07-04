@@ -19,12 +19,31 @@ transfers.post('/', async (c) => {
   try {
     const { productId, targetProductId, quantity, fromDepartment, toDepartment, userId } = await c.req.json();
 
-    if (!productId || !quantity || !fromDepartment || !toDepartment || !userId) {
-      return c.json({ error: 'Información de traslado incompleta' }, 400);
+    if (!productId || typeof productId !== 'string' || productId.trim() === '') {
+      return c.json({ error: 'El producto de origen es obligatorio' }, 400);
+    }
+
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return c.json({ error: 'El usuario es obligatorio' }, 400);
+    }
+
+    if (!fromDepartment || !toDepartment || fromDepartment === toDepartment) {
+      return c.json({ error: 'Los departamentos origen y destino deben ser válidos y diferentes' }, 400);
+    }
+
+    const validDepts = ['MARKET', 'CAFE'];
+    if (!validDepts.includes(fromDepartment) || !validDepts.includes(toDepartment)) {
+      return c.json({ error: 'Departamentos inválidos (deben ser MARKET o CAFE)' }, 400);
+    }
+
+    if (targetProductId && productId === targetProductId) {
+      return c.json({ error: 'El producto de destino debe ser diferente al de origen' }, 400);
     }
 
     const qty = parseInt(quantity);
-    if (qty <= 0) return c.json({ error: 'La cantidad debe ser mayor a cero' }, 400);
+    if (isNaN(qty) || qty <= 0) {
+      return c.json({ error: 'La cantidad del traslado debe ser un número entero mayor a cero' }, 400);
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Retrieve the source product to check stock and cost

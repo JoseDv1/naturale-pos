@@ -20,8 +20,34 @@ expenses.post('/', async (c) => {
   try {
     const { description, amount, category, department, userId, items } = await c.req.json();
 
-    if (!description || amount === undefined || !department) {
-      return c.json({ error: 'Faltan campos requeridos en el gasto' }, 400);
+    if (!description || typeof description !== 'string' || description.trim() === '') {
+      return c.json({ error: 'La descripción del gasto es obligatoria' }, 400);
+    }
+
+    if (amount === undefined || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return c.json({ error: 'El monto del gasto debe ser mayor a cero' }, 400);
+    }
+
+    if (!department || typeof department !== 'string' || department.trim() === '') {
+      return c.json({ error: 'El departamento del gasto es obligatorio' }, 400);
+    }
+
+    // If it's a purchase (has items), validate the items in details
+    if (items && Array.isArray(items) && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item.productId || typeof item.productId !== 'string' || item.productId.trim() === '') {
+          return c.json({ error: `Producto en índice ${i} tiene un ID inválido` }, 400);
+        }
+        const qty = parseInt(item.quantity);
+        if (isNaN(qty) || qty <= 0) {
+          return c.json({ error: `La cantidad del producto en índice ${i} debe ser mayor a cero` }, 400);
+        }
+        const unitCost = parseFloat(item.unitCost);
+        if (isNaN(unitCost) || unitCost <= 0) {
+          return c.json({ error: `El costo unitario del producto en índice ${i} debe ser mayor a cero` }, 400);
+        }
+      }
     }
 
     const result = await prisma.$transaction(async (tx) => {

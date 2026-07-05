@@ -73,7 +73,7 @@ auth.get('/me', async (c) => {
     return c.json({ user: null });
   }
   try {
-    const payload = await verify(token, JWT_SECRET);
+    const payload = await verify(token, JWT_SECRET, 'HS256');
     if (payload.iss !== JWT_ISSUER || payload.aud !== JWT_AUDIENCE) {
       return c.json({ user: null });
     }

@@ -170,7 +170,7 @@
   </div>
 {/snippet}
 
-{#snippet kpiCard(title, value, desc, icon, textClass)}
+{#snippet kpiCard(title: string, value: string | number, desc: string, icon: string, textClass: string)}
   <div class="kpi-card glass-panel animate-scale-up">
     <div class="kpi-icon">{icon}</div>
     <div class="kpi-content">
@@ -181,7 +181,7 @@
   </div>
 {/snippet}
 
-{#snippet deptCard(name, netProfit, revenue, expenses, nameClass, bgClass, widthPercent)}
+{#snippet deptCard(name: string, netProfit: number, revenue: number, expenses: number, nameClass: string, bgClass: string, widthPercent: number)}
   <div class="dept-card">
     <div class="dept-title-row">
       <span class="dept-name {nameClass}">{name}</span>
@@ -197,7 +197,7 @@
   </div>
 {/snippet}
 
-{#snippet paymentRow(method, amount)}
+{#snippet paymentRow(method: string, amount: number)}
   <div class="payment-row">
     <div class="payment-label">
       <span>
@@ -215,7 +215,7 @@
   </div>
 {/snippet}
 
-{#snippet alertItemRow(item)}
+{#snippet alertItemRow(item: any)}
   <div class="alert-item animate-fade-in">
     <div class="alert-info">
       <strong class="product-name">{item.name}</strong>
@@ -227,7 +227,7 @@
   </div>
 {/snippet}
 
-{#snippet todoItemRow(todo)}
+{#snippet todoItemRow(todo: any)}
   <div class="todo-item" class:completed={todo.completed}>
     <label class="todo-label">
       <input type="checkbox" checked={todo.completed} onchange={() => toggleTodo(todo.id)} />
@@ -297,7 +297,7 @@
           <h3>Distribución de Métodos de Pago</h3>
           <div class="payment-distribution">
             {#each Object.entries(dashboardData.paymentMethods) as [method, amount]}
-              {@render paymentRow(method, amount)}
+              {@render paymentRow(method, amount as number)}
             {/each}
           </div>
         </div>

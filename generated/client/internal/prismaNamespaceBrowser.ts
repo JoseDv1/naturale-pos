@@ -202,6 +202,8 @@ export const CafeTableScalarFieldEnum = {
   name: 'name',
   status: 'status',
   currentSaleId: 'currentSaleId',
+  x: 'x',
+  y: 'y',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

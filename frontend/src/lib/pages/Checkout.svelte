@@ -302,7 +302,7 @@
   </div>
 {/snippet}
 
-{#snippet productCard(p)}
+{#snippet productCard(p: any)}
   <button class="product-card glass-panel animate-scale-up" onclick={() => addToCart(p)}>
     <div class="product-header">
       <span class="badge" class:badge-market={p.department === 'MARKET'} class:badge-cafe={p.department === 'CAFE'}>
@@ -339,7 +339,7 @@
   {/if}
 {/snippet}
 
-{#snippet cartItemRow(item)}
+{#snippet cartItemRow(item: any)}
   <div class="cart-item animate-fade-in">
     <div class="item-details">
       <span class="item-name">{item.product.name}</span>

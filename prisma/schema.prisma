@@ -203,6 +203,8 @@ model CafeTable {
   currentSaleId  String?     @unique
   currentSale    Sale?       @relation("TableActiveSale", fields: [currentSaleId], references: [id], onDelete: SetNull)
   sales          Sale[]      @relation("TableSales")
+  x              Float       @default(0.0)
+  y              Float       @default(0.0)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 }

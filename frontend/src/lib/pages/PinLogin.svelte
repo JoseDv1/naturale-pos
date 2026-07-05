@@ -8,19 +8,23 @@
   let errorMsg = $state('');
   let isLoading = $state(false);
 
-  onMount(async () => {
-    try {
-      const res = await fetch('/api/users');
-      if (res.ok) {
-        users = await res.json();
-        if (users.length > 0) {
-          selectedUsername = users[0].username;
+  onMount(() => {
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/users');
+        if (res.ok) {
+          users = await res.json();
+          if (users.length > 0) {
+            selectedUsername = users[0].username;
+          }
         }
+      } catch (e) {
+        console.error('Error fetching users:', e);
+        errorMsg = 'Error al cargar empleados';
       }
-    } catch (e) {
-      console.error('Error fetching users:', e);
-      errorMsg = 'Error al cargar empleados';
     }
+
+    loadUsers();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isLoading) return;

@@ -7,16 +7,20 @@ export const JWT_ISSUER = 'naturale-pos-api';
 export const JWT_AUDIENCE = 'naturale-pos-app';
 
 export const authMiddleware = createMiddleware(async (c, next) => {
+  const path = c.req.path;
   const token = getCookie(c, 'jwt_auth');
+  console.log(`[authMiddleware] Path: ${path}, Token exists: ${!!token}`);
   if (!token) {
+    console.log(`[authMiddleware] Token not found for path: ${path}`);
     return c.json({ error: 'No autorizado: Sesión no encontrada' }, 401);
   }
 
   try {
-    const payload = await verify(token, JWT_SECRET);
+    const payload = await verify(token, JWT_SECRET, 'HS256');
 
     // Verify standard claims
     if (payload.iss !== JWT_ISSUER || payload.aud !== JWT_AUDIENCE) {
+      console.log(`[authMiddleware] Invalid claims for path: ${path}. iss: ${payload.iss}, aud: ${payload.aud}`);
       return c.json({ error: 'No autorizado: Token inválido (Emisor/Audiencia)' }, 401);
     }
 
@@ -30,6 +34,7 @@ export const authMiddleware = createMiddleware(async (c, next) => {
 
     return await next();
   } catch (error) {
+    console.error(`[authMiddleware] Verification failed for path: ${path}. Error:`, error);
     return c.json({ error: 'No autorizado: Sesión inválida o expirada' }, 401);
   }
 });

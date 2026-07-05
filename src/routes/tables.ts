@@ -355,9 +355,9 @@ tables.post('/:id/cancel', async (c) => {
 });
 
 // POST / - Crear nueva mesa
-tables.post('/', adminMiddleware, async (c) => {
+tables.post('/', async (c) => {
   try {
-    const { name } = await c.req.json();
+    const { name, x, y } = await c.req.json();
     if (!name || name.trim() === '') {
       return c.json({ error: 'El nombre de la mesa es obligatorio' }, 400);
     }
@@ -371,7 +371,9 @@ tables.post('/', adminMiddleware, async (c) => {
     const table = await prisma.cafeTable.create({
       data: {
         name: name.trim(),
-        status: 'AVAILABLE'
+        status: 'AVAILABLE',
+        x: typeof x === 'number' ? x : 50.0,
+        y: typeof y === 'number' ? y : 50.0
       }
     });
 
@@ -382,32 +384,77 @@ tables.post('/', adminMiddleware, async (c) => {
 });
 
 // DELETE /:id - Eliminar una mesa
-tables.delete('/:id', adminMiddleware, async (c) => {
+tables.delete('/:id', async (c) => {
   const id = c.req.param('id');
   try {
-    const table = await prisma.cafeTable.findUnique({ where: { id } });
+    const table = await prisma.cafeTable.findUnique({
+      where: { id },
+      include: {
+        currentSale: {
+          include: { items: true }
+        }
+      }
+    });
     if (!table) {
       return c.json({ error: 'Mesa no encontrada' }, 404);
     }
 
-    if (table.status === 'OCCUPIED') {
-      return c.json({ error: 'No se puede eliminar una mesa ocupada con pedidos activos' }, 400);
-    }
+    // Transacción para desvincular ventas, revertir stock si está ocupada, y borrar mesa
+    await prisma.$transaction(async (tx) => {
+      if (table.status === 'OCCUPIED' && table.currentSale) {
+        // Revertir stock de la comanda activa
+        for (const item of table.currentSale.items) {
+          const prod = await tx.product.findUnique({ where: { id: item.productId } });
+          if (prod && !(prod.department === 'CAFE' && prod.stock >= 900)) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } }
+            });
+          }
+        }
 
-    // Transacción para desvincular ventas y borrar mesa
-    await prisma.$transaction([
-      prisma.sale.updateMany({
+        // Marcar la comanda activa como CANCELLED
+        await tx.sale.update({
+          where: { id: table.currentSaleId! },
+          data: { status: 'CANCELLED' }
+        });
+      }
+
+      // Desvincular ventas pasadas de esta mesa
+      await tx.sale.updateMany({
         where: { tableId: id },
         data: { tableId: null }
-      }),
-      prisma.cafeTable.delete({
+      });
+
+      // Borrar la mesa
+      await tx.cafeTable.delete({
         where: { id }
-      })
-    ]);
+      });
+    });
 
     return c.json({ success: true });
   } catch (error) {
     return c.json({ error: 'Error al eliminar la mesa' }, 500);
+  }
+});
+
+// PUT /:id/position - Actualizar posición de la mesa
+tables.put('/:id/position', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const { x, y } = await c.req.json();
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      return c.json({ error: 'Coordenadas x e y requeridas y deben ser números' }, 400);
+    }
+
+    const table = await prisma.cafeTable.update({
+      where: { id },
+      data: { x, y }
+    });
+
+    return c.json({ success: true, table });
+  } catch (error) {
+    return c.json({ error: 'Error al actualizar la posición de la mesa' }, 500);
   }
 });
 

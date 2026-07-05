@@ -14,7 +14,7 @@
   const validTabs = ['dashboard', 'checkout', 'tables', 'inventory', 'transfers', 'expenses', 'reports'];
   let isInitializing = $state(true);
 
-  onMount(async () => {
+  onMount(() => {
     // 1. Global fetch interceptor to handle session expiration (401 Unauthorized)
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
@@ -29,21 +29,6 @@
       }
       return response;
     };
-
-    // 2. Check if session cookie exists by calling server auth/me
-    try {
-      const meRes = await fetch('/api/auth/me');
-      if (meRes.ok) {
-        const data = await meRes.json();
-        if (data.user) {
-          user.set(data.user);
-        }
-      }
-    } catch (e) {
-      console.error('Session restore failed:', e);
-    } finally {
-      isInitializing = false;
-    }
 
     // 2. Handle URL hash routing
     const handleHashChange = () => {
@@ -61,8 +46,26 @@
       }
     };
 
-    // Initialize hash on load
-    handleHashChange();
+    // 3. Check if session cookie exists by calling server auth/me
+    async function restoreSession() {
+      try {
+        const meRes = await fetch('/api/auth/me');
+        if (meRes.ok) {
+          const data = await meRes.json();
+          if (data.user) {
+            user.set(data.user);
+          }
+        }
+      } catch (e) {
+        console.error('Session restore failed:', e);
+      } finally {
+        isInitializing = false;
+        // Initialize hash on load
+        handleHashChange();
+      }
+    }
+
+    restoreSession();
 
     window.addEventListener('hashchange', handleHashChange);
     return () => {

@@ -1,6 +1,15 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
   import { user, cart, cartTotal, products, categories, refreshTrigger, triggerRefresh, selectedTable, activeTab } from '../store';
+  import { getProducts, getCategories } from '../api/products';
+  import { saveTableOrder as apiSaveTableOrder, checkoutTable as apiCheckoutTable, cancelTableOrder as apiCancelTableOrder } from '../api/tables';
+  import { createSale } from '../api/sales';
+  import ProductCard from '../components/organisms/ProductCard.svelte';
+  import CartItem from '../components/organisms/CartItem.svelte';
+  import MathCard from '../components/molecules/MathCard.svelte';
+  import MethodBtn from '../components/molecules/MethodBtn.svelte';
+  import ReceiptItem from '../components/molecules/ReceiptItem.svelte';
+  import ReceiptPaymentRow from '../components/molecules/ReceiptPaymentRow.svelte';
 
   // State variables
   let searchQuery = $state('');
@@ -20,9 +29,12 @@
   // Barcode input handler
   let barcodeSearchInput = $state<HTMLInputElement>();
 
-  onMount(() => {
-    loadData();
-  });
+  let initPromise = $state<Promise<any>>(
+    Promise.all([getProducts(), getCategories()]).then(([prods, cats]) => {
+      products.set(prods);
+      categories.set(cats);
+    })
+  );
 
   // Re-load data when triggered
   $effect(() => {
@@ -31,17 +43,11 @@
     }
   });
 
-  async function loadData() {
-    try {
-      const prodRes = await fetch('/api/products');
-      const catRes = await fetch('/api/categories');
-      if (prodRes.ok && catRes.ok) {
-        products.set(await prodRes.json());
-        categories.set(await catRes.json());
-      }
-    } catch (e) {
-      console.error('Error loading inventory data:', e);
-    }
+  function loadData() {
+    initPromise = Promise.all([getProducts(), getCategories()]).then(([prods, cats]) => {
+      products.set(prods);
+      categories.set(cats);
+    });
   }
 
   // Filter products based on search, department, and category
@@ -59,67 +65,59 @@
       alert('¡Producto sin stock!');
       return;
     }
-
-    cart.update((currentCart) => {
-      const existing = currentCart.find((item) => item.product.id === product.id);
-      if (existing) {
-        const isCafeInfinite = product.department === 'CAFE' && product.stock >= 900;
-        if (!isCafeInfinite && existing.quantity >= product.stock) {
-          alert('No puedes vender más de lo disponible en stock.');
-          return currentCart;
-        }
-        return currentCart.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      return [...currentCart, { product, quantity: 1 }];
-    });
-
-    // Reset SKU search if used
-    searchQuery = '';
-    if (barcodeSearchInput) barcodeSearchInput.focus();
+    const existing = $cart.find((item) => item.product.id === product.id);
+    if (existing) {
+      existing.quantity += 1;
+      cart.set([...$cart]);
+    } else {
+      cart.set([...$cart, { product, quantity: 1 }]);
+    }
   }
 
   function updateQuantity(productId: string, delta: number) {
-    cart.update((currentCart) => {
-      return currentCart.map((item) => {
-        if (item.product.id === productId) {
-          const newQty = item.quantity + delta;
-          const isCafeInfinite = item.product.department === 'CAFE' && item.product.stock >= 900;
-          if (newQty <= 0) return null;
-          if (!isCafeInfinite && newQty > item.product.stock) {
-            alert('No puedes superar el stock disponible.');
-            return item;
-          }
-          return { ...item, quantity: newQty };
-        }
-        return item;
-      }).filter(Boolean) as any[];
-    });
+    const item = $cart.find((i) => i.product.id === productId);
+    if (!item) return;
+    const newQty = item.quantity + delta;
+    if (newQty <= 0) {
+      cart.set($cart.filter((i) => i.product.id !== productId));
+      return;
+    }
+    const isCafeInfinite = item.product.department === 'CAFE' && item.product.stock >= 900;
+    if (!isCafeInfinite && newQty > item.product.stock) {
+      alert('No puedes superar el stock disponible.');
+      return;
+    }
+    item.quantity = newQty;
+    cart.set([...$cart]);
   }
 
   function removeFromCart(productId: string) {
-    cart.update((currentCart) => currentCart.filter((item) => item.product.id !== productId));
+    cart.set($cart.filter((item) => item.product.id !== productId));
   }
 
   function clearCart() {
     cart.set([]);
   }
 
-  // Checkout operations
+  // Calculate payment details
+  let subtotal = $derived($cartTotal);
+  let total = $derived(subtotal);
+  let paidAmount = $derived(payments.reduce((sum, p) => sum + p.amount, 0));
+  let remainingToPay = $derived(Math.max(0, total - paidAmount));
+
   function openCheckout() {
-    if ($cart.length === 0) return;
-    errorMessage = '';
-    successReceipt = null;
+    if ($cart.length === 0) {
+      alert('El carrito está vacío.');
+      return;
+    }
     payments = [];
-    wasTableSale = $selectedTable !== null;
+    currentMethod = 'CASH';
     currentAmountInput = remainingToPay.toString();
     cashChange = 0;
+    errorMessage = '';
     showPaymentModal = true;
+    wasTableSale = !!$selectedTable;
   }
-
-  let totalPaid = $derived(payments.reduce((sum, p) => sum + p.amount, 0));
-  let remainingToPay = $derived(Math.max(0, $cartTotal - totalPaid));
 
   function addPayment() {
     errorMessage = '';
@@ -158,88 +156,66 @@
 
     errorMessage = '';
     try {
-      const url = $selectedTable 
-        ? `/api/tables/${$selectedTable.id}/checkout`
-        : '/api/sales';
-        
-      const bodyPayload = $selectedTable
-        ? { payments }
-        : {
-            userId: $user?.id,
-            total: $cartTotal,
-            items: $cart.map((item) => ({
-              productId: item.product.id,
-              quantity: item.quantity,
-              price: item.product.price,
-            })),
-            payments: payments,
-          };
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyPayload),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        successReceipt = {
-          id: data.sale.id,
-          total: data.sale.total,
-          createdAt: data.sale.createdAt,
-          items: [...$cart],
-          payments: [...payments],
-          change: cashChange,
-        };
-        clearCart();
-        
-        // Reset selected table
-        if ($selectedTable) {
-          selectedTable.set(null);
-        }
-        
-        triggerRefresh();
+      let data;
+      if ($selectedTable) {
+        data = await apiCheckoutTable($selectedTable.id, payments);
       } else {
-        errorMessage = data.error || 'Error al procesar la venta';
+        const bodyPayload = {
+          userId: $user?.id,
+          total: $cartTotal,
+          items: $cart.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            price: item.product.price,
+          })),
+          payments: payments,
+        };
+        data = await createSale(bodyPayload);
       }
-    } catch (e) {
-      errorMessage = 'Error en el servidor al registrar la venta';
+
+      successReceipt = {
+        id: data.sale.id,
+        total: data.sale.total,
+        createdAt: data.sale.createdAt,
+        items: [...$cart],
+        payments: [...payments],
+        change: cashChange,
+      };
+      clearCart();
+      
+      // Reset selected table
+      if ($selectedTable) {
+        selectedTable.set(null);
+      }
+      
+      triggerRefresh();
+    } catch (e: any) {
+      errorMessage = e.message || 'Error al procesar la venta';
     }
   }
 
   async function saveTableOrder() {
     if (!$selectedTable) return;
     try {
-      const res = await fetch(`/api/tables/${$selectedTable.id}/save`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: $cart.map((item) => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-            price: item.product.price,
-          })),
-        }),
-      });
-
-      if (res.ok) {
-        selectedTable.set(null);
-        cart.set([]);
-        triggerRefresh();
-        activeTab.set('tables');
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Error al guardar la orden de la mesa');
-      }
-    } catch (e) {
-      alert('Error de conexión al guardar la orden');
+      const itemsPayload = $cart.map((item) => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        price: item.product.price,
+      }));
+      await apiSaveTableOrder($selectedTable.id, itemsPayload);
+      selectedTable.set(null);
+      cart.set([]);
+      triggerRefresh();
+      activeTab.set('tables');
+    } catch (e: any) {
+      alert(e.message || 'Error al guardar la orden');
     }
   }
 
   async function exitTableMode() {
     if ($selectedTable && $cart.length === 0) {
       try {
-        await fetch(`/api/tables/${$selectedTable.id}/cancel`, { method: 'POST' });
+        await apiCancelTableOrder($selectedTable.id);
       } catch (e) {
         console.error('Error freeing empty table on exit:', e);
       }
@@ -260,161 +236,156 @@
   }
 </script>
 
-<!-- Snippets for structuring layout elements -->
-{#snippet catalogHeader()}
-  <div class="catalog-header glass-panel">
-    <div class="search-bar-container">
-      <span class="search-icon">🔍</span>
-      <input
-        type="text"
-        placeholder="Buscar producto por nombre o escanear código SKU..."
-        bind:value={searchQuery}
-        bind:this={barcodeSearchInput}
-        class="search-input"
-      />
-    </div>
+<div class="checkout-layout">
+  <!-- Left Side: Product Grid -->
+  <div class="catalog-section">
+    {#await initPromise}
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center; min-height: 400px; width: 100%;">
+        <Spinner size="40px" />
+      </div>
+    {:then}
+      <!-- Header with Search & Tabs -->
+      <div class="catalog-header glass-panel">
+        <div class="search-bar-container">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar producto por nombre o escanear código SKU..."
+            bind:value={searchQuery}
+            bind:this={barcodeSearchInput}
+            class="search-input"
+          />
+        </div>
 
-    <div class="tabs-and-filters">
-      <div class="dept-tabs">
-        <button
-          class="tab-btn"
-          class:active={activeDept === 'MARKET'}
-          onclick={() => { activeDept = 'MARKET'; selectedCategory = ''; }}
-        >
-          🍏 Mercado Saludable
-        </button>
-        <button
-          class="tab-btn"
-          class:active={activeDept === 'CAFE'}
-          onclick={() => { activeDept = 'CAFE'; selectedCategory = ''; }}
-        >
-          ☕ Café
-        </button>
+        <div class="tabs-and-filters">
+          <div class="dept-tabs">
+            <button
+              class="tab-btn"
+              class:active={activeDept === 'MARKET'}
+              onclick={() => { activeDept = 'MARKET'; selectedCategory = ''; }}
+            >
+              🍏 Mercado Saludable
+            </button>
+            <button
+              class="tab-btn"
+              class:active={activeDept === 'CAFE'}
+              onclick={() => { activeDept = 'CAFE'; selectedCategory = ''; }}
+            >
+              ☕ Café
+            </button>
+          </div>
+
+          <select bind:value={selectedCategory} class="category-select">
+            <option value="">Todas las Categorías</option>
+            {#each $categories as cat}
+              <option value={cat.id}>{cat.name}</option>
+            {/each}
+          </select>
+        </div>
       </div>
 
-      <select bind:value={selectedCategory} class="category-select">
-        <option value="">Todas las Categorías</option>
-        {#each $categories as cat}
-          <option value={cat.id}>{cat.name}</option>
+      <!-- Products Grid -->
+      <div class="products-grid scroll-y">
+        {#each filteredProducts as p}
+          <ProductCard product={p} onclick={() => addToCart(p)} />
+        {:else}
+          <div class="no-results flex-center glass-panel animate-fade-in">
+            <p>No se encontraron productos en esta sección.</p>
+          </div>
         {/each}
-      </select>
-    </div>
+      </div>
+    {:catch error}
+      <div class="error-banner animate-fade-in" style="margin: 20px;">
+        Error al cargar catálogo de productos: {error.message}
+      </div>
+    {/await}
   </div>
-{/snippet}
 
-{#snippet productCard(p: any)}
-  <button class="product-card glass-panel animate-scale-up" onclick={() => addToCart(p)}>
-    <div class="product-header">
-      <span class="badge" class:badge-market={p.department === 'MARKET'} class:badge-cafe={p.department === 'CAFE'}>
-        {p.department === 'MARKET' ? 'Mercado' : 'Café'}
-      </span>
-      {#if p.isRawMaterial}
-        <span class="badge badge-raw">Insumo</span>
+  <!-- Right Side: Shopping Cart -->
+  <div class="cart-section glass-panel">
+    {#if $selectedTable}
+      <div class="table-mode-banner">
+        <span>📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
+        <button class="btn-exit-table" onclick={exitTableMode} title="Salir de la mesa sin guardar cambios locales">
+          Volver ↩
+        </button>
+      </div>
+    {/if}
+
+    <div class="cart-header">
+      <h2>Carrito de Compra</h2>
+      <button class="btn btn-secondary" onclick={clearCart} disabled={$cart.length === 0}>
+        Vaciar
+      </button>
+    </div>
+
+    <div class="cart-items scroll-y">
+      {#each $cart as item}
+        <CartItem {item} onupdateqty={updateQuantity} onremove={removeFromCart} />
+      {:else}
+        <div class="empty-cart flex-center">
+          🛒 Carrito Vacío
+        </div>
+      {/each}
+    </div>
+
+    <div class="cart-footer">
+      <div class="total-row">
+        <span>Total a Pagar</span>
+        <span class="total-amount">${$cartTotal.toLocaleString()}</span>
+      </div>
+      {#if $selectedTable}
+        <div class="table-action-buttons">
+          <button class="btn btn-general checkout-btn flex-1" onclick={openCheckout} disabled={$cart.length === 0}>
+            Cobrar Mesa 💳
+          </button>
+          <button class="btn btn-market save-table-btn" onclick={saveTableOrder} title="Guardar cambios de la mesa">
+            Guardar Mesa 💾
+          </button>
+        </div>
+      {:else}
+        <button class="btn btn-general checkout-btn" onclick={openCheckout} disabled={$cart.length === 0}>
+          Cobrar y Registrar 💳
+        </button>
       {/if}
     </div>
-    <h3 class="product-name">{p.name}</h3>
-    <p class="product-sku">{p.sku}</p>
-    
-    <div class="product-footer">
-      <span class="product-price">${p.price.toLocaleString()}</span>
-      <span class="product-stock" class:out={p.stock <= 0 && !(p.department === 'CAFE' && p.stock >= 900)}>
-        {#if p.department === 'CAFE' && p.stock >= 900}
-          Ilimitado
-        {:else}
-          Stock: {p.stock}
+  </div>
+</div>
+
+<!-- ==========================================
+     CHECKOUT / PAYMENT DIALOG MODAL
+     ========================================== -->
+{#if showPaymentModal}
+
+
+  <div class="modal-overlay flex-center animate-fade-in">
+    <div class="modal-container glass-panel animate-scale-up">
+      {#if !successReceipt}
+        <div class="modal-header">
+          <h2>Registrar Pago Dividido</h2>
+          <button class="close-modal-btn" onclick={closePaymentModal}>✕</button>
+        </div>
+
+        {#if errorMessage}
+          <div class="error-banner">{errorMessage}</div>
         {/if}
-      </span>
-    </div>
-  </button>
-{/snippet}
 
-{#snippet tableBanner()}
-  {#if $selectedTable}
-    <div class="table-mode-banner">
-      <span>📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
-      <button class="btn-exit-table" onclick={exitTableMode} title="Salir de la mesa sin guardar cambios locales">
-        Volver ↩
-      </button>
-    </div>
-  {/if}
-{/snippet}
+        <div class="payment-math-container">
+          <MathCard label="Total Venta" value={"$" + $cartTotal.toLocaleString()} valueClass="text-general" />
+          <MathCard label="Registrado" value={"$" + totalPaid.toLocaleString()} valueClass="text-market" />
+          <MathCard label="Restante" value={"$" + remainingToPay.toLocaleString()} valueClass={remainingToPay > 0 ? 'text-danger' : 'text-market'} />
+        </div>
 
-{#snippet cartItemRow(item: any)}
-  <div class="cart-item animate-fade-in">
-    <div class="item-details">
-      <span class="item-name">{item.product.name}</span>
-      <span class="item-price">${item.product.price.toLocaleString()} c/u</span>
-    </div>
-
-    <div class="item-actions">
-      <div class="qty-controls">
-        <button class="qty-btn" onclick={() => updateQuantity(item.product.id, -1)}>-</button>
-        <span class="qty-val">{item.quantity}</span>
-        <button class="qty-btn" onclick={() => updateQuantity(item.product.id, 1)}>+</button>
-      </div>
-      
-      <span class="item-subtotal">${(item.product.price * item.quantity).toLocaleString()}</span>
-      
-      <button class="remove-btn" onclick={() => removeFromCart(item.product.id)}>
-        ❌
-      </button>
-    </div>
-  </div>
-{/snippet}
-
-{#snippet cartFooter()}
-  <div class="cart-footer">
-    <div class="total-row">
-      <span>Total a Pagar</span>
-      <span class="total-amount">${$cartTotal.toLocaleString()}</span>
-    </div>
-    {#if $selectedTable}
-      <div class="table-action-buttons">
-        <button class="btn btn-general checkout-btn flex-1" onclick={openCheckout} disabled={$cart.length === 0}>
-          Cobrar Mesa 💳
-        </button>
-        <button class="btn btn-market save-table-btn" onclick={saveTableOrder} title="Guardar cambios de la mesa">
-          Guardar Mesa 💾
-        </button>
-      </div>
-    {:else}
-      <button class="btn btn-general checkout-btn" onclick={openCheckout} disabled={$cart.length === 0}>
-        Cobrar y Registrar 💳
-      </button>
-    {/if}
-  </div>
-{/snippet}
-
-{#snippet addPaymentSection()}
-  <div class="add-payment-section">
-    <h3>Agregar Método de Pago</h3>
-    <div class="payment-inputs">
-      <div class="method-selector">
-        <button
-          type="button"
-          class="method-btn"
-          class:active={currentMethod === 'CASH'}
-          onclick={() => { currentMethod = 'CASH'; currentAmountInput = remainingToPay.toString(); }}
-        >
-          💵 Efectivo
-        </button>
-        <button
-          type="button"
-          class="method-btn"
-          class:active={currentMethod === 'CARD'}
-          onclick={() => { currentMethod = 'CARD'; currentAmountInput = remainingToPay.toString(); }}
-        >
-          💳 Tarjeta
-        </button>
-        <button
-          type="button"
-          class="method-btn"
-          class:active={currentMethod === 'TRANSFER'}
-          onclick={() => { currentMethod = 'TRANSFER'; currentAmountInput = remainingToPay.toString(); }}
-        >
-          📲 Transferencia
-        </button>
-      </div>
+        <!-- Add Payment Section -->
+        {#if remainingToPay > 0}
+          <div class="add-payment-section">
+            <h3>Agregar Método de Pago</h3>
+            <div class="payment-inputs">
+              <div class="method-selector">
+                <MethodBtn method="CASH" currentMethod={currentMethod} label="💵 Efectivo" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
+                <MethodBtn method="CARD" currentMethod={currentMethod} label="💳 Tarjeta" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
+                <MethodBtn method="TRANSFER" currentMethod={currentMethod} label="📲 Transferencia" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
+              </div>
 
       <div class="amount-input-row">
         <input
@@ -465,14 +436,11 @@
 
     <div class="receipt-divider"></div>
 
-    <div class="receipt-items">
-      {#each successReceipt.items as item}
-        <div class="receipt-item">
-          <span>{item.product.name} x{item.quantity}</span>
-          <span>${(item.product.price * item.quantity).toLocaleString()}</span>
-        </div>
-      {/each}
-    </div>
+          <div class="receipt-items">
+            {#each successReceipt.items as item}
+              <ReceiptItem {item} />
+            {/each}
+          </div>
 
     <div class="receipt-divider"></div>
 
@@ -481,26 +449,18 @@
       <span>${successReceipt.total.toLocaleString()}</span>
     </div>
 
-    <div class="receipt-payments">
-      <h4>Detalle de Pago:</h4>
-      {#each successReceipt.payments as pay}
-        <div class="receipt-payment-row">
-          <span>
-            {#if pay.method === 'CASH'}💵 Efectivo
-            {:else if pay.method === 'CARD'}💳 Tarjeta
-            {:else if pay.method === 'TRANSFER'}📲 Transferencia
+          <div class="receipt-payments">
+            <h4>Detalle de Pago:</h4>
+            {#each successReceipt.payments as pay}
+              <ReceiptPaymentRow {pay} />
+            {/each}
+            {#if successReceipt.change > 0}
+              <div class="receipt-payment-row change-row">
+                <span>Cambio Entregado:</span>
+                <span>${successReceipt.change.toLocaleString()}</span>
+              </div>
             {/if}
-          </span>
-          <span>${pay.amount.toLocaleString()}</span>
-        </div>
-      {/each}
-      {#if successReceipt.change > 0}
-        <div class="receipt-payment-row change-row">
-          <span>Cambio Entregado:</span>
-          <span>${successReceipt.change.toLocaleString()}</span>
-        </div>
-      {/if}
-    </div>
+          </div>
 
     <button class="btn btn-general print-btn" onclick={closePaymentModal}>
       Cerrar e Ir a Nueva Venta
@@ -718,90 +678,7 @@
     overflow-y: auto;
   }
 
-  .product-card {
-    text-align: left;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    cursor: pointer;
-    background: var(--bg-glass);
-    border: 1px solid var(--border-glass);
-    outline: none;
-  }
-  
-  .product-card:hover {
-    border-color: var(--color-general);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  }
 
-  .product-header {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 10px;
-  }
-
-  .badge {
-    font-size: 0.72rem;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
-
-  .badge-market {
-    background: var(--color-market-glow);
-    color: var(--color-market);
-  }
-
-  .badge-cafe {
-    background: var(--color-cafe-glow);
-    color: var(--color-cafe);
-  }
-
-  .badge-raw {
-    background: rgba(99, 102, 241, 0.15);
-    color: #a5b4fc;
-  }
-
-  .product-name {
-    font-size: 1rem;
-    font-weight: 500;
-    margin-bottom: 4px;
-    color: var(--text-primary);
-    line-height: 1.25;
-  }
-
-  .product-sku {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-bottom: 14px;
-  }
-
-  .product-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid var(--border-glass);
-    padding-top: 10px;
-  }
-
-  .product-price {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-
-  .product-stock {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-  }
-
-  .product-stock.out {
-    color: var(--color-danger);
-    font-weight: 600;
-  }
 
   .no-results {
     grid-column: 1 / -1;
@@ -836,81 +713,7 @@
     flex-direction: column;
   }
 
-  .cart-item {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border-glass);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
 
-  .item-details {
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .item-name {
-    font-weight: 500;
-    font-size: 0.92rem;
-  }
-
-  .item-price {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-  }
-
-  .item-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .qty-controls {
-    display: flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-  }
-
-  .qty-btn {
-    border: none;
-    background: transparent;
-    color: var(--text-primary);
-    width: 28px;
-    height: 28px;
-    cursor: pointer;
-    font-weight: 600;
-    outline: none;
-  }
-  .qty-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .qty-val {
-    width: 30px;
-    text-align: center;
-    font-size: 0.88rem;
-    font-weight: 500;
-  }
-
-  .item-subtotal {
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-
-  .remove-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 0.9rem;
-    padding: 4px;
-    border-radius: 4px;
-  }
-  .remove-btn:hover {
-    background: rgba(244, 63, 94, 0.1);
-  }
 
   .empty-cart {
     height: 100%;
@@ -995,27 +798,7 @@
     gap: 12px;
   }
 
-  .math-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
 
-  .math-card span {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-  }
-
-  .math-card strong {
-    font-size: 1.2rem;
-    font-weight: 700;
-  }
 
   .add-payment-section {
     border-top: 1px solid var(--border-glass);
@@ -1039,28 +822,7 @@
     margin-bottom: 10px;
   }
 
-  .method-btn {
-    border: 1px solid var(--border-glass);
-    background: rgba(255, 255, 255, 0.02);
-    color: var(--text-secondary);
-    padding: 10px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-size: 0.88rem;
-    font-weight: 500;
-    transition: var(--transition-fast);
-    outline: none;
-  }
 
-  .method-btn:hover {
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .method-btn.active {
-    background: var(--color-general-glow);
-    color: #a5b4fc;
-    border-color: var(--color-general);
-  }
 
   .amount-input-row {
     display: flex;
@@ -1176,12 +938,7 @@
     padding-right: 4px;
   }
 
-  .receipt-item {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-  }
+
 
   .receipt-total {
     display: flex;
@@ -1202,12 +959,7 @@
     margin-bottom: 6px;
   }
 
-  .receipt-payment-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-  }
+
 
   .change-row {
     color: var(--color-cafe);

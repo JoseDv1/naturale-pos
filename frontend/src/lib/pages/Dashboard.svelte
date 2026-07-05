@@ -1,14 +1,30 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
+  import { getDashboardData, getInventoryAlerts } from '../api/reports';
   import { user, activeTab, refreshTrigger } from '../store';
+  import KpiCard from '../components/molecules/KpiCard.svelte';
+  import DeptCard from '../components/organisms/DeptCard.svelte';
+  import TodoItem from '../components/molecules/TodoItem.svelte';
+  import Button from '../components/atoms/Button.svelte';
 
-  let dashboardData = $state<any>(null);
-  let lowStockAlerts = $state<any[]>([]);
-  let isLoading = $state(true);
-  let errorMsg = $state('');
+  let dashboardPromise = $state<Promise<[any, any[]]>>(Promise.all([getDashboardData(), getInventoryAlerts()]));
 
-  onMount(() => {
-    loadDashboardData();
+  function loadDashboardData() {
+    dashboardPromise = Promise.all([getDashboardData(), getInventoryAlerts()]);
+  }
+
+  $effect(() => {
+    untrack(() => {
+      // Load todos from localStorage
+      try {
+        const saved = localStorage.getItem('naturale_dashboard_todos');
+        if (saved) {
+          todos = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('Failed to load todos from localStorage', e);
+      }
+    });
   });
 
   $effect(() => {
@@ -17,37 +33,11 @@
     }
   });
 
-  async function loadDashboardData() {
-    isLoading = true;
-    errorMsg = '';
-    try {
-      const res = await fetch('/api/reports/dashboard');
-      const alertRes = await fetch('/api/reports/inventory-alerts');
-      if (res.ok && alertRes.ok) {
-        dashboardData = await res.json();
-        lowStockAlerts = await alertRes.json();
-      } else {
-        errorMsg = 'Error al cargar los datos del panel';
-      }
-    } catch (e) {
-      errorMsg = 'Error de conexión con el servidor';
-    } finally {
-      isLoading = false;
-    }
-  }
-
   // Quick navigation helpers
   function navigateTo(tab: string) {
     activeTab.set(tab);
     window.location.hash = `#${tab}`;
   }
-
-  // Derived KPIs
-  let margin = $derived(
-    dashboardData && dashboardData.CONSOLIDATED.revenue > 0
-      ? (dashboardData.CONSOLIDATED.netProfit / dashboardData.CONSOLIDATED.revenue) * 100
-      : 0
-  );
 
   // --- TODO List Logic ---
   interface TodoItem {
@@ -58,18 +48,6 @@
 
   let todos = $state<TodoItem[]>([]);
   let newTodoText = $state('');
-
-  onMount(() => {
-    // Load todos from localStorage
-    try {
-      const saved = localStorage.getItem('naturale_dashboard_todos');
-      if (saved) {
-        todos = JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error('Failed to load todos from localStorage', e);
-    }
-  });
 
   // Sync todos to localStorage
   $effect(() => {
@@ -84,7 +62,7 @@
     if (newTodoText.trim() === '') return;
     todos = [...todos, {
       id: crypto.randomUUID(),
-      text: newTodoText.trim(),
+      text: newTodoText,
       completed: false
     }];
     newTodoText = '';
@@ -103,26 +81,18 @@
   let calcEquation = $state('');
   let isResetOnNext = $state(false);
 
-  function pressKey(key: string) {
-    if (isResetOnNext) {
-      calcDisplay = '';
+  function pressKey(val: string) {
+    if (calcDisplay === '0' || isResetOnNext) {
+      calcDisplay = val;
       isResetOnNext = false;
-    }
-
-    if (calcDisplay === '0' && key !== '.') {
-      calcDisplay = key;
     } else {
-      if (key === '.' && calcDisplay.includes('.')) return;
-      calcDisplay += key;
+      calcDisplay += val;
     }
   }
 
   function pressOperator(op: string) {
-    if (isResetOnNext) {
-      isResetOnNext = false;
-    }
-    calcEquation += calcDisplay + ' ' + op + ' ';
-    calcDisplay = '0';
+    calcEquation = calcDisplay + ' ' + op + ' ';
+    isResetOnNext = true;
   }
 
   function clearCalc() {
@@ -157,138 +127,35 @@
       <h2>Inicio y Resumen General 📈</h2>
       <p class="subtitle">Bienvenido, {$user?.name || 'Usuario'}. Aquí tienes el resumen operacional del local para el día de hoy.</p>
     </div>
-    <button class="btn btn-secondary" onclick={loadDashboardData} disabled={isLoading}>
+    <button class="btn btn-secondary" onclick={loadDashboardData}>
       🔄 Actualizar Datos
     </button>
   </div>
-{/snippet}
 
-{#snippet loadingState()}
-  <div class="loading-state flex-center glass-panel">
-    <div class="spinner"></div>
-    <p>Cargando resumen operacional...</p>
-  </div>
-{/snippet}
-
-{#snippet kpiCard(title: string, value: string | number, desc: string, icon: string, textClass: string)}
-  <div class="kpi-card glass-panel animate-scale-up">
-    <div class="kpi-icon">{icon}</div>
-    <div class="kpi-content">
-      <span class="kpi-title">{title}</span>
-      <strong class="kpi-value {textClass}">{value}</strong>
-      <span class="kpi-desc">{desc}</span>
+  {#await dashboardPromise}
+    <div class="loading-state flex-center glass-panel">
+      <div class="spinner"></div>
+      <p>Cargando resumen operacional...</p>
     </div>
-  </div>
-{/snippet}
-
-{#snippet deptCard(name: string, netProfit: number, revenue: number, expenses: number, nameClass: string, bgClass: string, widthPercent: number)}
-  <div class="dept-card">
-    <div class="dept-title-row">
-      <span class="dept-name {nameClass}">{name}</span>
-      <strong class="dept-net-profit">${netProfit.toLocaleString()}</strong>
-    </div>
-    <div class="progress-bar-container">
-      <div class="progress-bar {bgClass}" style="width: {widthPercent}%"></div>
-    </div>
-    <div class="dept-details">
-      <span>Ventas: ${revenue.toLocaleString()}</span>
-      <span>Gastos: ${expenses.toLocaleString()}</span>
-    </div>
-  </div>
-{/snippet}
-
-{#snippet paymentRow(method: string, amount: number)}
-  <div class="payment-row">
-    <div class="payment-label">
-      <span>
-        {#if method === 'CASH'}💵 Efectivo
-        {:else if method === 'CARD'}💳 Tarjeta
-        {:else if method === 'TRANSFER'}📲 Transferencia
-        {:else}🔄 Interno
-        {/if}
-      </span>
-      <strong>${amount.toLocaleString()}</strong>
-    </div>
-    <div class="progress-bar-container">
-      <div class="progress-bar bg-general" style="width: {dashboardData.CONSOLIDATED.revenue > 0 ? (amount / dashboardData.CONSOLIDATED.revenue) * 100 : 0}%"></div>
-    </div>
-  </div>
-{/snippet}
-
-{#snippet alertItemRow(item: any)}
-  <div class="alert-item animate-fade-in">
-    <div class="alert-info">
-      <strong class="product-name">{item.name}</strong>
-      <span class="product-sku">SKU: {item.sku} | Cat: {item.category.name}</span>
-    </div>
-    <div class="alert-badge" class:badge-zero={item.stock === 0} class:badge-low={item.stock > 0}>
-      {item.stock === 0 ? 'Sin Stock' : `${item.stock} unidades`}
-    </div>
-  </div>
-{/snippet}
-
-{#snippet todoItemRow(todo: any)}
-  <div class="todo-item" class:completed={todo.completed}>
-    <label class="todo-label">
-      <input type="checkbox" checked={todo.completed} onchange={() => toggleTodo(todo.id)} />
-      <span class="todo-text">{todo.text}</span>
-    </label>
-    <button class="remove-todo-btn" onclick={() => deleteTodo(todo.id)}>✕</button>
-  </div>
-{/snippet}
-
-<!-- Main View -->
-<div class="dashboard-container flex-column animate-fade-in">
-  {@render headerSection()}
-
-  {#if errorMsg}
-    <div class="error-banner">{errorMsg}</div>
-  {/if}
-
-  {#if isLoading && !dashboardData}
-    {@render loadingState()}
-  {:else if dashboardData}
+  {:then [data, alerts]}
     <!-- Main Dashboard Grid -->
     <div class="dashboard-grid">
-      
       <!-- 1. KPI Panel (Row of 4 Cards) -->
       <div class="kpis-row">
-        {@render kpiCard('Ingresos Brutos', `$${dashboardData.CONSOLIDATED.revenue.toLocaleString()}`, 'Total ventas no anuladas', '💰', 'text-general')}
-        {@render kpiCard('Egresos Totales', `$${dashboardData.CONSOLIDATED.expenses.toLocaleString()}`, 'Operacionales e insumos', '💸', 'text-danger')}
-        {@render kpiCard(
-          'Utilidad Neta', 
-          `$${dashboardData.CONSOLIDATED.netProfit.toLocaleString()}`, 
-          'Ingresos - Costos - Gastos', 
-          '🌿', 
-          dashboardData.CONSOLIDATED.netProfit >= 0 ? 'text-general' : 'text-danger'
-        )}
-        {@render kpiCard('Margen Neto', `${margin.toFixed(1)}%`, 'Retorno por cada peso vendido', '📊', 'text-general')}
+        <KpiCard icon="💰" title="Ingresos Brutos" value={"$" + data.CONSOLIDATED.revenue.toLocaleString()} desc="Total ventas no anuladas" textClass="text-general" />
+        <KpiCard icon="💸" title="Egresos Totales" value={"$" + data.CONSOLIDATED.expenses.toLocaleString()} desc="Operacionales e insumos" textClass="text-danger" />
+        <KpiCard icon="🌿" title="Utilidad Neta" value={"$" + data.CONSOLIDATED.netProfit.toLocaleString()} desc="Ingresos - Costos - Gastos" textClass={data.CONSOLIDATED.netProfit >= 0 ? 'text-general' : 'text-danger'} />
+        <KpiCard icon="📊" title="Margen Neto" value={(data.CONSOLIDATED.revenue > 0 ? (data.CONSOLIDATED.netProfit / data.CONSOLIDATED.revenue) * 100 : 0).toFixed(1) + "%"} desc="Retorno por cada peso vendido" textClass="text-general" />
       </div>
-
+      
       <!-- 2. Middle Row: Departments & Payments -->
       <div class="dashboard-row">
         <!-- Department breakdown -->
         <div class="dashboard-col glass-panel flex-column animate-scale-up">
           <h3>Desglose por Departamento</h3>
           <div class="dept-comparison">
-            {@render deptCard(
-              '🍏 Mercado Saludable', 
-              dashboardData.MARKET.netProfit, 
-              dashboardData.MARKET.revenue, 
-              dashboardData.MARKET.expenses, 
-              'text-market', 
-              'bg-market', 
-              dashboardData.CONSOLIDATED.revenue > 0 ? (dashboardData.MARKET.revenue / dashboardData.CONSOLIDATED.revenue) * 100 : 0
-            )}
-            {@render deptCard(
-              '☕ Barra de Café', 
-              dashboardData.CAFE.netProfit, 
-              dashboardData.CAFE.revenue, 
-              dashboardData.CAFE.expenses, 
-              'text-cafe', 
-              'bg-cafe', 
-              dashboardData.CONSOLIDATED.revenue > 0 ? (dashboardData.CAFE.revenue / dashboardData.CONSOLIDATED.revenue) * 100 : 0
-            )}
+            <DeptCard name="🍏 Mercado Saludable" profit={data.MARKET.netProfit} revenue={data.MARKET.revenue} expenses={data.MARKET.expenses} progressWidth={data.CONSOLIDATED.revenue > 0 ? (data.MARKET.revenue / data.CONSOLIDATED.revenue) * 100 : 0} colorClass="bg-market" textClass="text-market" />
+            <DeptCard name="☕ Barra de Café" profit={data.CAFE.netProfit} revenue={data.CAFE.revenue} expenses={data.CAFE.expenses} progressWidth={data.CONSOLIDATED.revenue > 0 ? (data.CAFE.revenue / data.CONSOLIDATED.revenue) * 100 : 0} colorClass="bg-cafe" textClass="text-cafe" />
           </div>
         </div>
 
@@ -296,8 +163,24 @@
         <div class="dashboard-col glass-panel flex-column animate-scale-up">
           <h3>Distribución de Métodos de Pago</h3>
           <div class="payment-distribution">
-            {#each Object.entries(dashboardData.paymentMethods) as [method, amount]}
-              {@render paymentRow(method, amount as number)}
+            {#each Object.entries(data.paymentMethods) as [method, amount]}
+              {#if amount > 0 || true}
+                <div class="payment-row">
+                  <div class="payment-label">
+                    <span>
+                      {#if method === 'CASH'}💵 Efectivo
+                      {:else if method === 'CARD'}💳 Tarjeta
+                      {:else if method === 'TRANSFER'}📲 Transferencia
+                      {:else}🔄 Interno
+                      {/if}
+                    </span>
+                    <strong>${amount.toLocaleString()}</strong>
+                  </div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar bg-general" style="width: {data.CONSOLIDATED.revenue > 0 ? (amount / data.CONSOLIDATED.revenue) * 100 : 0}%"></div>
+                  </div>
+                </div>
+              {/if}
             {/each}
           </div>
         </div>
@@ -309,8 +192,16 @@
         <div class="dashboard-col glass-panel flex-column flex-1 animate-scale-up" style="max-height: 250px;">
           <h3>Alertas de Inventario Crítico ⚠️</h3>
           <div class="alerts-list scroll-y">
-            {#each lowStockAlerts as item}
-              {@render alertItemRow(item)}
+            {#each alerts as item}
+              <div class="alert-item animate-fade-in">
+                <div class="alert-info">
+                  <strong class="product-name">{item.name}</strong>
+                  <span class="product-sku">SKU: {item.sku} | Cat: {item.category.name}</span>
+                </div>
+                <div class="alert-badge" class:badge-zero={item.stock === 0} class:badge-low={item.stock > 0}>
+                  {item.stock === 0 ? 'Sin Stock' : `${item.stock} unidades`}
+                </div>
+              </div>
             {:else}
               <div class="empty-alerts flex-center">
                 ✨ ¡Todo al día! No hay productos con bajo inventario.
@@ -358,7 +249,7 @@
           </div>
           <div class="todos-list scroll-y">
             {#each todos as todo (todo.id)}
-              {@render todoItemRow(todo)}
+              <TodoItem {todo} ontoggle={toggleTodo} ondelete={deleteTodo} />
             {:else}
               <div class="empty-todos flex-center">
                 ✨ ¡No hay tareas pendientes! Disfruta tu día.
@@ -376,34 +267,34 @@
               <span class="calc-val">{calcDisplay}</span>
             </div>
             <div class="calc-keyboard">
-              <button class="calc-btn op-clear" onclick={clearCalc}>C</button>
-              <button class="calc-btn op" onclick={() => pressOperator('/')}>&divide;</button>
-              <button class="calc-btn op" onclick={() => pressOperator('*')}>&times;</button>
-              <button class="calc-btn op" onclick={() => pressOperator('-')}>&minus;</button>
+              <Button label="C" variant="calc-clear" onclick={clearCalc} />
+              <Button label="&amp;divide;" variant="calc-op" onclick={() => pressOperator('/')} />
+              <Button label="&amp;times;" variant="calc-op" onclick={() => pressOperator('*')} />
+              <Button label="&amp;minus;" variant="calc-op" onclick={() => pressOperator('-')} />
 
-              <button class="calc-btn num" onclick={() => pressKey('7')}>7</button>
-              <button class="calc-btn num" onclick={() => pressKey('8')}>8</button>
-              <button class="calc-btn num" onclick={() => pressKey('9')}>9</button>
-              <button class="calc-btn op" onclick={() => pressOperator('+')}>+</button>
+              <Button label="7" variant="calc-num" onclick={() => pressKey('7')} />
+              <Button label="8" variant="calc-num" onclick={() => pressKey('8')} />
+              <Button label="9" variant="calc-num" onclick={() => pressKey('9')} />
+              <Button label="+" variant="calc-op" onclick={() => pressOperator('+')} />
 
-              <button class="calc-btn num" onclick={() => pressKey('4')}>4</button>
-              <button class="calc-btn num" onclick={() => pressKey('5')}>5</button>
-              <button class="calc-btn num" onclick={() => pressKey('6')}>6</button>
-              <button class="calc-btn op-equal" onclick={calculateResult}>=</button>
+              <Button label="4" variant="calc-num" onclick={() => pressKey('4')} />
+              <Button label="5" variant="calc-num" onclick={() => pressKey('5')} />
+              <Button label="6" variant="calc-num" onclick={() => pressKey('6')} />
+              <Button label="=" variant="calc-equal" onclick={calculateResult} />
 
-              <button class="calc-btn num" onclick={() => pressKey('1')}>1</button>
-              <button class="calc-btn num" onclick={() => pressKey('2')}>2</button>
-              <button class="calc-btn num" onclick={() => pressKey('3')}>3</button>
-              <button class="calc-btn num-zero" onclick={() => pressKey('0')}>0</button>
+              <Button label="1" variant="calc-num" onclick={() => pressKey('1')} />
+              <Button label="2" variant="calc-num" onclick={() => pressKey('2')} />
+              <Button label="3" variant="calc-num" onclick={() => pressKey('3')} />
+              <Button label="0" variant="calc-num-zero" onclick={() => pressKey('0')} />
 
-              <button class="calc-btn num" onclick={() => pressKey('.')}>.</button>
+              <Button label="." variant="calc-num" onclick={() => pressKey('.')} />
             </div>
           </div>
         </div>
       </div>
 
     </div>
-  {/if}
+  {/await}
 </div>
 
 <style>
@@ -481,47 +372,7 @@
     gap: 16px;
   }
 
-  .kpi-card {
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
 
-  .kpi-icon {
-    font-size: 2.2rem;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    padding: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-glass);
-  }
-
-  .kpi-content {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .kpi-title {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 2px;
-  }
-
-  .kpi-value {
-    font-size: 1.45rem;
-    font-weight: 700;
-  }
-
-  .kpi-desc {
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
 
   .dashboard-row {
     display: grid;
@@ -544,62 +395,7 @@
     margin-bottom: 4px;
   }
 
-  /* Dept cards */
-  .dept-comparison {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
 
-  .dept-card {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .dept-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .dept-name {
-    font-size: 0.88rem;
-    font-weight: 500;
-  }
-
-  .dept-net-profit {
-    font-size: 0.95rem;
-    font-weight: 600;
-  }
-
-  .progress-bar-container {
-    height: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-    overflow: hidden;
-    width: 100%;
-  }
-
-  .progress-bar {
-    height: 100%;
-    border-radius: 4px;
-  }
-
-  .bg-market {
-    background: var(--color-market);
-  }
-
-  .bg-cafe {
-    background: var(--color-cafe);
-  }
-
-  .dept-details {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-  }
 
   /* Payment distribution */
   .payment-distribution {
@@ -754,64 +550,7 @@
     gap: 8px;
   }
 
-  .todo-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.01);
-    border: 1px solid var(--border-glass);
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    transition: var(--transition-fast);
-  }
 
-  .todo-item:hover {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.15);
-  }
-
-  .todo-item.completed {
-    opacity: 0.5;
-  }
-
-  .todo-item.completed .todo-text {
-    text-decoration: line-through;
-    color: var(--text-muted);
-  }
-
-  .todo-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    flex: 1;
-  }
-
-  .todo-label input {
-    cursor: pointer;
-    width: 16px;
-    height: 16px;
-  }
-
-  .todo-text {
-    font-size: 0.85rem;
-    color: var(--text-primary);
-  }
-
-  .remove-todo-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: bold;
-    padding: 2px 6px;
-    transition: var(--transition-fast);
-  }
-
-  .remove-todo-btn:hover {
-    color: var(--color-danger);
-  }
 
   .empty-todos {
     height: 120px;
@@ -862,72 +601,5 @@
     gap: 8px;
   }
 
-  .calc-btn {
-    height: 42px;
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: var(--transition-fast);
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
 
-  .calc-btn:active {
-    transform: scale(0.95);
-  }
-
-  .calc-btn.num {
-    background: rgba(255, 255, 255, 0.02);
-    color: var(--text-primary);
-  }
-
-  .calc-btn.num:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .calc-btn.num-zero {
-    grid-column: span 2;
-    background: rgba(255, 255, 255, 0.02);
-    color: var(--text-primary);
-  }
-
-  .calc-btn.num-zero:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .calc-btn.op-clear {
-    grid-column: span 3;
-    background: rgba(244, 63, 94, 0.08);
-    border-color: rgba(244, 63, 94, 0.2);
-    color: var(--color-danger);
-  }
-
-  .calc-btn.op-clear:hover {
-    background: var(--color-danger-glow);
-    border-color: var(--color-danger);
-  }
-
-  .calc-btn.op {
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--color-general);
-  }
-
-  .calc-btn.op:hover {
-    background: var(--color-general-glow);
-  }
-
-  .calc-btn.op-equal {
-    background: var(--color-general);
-    color: #fff;
-    border-color: var(--color-general);
-  }
-
-  .calc-btn.op-equal:hover {
-    background: var(--color-general-hover);
-    transform: scale(1.02);
-  }
 </style>

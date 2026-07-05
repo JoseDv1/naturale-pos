@@ -1,6 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
   import { user, products, refreshTrigger, triggerRefresh } from '../store';
+  import { getExpenses, createExpense } from '../api/expenses';
+  import ExpenseRow from '../components/organisms/ExpenseRow.svelte';
+
+  import Spinner from '../components/atoms/Spinner.svelte';
 
   let currentSubTab = $state('log'); // 'log' | 'register'
   let expenseType = $state('operating'); // 'operating' | 'supplies'
@@ -23,9 +27,12 @@
   let currentQty = $state(1);
   let currentUnitCost = $state(0);
 
-  onMount(() => {
-    loadExpenses();
-  });
+  let expensesPromise = $state<Promise<any[]>>(
+    getExpenses().then((data) => {
+      expenses = data;
+      return data;
+    })
+  );
 
   $effect(() => {
     if ($refreshTrigger) {
@@ -33,15 +40,11 @@
     }
   });
 
-  async function loadExpenses() {
-    try {
-      const res = await fetch('/api/expenses');
-      if (res.ok) {
-        expenses = await res.json();
-      }
-    } catch (e) {
-      console.error('Error loading expenses:', e);
-    }
+  function loadExpenses() {
+    expensesPromise = getExpenses().then((data) => {
+      expenses = data;
+      return data;
+    });
   }
 
   // Update current unit cost when product is selected in Supplies Form
@@ -102,30 +105,21 @@
     }
 
     try {
-      const res = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          description: opDesc,
-          amount: amt,
-          category: opCategory,
-          department: opDept,
-          userId: $user?.id,
-        }),
-      });
-
-      if (res.ok) {
-        // Reset form
-        opDesc = '';
-        opAmount = '';
-        currentSubTab = 'log';
-        triggerRefresh();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al guardar el gasto');
-      }
-    } catch (e) {
-      alert('Error de conexión con el servidor');
+      const payload = {
+        description: opDesc,
+        amount: amt,
+        category: opCategory,
+        department: opDept,
+        userId: $user?.id,
+      };
+      await createExpense(payload);
+      // Reset form
+      opDesc = '';
+      opAmount = '';
+      currentSubTab = 'log';
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al guardar el gasto');
     }
   }
 
@@ -141,31 +135,22 @@
     }
 
     try {
-      const res = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          description: supDesc,
-          amount: suppliesTotalAmount,
-          category: 'supplies',
-          department: supDept,
-          userId: $user?.id,
-          items: addedItems,
-        }),
-      });
-
-      if (res.ok) {
-        // Reset form
-        supDesc = 'Compra de Mercancía / Suministros';
-        addedItems = [];
-        currentSubTab = 'log';
-        triggerRefresh();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al guardar el gasto de suministros');
-      }
-    } catch (e) {
-      alert('Error de conexión con el servidor');
+      const payload = {
+        description: supDesc,
+        amount: suppliesTotalAmount,
+        category: 'supplies',
+        department: supDept,
+        userId: $user?.id,
+        items: addedItems,
+      };
+      await createExpense(payload);
+      // Reset form
+      supDesc = 'Compra de Mercancía / Suministros';
+      addedItems = [];
+      currentSubTab = 'log';
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al guardar el gasto');
     }
   }
 
@@ -199,59 +184,39 @@
     </div>
 
     <div class="table-card glass-panel flex-1 scroll-y animate-scale-up">
-      <table class="pos-table">
-        <thead>
-          <tr>
-            <th>Fecha y Hora</th>
-            <th>Descripción</th>
-            <th>Categoría</th>
-            <th>Departamento</th>
-            <th>Productos Comprados</th>
-            <th class="text-right">Monto</th>
-            <th>Registrado Por</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each filteredExpenses as exp}
-            <tr class="animate-fade-in">
-              <td>{new Date(exp.date || exp.createdAt).toLocaleString()}</td>
-              <td>
-                <strong class="expense-desc-txt">{exp.description}</strong>
-              </td>
-              <td>
-                <span class="category-tag">{exp.category.toUpperCase()}</span>
-              </td>
-              <td>
-                <span class="badge" 
-                      class:badge-market={exp.department === 'MARKET'} 
-                      class:badge-cafe={exp.department === 'CAFE'}
-                      class:badge-general={exp.department === 'GENERAL'}>
-                  {exp.department === 'MARKET' ? 'Mercado' : exp.department === 'CAFE' ? 'Café' : 'General'}
-                </span>
-              </td>
-              <td>
-                {#if exp.items && exp.items.length > 0}
-                  <div class="exp-items-cell">
-                    {#each exp.items as item}
-                      <span>• {item.product.name} (x{item.quantity})</span>
-                    {/each}
-                  </div>
-                {:else}
-                  <span class="text-muted italic">N/A (Gasto Administrativo)</span>
-                {/if}
-              </td>
-              <td class="text-right">
-                <strong class="text-danger">${exp.amount.toLocaleString()}</strong>
-              </td>
-              <td>{exp.user?.name || 'Sistema'}</td>
-            </tr>
-          {:else}
+      {#await expensesPromise}
+        <div class="loading-state flex-center" style="padding: 40px 0;">
+          <Spinner size="40px" />
+          <p style="margin-top: 12px; color: var(--text-secondary);">Cargando egresos...</p>
+        </div>
+      {:then}
+        <table class="pos-table">
+          <thead>
             <tr>
-              <td colspan="7" class="text-center text-muted italic">No se han registrado egresos o compras de suministros aún.</td>
+              <th>Fecha y Hora</th>
+              <th>Descripción</th>
+              <th>Categoría</th>
+              <th>Departamento</th>
+              <th>Productos Comprados</th>
+              <th class="text-right">Monto</th>
+              <th>Registrado Por</th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {#each filteredExpenses as exp}
+              <ExpenseRow expense={exp} />
+            {:else}
+              <tr>
+                <td colspan="7" class="text-center text-muted italic">No se han registrado egresos o compras de suministros aún.</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {:catch error}
+        <div class="error-banner animate-fade-in" style="margin: 20px;">
+          Error al cargar egresos: {error.message}
+        </div>
+      {/await}
     </div>
   {:else}
     <!-- REGISTER WORKSPACE -->
@@ -507,51 +472,7 @@
     overflow-y: auto;
   }
 
-  .expense-desc-txt {
-    font-size: 0.92rem;
-    color: var(--text-primary);
-  }
 
-  .category-tag {
-    font-size: 0.75rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-glass);
-    padding: 4px 8px;
-    border-radius: 6px;
-    color: var(--text-secondary);
-    font-weight: 500;
-  }
-
-  .badge {
-    font-size: 0.72rem;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
-
-  .badge-market {
-    background: var(--color-market-glow);
-    color: var(--color-market);
-  }
-
-  .badge-cafe {
-    background: var(--color-cafe-glow);
-    color: var(--color-cafe);
-  }
-
-  .badge-general {
-    background: var(--color-general-glow);
-    color: #a5b4fc;
-  }
-
-  .exp-items-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-  }
 
   .text-right {
     text-align: right;

@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
   import { refreshTrigger, triggerRefresh } from '../store';
+  import { getDashboardData, getInventoryAlerts } from '../api/reports';
+  import { getSales, cancelSale as apiCancelSale } from '../api/sales';
+  import KpiCard from '../components/molecules/KpiCard.svelte';
+  import PayMethodBar from '../components/molecules/PayMethodBar.svelte';
+  import AlertItem from '../components/molecules/AlertItem.svelte';
+  import SaleRow from '../components/organisms/SaleRow.svelte';
+
+  import Spinner from '../components/atoms/Spinner.svelte';
 
   // Filters
   let startDate = $state('');
   let endDate = $state('');
   let activeTab = $state('CONSOLIDATED'); // 'CONSOLIDATED' | 'MARKET' | 'CAFE'
 
-  // Dashboard Data
-  let reportsData = $state<any>(null);
-  let lowStockAlerts = $state<any[]>([]);
-  let salesHistory = $state<any[]>([]);
-  let errorMsg = $state('');
-
-  onMount(() => {
-    loadReports();
-    loadLowStock();
-    loadSalesHistory();
-  });
+  let reportsPromise = $state<Promise<any>>(getDashboardData());
+  let lowStockPromise = $state<Promise<any[]>>(getInventoryAlerts());
+  let salesPromise = $state<Promise<any[]>>(getSales());
 
   $effect(() => {
     if ($refreshTrigger) {
@@ -27,64 +27,26 @@
     }
   });
 
-  async function loadReports() {
-    try {
-      errorMsg = '';
-      let url = '/api/reports/dashboard';
-      const params = new URLSearchParams();
-      if (startDate) params.append('start', startDate);
-      if (endDate) params.append('end', endDate);
-
-      const queryString = params.toString();
-      if (queryString) url += `?${queryString}`;
-
-      const res = await fetch(url);
-      if (res.ok) {
-        reportsData = await res.json();
-      } else {
-        errorMsg = 'Error al cargar datos financieros';
-      }
-    } catch (e) {
-      console.error('Error loading reports:', e);
-      errorMsg = 'Error de conexión';
-    }
+  function loadReports() {
+    reportsPromise = getDashboardData(startDate, endDate);
   }
 
-  async function loadLowStock() {
-    try {
-      const res = await fetch('/api/reports/inventory-alerts');
-      if (res.ok) {
-        lowStockAlerts = await res.json();
-      }
-    } catch (e) {
-      console.error('Error loading low stock alerts:', e);
-    }
+  function loadLowStock() {
+    lowStockPromise = getInventoryAlerts();
   }
 
-  async function loadSalesHistory() {
-    try {
-      const res = await fetch('/api/sales');
-      if (res.ok) {
-        salesHistory = await res.json();
-      }
-    } catch (e) {
-      console.error('Error loading sales history:', e);
-    }
+  function loadSalesHistory() {
+    salesPromise = getSales();
   }
 
   async function cancelSale(saleId: string) {
     if (!confirm('¿Estás seguro de que deseas ANULAR esta venta? Esto reintegrará el stock y cancelará los ingresos.')) return;
 
     try {
-      const res = await fetch(`/api/sales/${saleId}/cancel`, { method: 'POST' });
-      if (res.ok) {
-        triggerRefresh();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Error al cancelar la venta');
-      }
-    } catch (e) {
-      alert('Error de conexión al cancelar la venta');
+      await apiCancelSale(saleId);
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al cancelar la venta');
     }
   }
 </script>
@@ -111,11 +73,12 @@
     </div>
   </div>
 
-  {#if errorMsg}
-    <div class="error-banner">{errorMsg}</div>
-  {/if}
-
-  {#if reportsData}
+  {#await Promise.all([reportsPromise, lowStockPromise])}
+    <div class="loading-state flex-center glass-panel" style="padding: 40px 0;">
+      <Spinner size="40px" />
+      <p style="margin-top: 12px; color: var(--text-secondary);">Cargando estadísticas...</p>
+    </div>
+  {:then [data, alerts]}
     <!-- Tab Selector (Consolidated, Market, Cafe) -->
     <div class="tab-navigator glass-panel">
       <button class="tab-link" class:active={activeTab === 'CONSOLIDATED'} onclick={() => activeTab = 'CONSOLIDATED'}>
@@ -133,59 +96,25 @@
     <div class="dashboard-grid animate-scale-up">
       <!-- Ingresos -->
       {#if activeTab !== 'GENERAL'}
-        <div class="kpi-card glass-panel border-general">
-          <span class="kpi-label">Ingresos Totales (Ventas)</span>
-          <strong class="kpi-value text-general">
-            ${(reportsData[activeTab]?.revenue || 0).toLocaleString()}
-          </strong>
-          <span class="kpi-subtext">Ventas registradas en el período</span>
-        </div>
+        <KpiCard title="Ingresos Totales (Ventas)" value={"$" + (data[activeTab]?.revenue || 0).toLocaleString()} desc="Ventas registradas en el período" borderClass="border-general" textClass="text-general" animate={false} />
       {/if}
 
       <!-- Costo de Ventas -->
       {#if activeTab !== 'GENERAL'}
-        <div class="kpi-card glass-panel border-cafe">
-          <span class="kpi-label">Costo de Ventas (COGS)</span>
-          <strong class="kpi-value text-cafe">
-            ${(reportsData[activeTab]?.costOfSales || 0).toLocaleString()}
-          </strong>
-          <span class="kpi-subtext">Costo de compra de los artículos vendidos</span>
-        </div>
+        <KpiCard title="Costo de Ventas (COGS)" value={"$" + (data[activeTab]?.costOfSales || 0).toLocaleString()} desc="Costo de compra de los artículos vendidos" borderClass="border-cafe" textClass="text-cafe" animate={false} />
       {/if}
 
       <!-- Utilidad Bruta -->
       {#if activeTab !== 'GENERAL'}
-        <div class="kpi-card glass-panel border-market">
-          <span class="kpi-label">Utilidad Bruta</span>
-          <strong class="kpi-value text-market">
-            ${(reportsData[activeTab]?.grossProfit || 0).toLocaleString()}
-          </strong>
-          <span class="kpi-subtext">Margen antes de gastos fijos/operativos</span>
-        </div>
+        <KpiCard title="Utilidad Bruta" value={"$" + (data[activeTab]?.grossProfit || 0).toLocaleString()} desc="Margen antes de gastos fijos/operativos" borderClass="border-market" textClass="text-market" animate={false} />
       {/if}
 
       <!-- Gastos Operativos -->
-      <div class="kpi-card glass-panel border-danger">
-        <span class="kpi-label">Gastos / Compras</span>
-        <strong class="kpi-value text-danger">
-          ${(reportsData[activeTab]?.expenses || 0).toLocaleString()}
-        </strong>
-        {#if activeTab === 'CONSOLIDATED'}
-          <span class="kpi-subtext">Incluye Gastos Generales: ${reportsData.GENERAL.expenses.toLocaleString()}</span>
-        {:else}
-          <span class="kpi-subtext">Gastos asignados a este departamento</span>
-        {/if}
-      </div>
+      <KpiCard title="Gastos / Compras" value={"$" + (data[activeTab]?.expenses || 0).toLocaleString()} desc={activeTab === 'CONSOLIDATED' ? 'Incluye Gastos Generales: $' + data.GENERAL.expenses.toLocaleString() : 'Gastos asignados a este departamento'} borderClass="border-danger" textClass="text-danger" animate={false} />
 
       <!-- Utilidad Neta -->
       {#if activeTab !== 'GENERAL'}
-        <div class="kpi-card glass-panel border-net" class:negative={(reportsData[activeTab]?.netProfit || 0) < 0}>
-          <span class="kpi-label">Utilidad Neta</span>
-          <strong class="kpi-value">
-            ${(reportsData[activeTab]?.netProfit || 0).toLocaleString()}
-          </strong>
-          <span class="kpi-subtext">Rendimiento neto real (Utilidad Bruta - Gastos)</span>
-        </div>
+        <KpiCard title="Utilidad Neta" value={"$" + (data[activeTab]?.netProfit || 0).toLocaleString()} desc="Rendimiento neto real (Utilidad Bruta - Gastos)" borderClass="border-net" isNegative={(data[activeTab]?.netProfit || 0) < 0} animate={false} />
       {/if}
     </div>
 
@@ -195,22 +124,10 @@
       <div class="visual-panel glass-panel flex-1 animate-scale-up">
         <h3>Distribución de Medios de Pago</h3>
         <div class="payment-methods-grid">
-          <div class="pay-method-bar">
-            <span>💵 Efectivo:</span>
-            <strong>${reportsData.paymentMethods.CASH.toLocaleString()}</strong>
-          </div>
-          <div class="pay-method-bar">
-            <span>💳 Tarjeta:</span>
-            <strong>${reportsData.paymentMethods.CARD.toLocaleString()}</strong>
-          </div>
-          <div class="pay-method-bar">
-            <span>📲 Transferencia:</span>
-            <strong>${reportsData.paymentMethods.TRANSFER.toLocaleString()}</strong>
-          </div>
-          <div class="pay-method-bar">
-            <span>🔄 Traslado Interno (Virtual):</span>
-            <strong>${reportsData.paymentMethods.INTERNAL.toLocaleString()}</strong>
-          </div>
+          <PayMethodBar label="💵 Efectivo:" amount={data.paymentMethods.CASH} />
+          <PayMethodBar label="💳 Tarjeta:" amount={data.paymentMethods.CARD} />
+          <PayMethodBar label="📲 Transferencia:" amount={data.paymentMethods.TRANSFER} />
+          <PayMethodBar label="🔄 Traslado Interno (Virtual):" amount={data.paymentMethods.INTERNAL} />
         </div>
       </div>
 
@@ -218,14 +135,8 @@
       <div class="visual-panel glass-panel flex-1 animate-scale-up">
         <h3>⚠️ Alertas de Inventario Bajo</h3>
         <div class="alerts-list scroll-y">
-          {#each lowStockAlerts as item}
-            <div class="alert-item animate-fade-in">
-              <div class="alert-info">
-                <strong>{item.name}</strong>
-                <span>SKU: {item.sku} | Depto: {item.department}</span>
-              </div>
-              <span class="alert-stock">Stock: {item.stock}</span>
-            </div>
+          {#each alerts as item}
+            <AlertItem {item} />
           {:else}
             <div class="no-alerts">
               ✅ Todos los productos tienen stock suficiente.
@@ -234,79 +145,50 @@
         </div>
       </div>
     </div>
-  {/if}
+  {:catch error}
+    <div class="error-banner animate-fade-in" style="margin: 20px;">
+      Error al cargar estadísticas: {error.message}
+    </div>
+  {/await}
 
   <!-- Sales History Log -->
   <div class="sales-history-panel glass-panel flex-1 flex-column animate-scale-up">
     <h3>Historial de Ventas</h3>
     <div class="table-container scroll-y flex-1">
-      <table class="pos-table">
-        <thead>
-          <tr>
-            <th>ID Ticket</th>
-            <th>Fecha y Hora</th>
-            <th>Usuario</th>
-            <th>Productos</th>
-            <th>Métodos de Pago</th>
-            <th class="text-right">Total</th>
-            <th class="text-center">Estado</th>
-            <th class="text-center">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each salesHistory as sale}
-            <tr class="animate-fade-in" class:cancelled-row={sale.status === 'CANCELLED'}>
-              <td><code>{sale.id.slice(0, 8).toUpperCase()}</code></td>
-              <td>{new Date(sale.createdAt).toLocaleString()}</td>
-              <td>{sale.user.name}</td>
-              <td>
-                <div class="exp-items-cell">
-                  {#each sale.items as item}
-                    <span>• {item.product.name} (x{item.quantity}) @ ${item.price.toLocaleString()}</span>
-                  {/each}
-                </div>
-              </td>
-              <td>
-                <div class="exp-items-cell">
-                  {#each sale.payments as pay}
-                    <span>
-                      {#if pay.method === 'CASH'}💵 Efectivo
-                      {:else if pay.method === 'CARD'}💳 Tarjeta
-                      {:else if pay.method === 'TRANSFER'}📲 Transferencia
-                      {:else if pay.method === 'INTERNAL'}🔄 Interno
-                      {/if}
-                      : ${pay.amount.toLocaleString()}
-                    </span>
-                  {/each}
-                </div>
-              </td>
-              <td class="text-right"><strong>${sale.total.toLocaleString()}</strong></td>
-              <td class="text-center">
-                {#if sale.status === 'COMPLETED'}
-                  <span class="status-badge status-completed">COMPLETADO</span>
-                {:else if sale.status === 'TRANSFER_OUT'}
-                  <span class="status-badge status-transfer">TRASLADO OUT</span>
-                {:else if sale.status === 'CANCELLED'}
-                  <span class="status-badge status-cancelled">ANULADO</span>
-                {/if}
-              </td>
-              <td class="text-center">
-                {#if sale.status !== 'CANCELLED'}
-                  <button class="btn-cancel-sale" onclick={() => cancelSale(sale.id)} title="Anular venta">
-                    Anular ✕
-                  </button>
-                {:else}
-                  <span class="text-muted italic">Anulado</span>
-                {/if}
-              </td>
-            </tr>
-          {:else}
+      {#await salesPromise}
+        <div class="loading-state flex-center" style="padding: 40px 0;">
+          <Spinner size="40px" />
+          <p style="margin-top: 12px; color: var(--text-secondary);">Cargando historial...</p>
+        </div>
+      {:then resolvedSales}
+        <table class="pos-table">
+          <thead>
             <tr>
-              <td colspan="8" class="text-center text-muted italic">No se han registrado transacciones aún.</td>
+              <th>ID Ticket</th>
+              <th>Fecha y Hora</th>
+              <th>Usuario</th>
+              <th>Productos</th>
+              <th>Métodos de Pago</th>
+              <th class="text-right">Total</th>
+              <th class="text-center">Estado</th>
+              <th class="text-center">Acciones</th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {#each resolvedSales as sale}
+              <SaleRow {sale} oncancel={cancelSale} />
+            {:else}
+              <tr>
+                <td colspan="8" class="text-center text-muted italic">No se han registrado transacciones aún.</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {:catch error}
+        <div class="error-banner animate-fade-in" style="margin: 20px;">
+          Error al cargar historial: {error.message}
+        </div>
+      {/await}
     </div>
   </div>
 </div>
@@ -412,46 +294,7 @@
     gap: 16px;
   }
 
-  .kpi-card {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    background: var(--bg-glass);
-  }
 
-  .kpi-label {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-  }
-
-  .kpi-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-  }
-
-  .kpi-subtext {
-    font-size: 0.72rem;
-    color: var(--text-muted);
-  }
-
-  /* Borders for KPIs */
-  .border-general { border-left: 4px solid var(--color-general); }
-  .border-cafe { border-left: 4px solid var(--color-cafe); }
-  .border-market { border-left: 4px solid var(--color-market); }
-  .border-danger { border-left: 4px solid var(--color-danger); }
-  .border-net { 
-    border-left: 4px solid #3b82f6; 
-  }
-  .border-net .kpi-value {
-    color: #60a5fa;
-  }
-  .border-net.negative {
-    border-left-color: var(--color-danger);
-  }
-  .border-net.negative .kpi-value {
-    color: var(--color-danger);
-  }
 
   /* Secondary Row */
   .secondary-dashboard-row {
@@ -479,15 +322,7 @@
     gap: 10px;
   }
 
-  .pay-method-bar {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
-    font-size: 0.88rem;
-  }
+
 
   .alerts-list {
     display: flex;
@@ -496,37 +331,7 @@
     overflow-y: auto;
   }
 
-  .alert-item {
-    background: var(--color-danger-glow);
-    border: 1px solid rgba(244, 63, 94, 0.15);
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
 
-  .alert-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .alert-info strong {
-    font-size: 0.85rem;
-    color: #fecdd3;
-  }
-
-  .alert-info span {
-    font-size: 0.72rem;
-    color: #fda4af;
-  }
-
-  .alert-stock {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #fda4af;
-  }
 
   .no-alerts {
     text-align: center;
@@ -553,62 +358,7 @@
     overflow-y: auto;
   }
 
-  .pos-table tr.cancelled-row td {
-    color: var(--text-muted);
-    background: rgba(244, 63, 94, 0.01);
-  }
 
-  .pos-table tr.cancelled-row td strong,
-  .pos-table tr.cancelled-row td code {
-    color: var(--text-muted);
-  }
-
-  .exp-items-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-  }
-
-  .status-badge {
-    font-size: 0.68rem;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-
-  .status-completed {
-    background: var(--color-market-glow);
-    color: var(--color-market);
-  }
-
-  .status-transfer {
-    background: var(--color-general-glow);
-    color: #a5b4fc;
-  }
-
-  .status-cancelled {
-    background: var(--color-danger-glow);
-    color: var(--color-danger);
-  }
-
-  .btn-cancel-sale {
-    background: transparent;
-    border: 1px solid rgba(244, 63, 94, 0.3);
-    color: #fca5a5;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-    outline: none;
-  }
-
-  .btn-cancel-sale:hover {
-    background: var(--color-danger-glow);
-    border-color: var(--color-danger);
-  }
 
   .text-right {
     text-align: right;

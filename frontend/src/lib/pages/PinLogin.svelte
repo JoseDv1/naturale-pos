@@ -1,31 +1,29 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
   import { user } from '../store';
+  import { getUsers } from '../api/users';
+  import { login } from '../api/auth';
+  import Button from '../components/atoms/Button.svelte';
+  import Dot from '../components/atoms/Dot.svelte';
 
-  let users = $state<any[]>([]);
+  let usersPromise = $state<Promise<any[]>>(getUsers());
   let selectedUsername = $state('');
   let pin = $state('');
   let errorMsg = $state('');
   let isLoading = $state(false);
 
-  onMount(() => {
-    async function loadUsers() {
-      try {
-        const res = await fetch('/api/users');
-        if (res.ok) {
-          users = await res.json();
-          if (users.length > 0) {
-            selectedUsername = users[0].username;
-          }
-        }
-      } catch (e) {
-        console.error('Error fetching users:', e);
-        errorMsg = 'Error al cargar empleados';
+  $effect(() => {
+    usersPromise.then((resolvedUsers) => {
+      if (resolvedUsers.length > 0 && !selectedUsername) {
+        selectedUsername = resolvedUsers[0].username;
       }
-    }
+    }).catch((e) => {
+      console.error('Error fetching users:', e);
+      errorMsg = 'Error al cargar empleados';
+    });
+  });
 
-    loadUsers();
-
+  $effect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isLoading) return;
 
@@ -76,22 +74,11 @@
     isLoading = true;
     errorMsg = '';
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: selectedUsername, pin })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        user.set(data.user);
-      } else {
-        errorMsg = data.error || 'Error al iniciar sesión';
-        pin = ''; // Reset PIN on error
-      }
-    } catch (e) {
-      errorMsg = 'Error de conexión con el servidor';
-      pin = '';
+      const data = await login(selectedUsername, pin);
+      user.set(data.user);
+    } catch (e: any) {
+      errorMsg = e.message || 'Error al iniciar sesión';
+      pin = ''; // Reset PIN on error
     } finally {
       isLoading = false;
     }
@@ -109,62 +96,42 @@
   </div>
 {/snippet}
 
-{#snippet userSelector()}
-  <div class="form-group">
-    <label for="user-select">Empleado</label>
-    <select id="user-select" bind:value={selectedUsername} disabled={isLoading}>
-      {#each users as u}
-        <option value={u.username}>{u.name} ({u.role})</option>
-      {/each}
-    </select>
-  </div>
-{/snippet}
-
-{#snippet pinDots()}
-  <div class="pin-dots">
-    {#each Array(4) as _, i}
-      <div class="dot" class:filled={pin.length > i}></div>
-    {/each}
-  </div>
-{/snippet}
-
-{#snippet keypad()}
-  <div class="keypad">
-    {#each keys as key}
-      <button class="key-btn" onclick={() => handleKey(key)} disabled={isLoading}>
-        {key}
-      </button>
-    {/each}
-    
-    <button class="key-btn action-key text-danger" onclick={handleClear} disabled={isLoading}>
-      C
-    </button>
-    
-    <button class="key-btn" onclick={() => handleKey('0')} disabled={isLoading}>
-      0
-    </button>
-    
-    <button class="key-btn action-key text-general" onclick={handleBackspace} disabled={isLoading}>
-      ⌫
-    </button>
-  </div>
-{/snippet}
-
-<div class="login-wrapper flex-center">
-  <div class="login-container glass-panel animate-scale-up">
-    {@render loginHeader()}
-
     {#if errorMsg}
       <div class="error-banner animate-fade-in">{errorMsg}</div>
     {/if}
 
-    {@render userSelector()}
+    <div class="form-group">
+      <label for="user-select">Empleado</label>
+      {#await usersPromise}
+        <div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">Cargando empleados...</div>
+      {:then resolvedUsers}
+        <select id="user-select" bind:value={selectedUsername} disabled={isLoading}>
+          {#each resolvedUsers as u}
+            <option value={u.username}>{u.name} ({u.role})</option>
+          {/each}
+        </select>
+      {:catch error}
+        <div class="error-banner animate-fade-in">Error al cargar empleados: {error.message}</div>
+      {/await}
+    </div>
 
     <!-- PIN Visual Dots -->
-    {@render pinDots()}
+    <div class="pin-dots">
+      {#each Array(4) as _, i}
+        <Dot active={pin.length > i} />
+      {/each}
+    </div>
 
     <!-- Keypad Grid -->
-    {@render keypad()}
+    <div class="keypad">
+      {#each keys as key}
+        <Button label={key} variant="keypad" onclick={() => handleKey(key)} disabled={isLoading} />
+      {/each}
+      
+      <Button label="C" variant="keypad-action" onclick={handleClear} extraClass="text-danger" disabled={isLoading} />
+      <Button label="0" variant="keypad" onclick={() => handleKey('0')} disabled={isLoading} />
+      <Button label="⌫" variant="keypad-action" onclick={handleBackspace} extraClass="text-general" disabled={isLoading} />
+    </div>
   </div>
 </div>
 
@@ -239,56 +206,11 @@
     margin-bottom: 30px;
   }
 
-  .dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid var(--text-muted);
-    transition: var(--transition-fast);
-  }
 
-  .dot.filled {
-    background: var(--color-general);
-    border-color: var(--color-general);
-    box-shadow: 0 0 10px var(--color-general-glow);
-    transform: scale(1.15);
-  }
 
   .keypad {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-  }
-
-  .key-btn {
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(16, 185, 129, 0.15);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-size: 1.4rem;
-    font-weight: 500;
-    height: 65px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    outline: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-  }
-
-  .key-btn:hover {
-    background: #ffffff;
-    border-color: var(--color-general);
-    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.08);
-  }
-
-  .key-btn:active {
-    transform: scale(0.95);
-    background: rgba(255, 255, 255, 0.9);
-  }
-
-  .action-key {
-    font-size: 1.1rem;
   }
 </style>

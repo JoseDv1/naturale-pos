@@ -1,6 +1,11 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { products, categories, refreshTrigger, triggerRefresh } from '../store';
+  import { getProducts, getCategories, createProduct, updateProduct, deleteProduct as apiDeleteProduct, createCategory, updateCategory, deleteCategory as apiDeleteCategory } from '../api/products';
+  import ProductRow from '../components/organisms/ProductRow.svelte';
+  import Spinner from '../components/atoms/Spinner.svelte';
+
+  // Sub-tab Navigation
+  let currentSubTab = $state('products'); // 'products' | 'categories'
 
   // Search and Filters
   let searchQuery = $state('');
@@ -12,9 +17,18 @@
   let modalMode = $state('add'); // 'add' | 'edit'
   let currentProduct = $state<any>({});
 
-  onMount(() => {
-    loadInventory();
-  });
+  // Add / Edit Category Modal State
+  let showCategoryModal = $state(false);
+  let categoryModalMode = $state('add'); // 'add' | 'edit'
+  let currentCategory = $state<any>({});
+  let categorySearchQuery = $state('');
+
+  let inventoryPromise = $state<Promise<any>>(
+    Promise.all([getProducts(), getCategories()]).then(([prods, cats]) => {
+      products.set(prods);
+      categories.set(cats);
+    })
+  );
 
   $effect(() => {
     if ($refreshTrigger) {
@@ -22,17 +36,11 @@
     }
   });
 
-  async function loadInventory() {
-    try {
-      const prodRes = await fetch('/api/products');
-      const catRes = await fetch('/api/categories');
-      if (prodRes.ok && catRes.ok) {
-        products.set(await prodRes.json());
-        categories.set(await catRes.json());
-      }
-    } catch (e) {
-      console.error('Error loading inventory:', e);
-    }
+  function loadInventory() {
+    inventoryPromise = Promise.all([getProducts(), getCategories()]).then(([prods, cats]) => {
+      products.set(prods);
+      categories.set(cats);
+    });
   }
 
   // Filtered Products
@@ -41,6 +49,12 @@
     const matchesCategory = filterCategory ? p.categoryId === filterCategory : true;
     const matchesDept = filterDept ? p.department === filterDept : true;
     return matchesSearch && matchesCategory && matchesDept;
+  }));
+
+  // Filtered Categories
+  let filteredCategories = $derived($categories.filter((cat) => {
+    return cat.name.toLowerCase().includes(categorySearchQuery.toLowerCase()) ||
+           (cat.description && cat.description.toLowerCase().includes(categorySearchQuery.toLowerCase()));
   }));
 
   // Open product form (Add)
@@ -75,24 +89,15 @@
 
     try {
       const isEdit = modalMode === 'edit';
-      const url = isEdit ? `/api/products/${currentProduct.id}` : '/api/products';
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentProduct),
-      });
-
-      if (res.ok) {
-        showProductModal = false;
-        triggerRefresh();
+      if (isEdit) {
+        await updateProduct(currentProduct.id, currentProduct);
       } else {
-        const err = await res.json();
-        alert(err.error || 'Error al guardar el producto');
+        await createProduct(currentProduct);
       }
-    } catch (e) {
-      alert('Error de conexión al guardar el producto');
+      showProductModal = false;
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al guardar el producto');
     }
   }
 
@@ -100,109 +105,192 @@
     if (!confirm('¿Estás seguro de que deseas desactivar este producto del catálogo?')) return;
 
     try {
-      const res = await fetch(`/api/products/${productId}`, { method: 'DELETE' });
-      if (res.ok) {
-        triggerRefresh();
+      await apiDeleteProduct(productId);
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al desactivar el producto');
+    }
+  }
+
+  // Open Category form (Add)
+  function openAddCategory() {
+    categoryModalMode = 'add';
+    currentCategory = {
+      name: '',
+      description: '',
+    };
+    showCategoryModal = true;
+  }
+
+  // Open Category form (Edit)
+  function openEditCategory(cat: any) {
+    categoryModalMode = 'edit';
+    currentCategory = { ...cat };
+    showCategoryModal = true;
+  }
+
+  async function saveCategory() {
+    if (!currentCategory.name) {
+      alert('Por favor escribe el nombre de la categoría.');
+      return;
+    }
+
+    try {
+      const isEdit = categoryModalMode === 'edit';
+      if (isEdit) {
+        await updateCategory(currentCategory.id, currentCategory);
       } else {
-        alert('Error al desactivar el producto');
+        await createCategory(currentCategory);
       }
-    } catch (e) {
-      alert('Error al conectar con el servidor');
+      showCategoryModal = false;
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al guardar la categoría');
+    }
+  }
+
+  async function deleteCategory(categoryId: string) {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta categoría?')) return;
+
+    try {
+      await apiDeleteCategory(categoryId);
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al eliminar la categoría');
     }
   }
 </script>
 
-<div class="inventory-container flex-column animate-fade-in">
+<div class="inventory-view-container flex-column animate-fade-in">
   <!-- Navigation Header -->
   <div class="inventory-header glass-panel">
     <div class="header-left">
-      <h2>Catálogo de Productos 📦</h2>
-      <p class="subtitle">Administra los productos de Mercado y Café, define precios y controla el stock.</p>
+      <h2>Catálogo de Productos e Inventario 📦</h2>
+      <div class="sub-tabs" style="margin-top: 8px;">
+        <button class="sub-tab" class:active={currentSubTab === 'products'} onclick={() => currentSubTab = 'products'}>
+          📦 Productos
+        </button>
+        <button class="sub-tab" class:active={currentSubTab === 'categories'} onclick={() => currentSubTab = 'categories'}>
+          🏷️ Categorías
+        </button>
+      </div>
     </div>
 
     <div class="header-actions">
-      <button class="btn btn-general" onclick={openAddProduct}>
-        ➕ Nuevo Producto
+      {#if currentSubTab === 'products'}
+        <button class="btn btn-general" onclick={openAddProduct}>
+          ➕ Registrar Producto
+        </button>
+      {:else}
+        <button class="btn btn-general" onclick={openAddCategory}>
+          ➕ Registrar Categoría
+        </button>
+      {/if}
+      <button class="btn btn-secondary" onclick={loadInventory}>
+        🔄 Actualizar
       </button>
     </div>
   </div>
 
-  <!-- CATALOG WORKSPACE -->
-  <div class="catalog-filters glass-panel animate-fade-in">
-    <input type="text" placeholder="Buscar por SKU o Nombre..." bind:value={searchQuery} class="filter-input" />
-    
-    <select bind:value={filterCategory} class="filter-select">
-      <option value="">Todas las Categorías</option>
-      {#each $categories as cat}
-        <option value={cat.id}>{cat.name}</option>
-      {/each}
-    </select>
+  {#await inventoryPromise}
+    <div style="flex: 1; display: flex; align-items: center; justify-content: center; min-height: 400px; width: 100%;">
+      <Spinner size="40px" />
+    </div>
+  {:then}
+    {#if currentSubTab === 'products'}
+      <!-- CATALOG WORKSPACE -->
+      <div class="catalog-filters glass-panel animate-fade-in">
+        <input type="text" placeholder="Buscar por SKU o Nombre..." bind:value={searchQuery} class="filter-input" />
+        
+        <select bind:value={filterCategory} class="filter-select">
+          <option value="">Todas las Categorías</option>
+          {#each $categories as cat}
+            <option value={cat.id}>{cat.name}</option>
+          {/each}
+        </select>
 
-    <select bind:value={filterDept} class="filter-select">
-      <option value="">Todos los Departamentos</option>
-      <option value="MARKET">🍏 Mercado Saludable</option>
-      <option value="CAFE">☕ Café</option>
-    </select>
-  </div>
+        <select bind:value={filterDept} class="filter-select">
+          <option value="">Todos los Departamentos</option>
+          <option value="MARKET">🍏 Mercado Saludable</option>
+          <option value="CAFE">☕ Café</option>
+        </select>
+      </div>
 
-  <div class="table-card glass-panel flex-1 scroll-y animate-scale-up">
-    <table class="pos-table">
-      <thead>
-        <tr>
-          <th>SKU / Código</th>
-          <th>Nombre</th>
-          <th>Categoría</th>
-          <th>Departamento</th>
-          <th>Tipo</th>
-          <th class="text-right">Costo</th>
-          <th class="text-right">Precio Público</th>
-          <th class="text-center">Stock</th>
-          <th class="text-center">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each filteredProducts as p}
-          <tr>
-            <td><code>{p.sku}</code></td>
-            <td>
-              <strong class="product-name-txt">{p.name}</strong>
-              {#if p.description}
-                <span class="product-desc-txt">{p.description}</span>
-              {/if}
-            </td>
-            <td>{p.category.name}</td>
-            <td>
-              <span class="badge" class:badge-market={p.department === 'MARKET'} class:badge-cafe={p.department === 'CAFE'}>
-                {p.department === 'MARKET' ? 'Mercado' : 'Café'}
-              </span>
-            </td>
-            <td>
-              {#if p.isRawMaterial}
-                <span class="text-general">Insumo / M. Prima</span>
-              {:else}
-                <span class="text-secondary">Venta Directa</span>
-              {/if}
-            </td>
-            <td class="text-right">${p.cost.toLocaleString()}</td>
-            <td class="text-right">${p.price.toLocaleString()}</td>
-            <td class="text-center">
-              <span class="stock-badge" class:low-stock={p.stock <= 3 && !(p.department === 'CAFE' && p.stock >= 900)}>
-                {p.department === 'CAFE' && p.stock >= 900 ? 'Ilimitado' : p.stock}
-              </span>
-            </td>
-            <td class="text-center actions-cell">
-              <button class="action-edit-btn" onclick={() => openEditProduct(p)} title="Editar">✏️</button>
-              <button class="action-delete-btn" onclick={() => deleteProduct(p.id)} title="Eliminar">🗑️</button>
-            </td>
-          </tr>
-        {:else}
-          <tr>
-            <td colspan="9" class="text-center text-muted italic">No hay productos que coincidan con la búsqueda.</td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  </div>
+      <div class="table-card glass-panel flex-1 scroll-y animate-scale-up">
+        <table class="pos-table">
+          <thead>
+            <tr>
+              <th>SKU / Código</th>
+              <th>Nombre</th>
+              <th>Categoría</th>
+              <th>Departamento</th>
+              <th>Tipo</th>
+              <th class="text-right">Costo</th>
+              <th class="text-right">Precio Público</th>
+              <th class="text-center">Stock</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each filteredProducts as p}
+              <ProductRow product={p} onedit={openEditProduct} ondelete={deleteProduct} />
+            {:else}
+              <tr>
+                <td colspan="9" class="text-center text-muted italic">No hay productos que coincidan con la búsqueda.</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {:else}
+      <!-- CATEGORIES WORKSPACE -->
+      <div class="catalog-filters glass-panel animate-fade-in">
+        <input type="text" placeholder="Buscar categoría por nombre..." bind:value={categorySearchQuery} class="filter-input" style="max-width: 320px;" />
+      </div>
+
+      <div class="table-card glass-panel flex-1 scroll-y animate-scale-up">
+        <table class="pos-table">
+          <thead>
+            <tr>
+              <th>Nombre de la Categoría</th>
+              <th>Descripción</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each filteredCategories as cat}
+              <tr>
+                <td><strong>{cat.name}</strong></td>
+                <td>{cat.description || '—'}</td>
+                <td class="text-center" style="width: 120px;">
+                  <div class="row-actions flex-center" style="gap: 8px;">
+                    {#if cat.name !== 'Sin categoría'}
+                      <button class="btn btn-secondary btn-icon" onclick={() => openEditCategory(cat)} title="Editar">
+                        ✏️
+                      </button>
+                      <button class="btn btn-danger btn-icon" onclick={() => deleteCategory(cat.id)} title="Eliminar">
+                        🗑️
+                      </button>
+                    {:else}
+                      <span class="text-muted italic" style="font-size: 0.85rem;">Sistema</span>
+                    {/if}
+                  </div>
+                </td>
+              </tr>
+            {:else}
+              <tr>
+                <td colspan="3" class="text-center text-muted italic">No hay categorías registradas.</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
+  {:catch error}
+    <div class="error-banner animate-fade-in" style="margin: 20px;">
+      Error al cargar catálogo de productos: {error.message}
+    </div>
+  {/await}
 </div>
 
 <!-- ==========================================
@@ -277,6 +365,37 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick={() => showProductModal = false}>Cancelar</button>
         <button class="btn btn-general" onclick={saveProduct}>Guardar Producto</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- ==========================================
+     CATEGORY ADD/EDIT MODAL
+     ========================================== -->
+{#if showCategoryModal}
+  <div class="modal-overlay flex-center animate-fade-in">
+    <div class="modal-container glass-panel animate-scale-up" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2>{categoryModalMode === 'add' ? 'Registrar Nueva Categoría' : 'Editar Categoría'}</h2>
+        <button class="close-modal-btn" onclick={() => showCategoryModal = false}>✕</button>
+      </div>
+
+      <div class="product-form-body">
+        <div class="form-group">
+          <label for="c-name">Nombre de la Categoría *</label>
+          <input type="text" id="c-name" bind:value={currentCategory.name} placeholder="Ej: Bebidas Frías, Snacks" />
+        </div>
+
+        <div class="form-group">
+          <label for="c-desc">Descripción (Opcional)</label>
+          <textarea id="c-desc" bind:value={currentCategory.description} placeholder="Notas o detalles de esta categoría..." rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick={() => showCategoryModal = false}>Cancelar</button>
+        <button class="btn btn-general" onclick={saveCategory}>Guardar Categoría</button>
       </div>
     </div>
   </div>
@@ -364,66 +483,7 @@
     text-align: center;
   }
 
-  .badge {
-    font-size: 0.72rem;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
 
-  .badge-market {
-    background: var(--color-market-glow);
-    color: var(--color-market);
-  }
-
-  .badge-cafe {
-    background: var(--color-cafe-glow);
-    color: var(--color-cafe);
-  }
-
-  .stock-badge {
-    background: rgba(16, 185, 129, 0.05);
-    border: 1px solid var(--border-glass);
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
-
-  .stock-badge.low-stock {
-    background: var(--color-danger-glow);
-    border-color: rgba(225, 29, 72, 0.2);
-    color: var(--color-danger);
-  }
-
-  .actions-cell {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    border-bottom: none !important;
-  }
-
-  .action-edit-btn, .action-delete-btn {
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid var(--border-glass);
-    border-radius: 6px;
-    padding: 6px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-    outline: none;
-    font-size: 0.85rem;
-  }
-
-  .action-edit-btn:hover {
-    background: #ffffff;
-    border-color: var(--color-general);
-  }
-
-  .action-delete-btn:hover {
-    background: var(--color-danger-glow);
-    border-color: var(--color-danger);
-  }
 
   /* Modal forms */
   .modal-overlay {
@@ -496,6 +556,13 @@
     resize: none;
   }
 
+  .product-form-body input:not([type="checkbox"]),
+  .product-form-body select,
+  .product-form-body textarea {
+    width: 100%;
+    min-width: 0;
+  }
+
   .checkbox-group {
     margin-top: 6px;
   }
@@ -519,5 +586,32 @@
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+  }
+
+  .sub-tabs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .sub-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 500;
+    transition: var(--transition-fast);
+    outline: none;
+  }
+  .sub-tab:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+  }
+  .sub-tab.active {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
 </style>

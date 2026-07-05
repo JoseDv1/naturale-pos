@@ -1,19 +1,15 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
   import { user, activeTab, selectedTable, cart, refreshTrigger, triggerRefresh } from '../store';
+  import { getTables, openTable as apiOpenTable, cancelTableOrder as apiCancelTableOrder, createTable as apiCreateTable, deleteTable as apiDeleteTable } from '../api/tables';
+  import TableCard from '../components/organisms/TableCard.svelte';
 
-  let tables = $state<any[]>([]);
-  let isLoading = $state(false);
-  let errorMsg = $state('');
+  let tablesPromise = $state<Promise<any[]>>(getTables());
 
   // Modal state for adding a table
   let showAddModal = $state(false);
   let newTableName = $state('');
   let addTableError = $state('');
-
-  onMount(() => {
-    loadTables();
-  });
 
   // Reload tables on refresh trigger
   $effect(() => {
@@ -22,52 +18,25 @@
     }
   });
 
-  async function loadTables() {
-    isLoading = true;
-    errorMsg = '';
-    try {
-      const res = await fetch('/api/tables');
-      if (res.ok) {
-        tables = await res.json();
-      } else {
-        errorMsg = 'Error al cargar las mesas del salón';
-      }
-    } catch (e) {
-      console.error('Error loading tables:', e);
-      errorMsg = 'Error de conexión con el servidor';
-    } finally {
-      isLoading = false;
-    }
+  function loadTables() {
+    tablesPromise = getTables();
   }
 
   async function openTable(table: any) {
     if (table.status !== 'AVAILABLE') return;
     try {
-      const res = await fetch(`/api/tables/${table.id}/open`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: $user?.id }),
+      const data = await apiOpenTable(table.id, $user?.id);
+      // Set active table in store
+      selectedTable.set({
+        id: data.table.id,
+        name: data.table.name,
+        status: data.table.status,
+        currentSaleId: data.table.currentSaleId,
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        // Set active table in store
-        selectedTable.set({
-          id: data.table.id,
-          name: data.table.name,
-          status: data.table.status,
-          currentSaleId: data.table.currentSaleId,
-        });
-        // Clear cart for fresh table order
-        cart.set([]);
-        // Redirect to sales terminal
-        activeTab.set('checkout');
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Error al abrir la mesa');
-      }
-    } catch (e) {
-      alert('Error de conexión al abrir la mesa');
+      cart.set([]);
+      activeTab.set('checkout');
+    } catch (e: any) {
+      alert(e.message || 'Error al abrir la mesa');
     }
   }
 
@@ -98,19 +67,11 @@
     if (!confirm(`¿Estás seguro de que deseas anular la cuenta de la ${table.name}? Esto liberará el stock reservado.`)) return;
 
     try {
-      const res = await fetch(`/api/tables/${table.id}/cancel`, {
-        method: 'POST',
-      });
-
-      if (res.ok) {
-        triggerRefresh();
-        loadTables();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Error al cancelar la cuenta de la mesa');
-      }
-    } catch (e) {
-      alert('Error de conexión al anular la cuenta');
+      await apiCancelTableOrder(table.id);
+      triggerRefresh();
+      loadTables();
+    } catch (e: any) {
+      alert(e.message || 'Error al cancelar la cuenta de la mesa');
     }
   }
 
@@ -127,20 +88,11 @@
     }
     addTableError = '';
     try {
-      const res = await fetch('/api/tables', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTableName })
-      });
-      if (res.ok) {
-        showAddModal = false;
-        loadTables();
-      } else {
-        const data = await res.json();
-        addTableError = data.error || 'Error al crear la mesa';
-      }
-    } catch (e) {
-      addTableError = 'Error de conexión con el servidor';
+      await apiCreateTable(newTableName);
+      showAddModal = false;
+      loadTables();
+    } catch (e: any) {
+      addTableError = e.message || 'Error al crear la mesa';
     }
   }
 
@@ -152,17 +104,10 @@
     if (!confirm(`¿Estás seguro de que deseas eliminar la ${table.name}?`)) return;
 
     try {
-      const res = await fetch(`/api/tables/${table.id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        loadTables();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al eliminar la mesa');
-      }
-    } catch (e) {
-      alert('Error de conexión al eliminar la mesa');
+      await apiDeleteTable(table.id);
+      loadTables();
+    } catch (e: any) {
+      alert(e.message || 'Error al eliminar la mesa');
     }
   }
 </script>
@@ -180,73 +125,33 @@
           ➕ Nueva Mesa
         </button>
       {/if}
-      <button class="btn btn-secondary" onclick={loadTables} disabled={isLoading}>
+      <button class="btn btn-secondary" onclick={loadTables}>
         🔄 Actualizar Salón
       </button>
     </div>
   </div>
 
-  {#if errorMsg}
-    <div class="error-banner">{errorMsg}</div>
-  {/if}
-
-  {#if isLoading && tables.length === 0}
+  {#await tablesPromise}
     <div class="loading-state flex-center glass-panel">
       <div class="spinner"></div>
       <p>Cargando salón...</p>
     </div>
-  {:else}
+  {:then resolvedTables}
     <div class="tables-grid">
-      {#each tables as table}
-        <div class="table-card glass-panel animate-scale-up" class:occupied={table.status === 'OCCUPIED'}>
-          <div class="table-card-header">
-            <div class="header-left-side">
-              <span class="table-icon">☕</span>
-              {#if table.status === 'AVAILABLE' && $user?.role === 'ADMIN'}
-                <button class="btn-delete-table" onclick={() => deleteTable(table)} title="Eliminar Mesa">
-                  🗑️
-                </button>
-              {/if}
-            </div>
-            <span class="status-indicator" class:occupied={table.status === 'OCCUPIED'}>
-              {table.status === 'OCCUPIED' ? 'Ocupada' : 'Disponible'}
-            </span>
-          </div>
-
-          <div class="table-card-body">
-            <h3>{table.name}</h3>
-            
-            {#if table.status === 'OCCUPIED' && table.currentSale}
-              <div class="order-summary">
-                <span class="items-count">📦 {table.currentSale.items.reduce((sum, i) => sum + i.quantity, 0)} Productos</span>
-                <span class="order-total">${table.currentSale.total.toLocaleString()}</span>
-              </div>
-              <div class="order-time">
-                <span>Abierta: {new Date(table.currentSale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            {:else}
-              <p class="empty-msg">Mesa disponible para nuevos pedidos.</p>
-            {/if}
-          </div>
-
-          <div class="table-card-actions">
-            {#if table.status === 'AVAILABLE'}
-              <button class="btn btn-market w-100" onclick={() => openTable(table)}>
-                Abrir Mesa 🪑
-              </button>
-            {:else}
-              <button class="btn btn-cafe flex-1" onclick={() => resumeTable(table)}>
-                Ver Cuenta / Cobrar 🛒
-              </button>
-              <button class="btn btn-cancel-table" onclick={() => cancelTableOrder(table)} title="Anular cuenta de mesa">
-                ✕
-              </button>
-            {/if}
-          </div>
-        </div>
+      {#each resolvedTables as table}
+        <TableCard
+          {table}
+          userRole={$user?.role}
+          ondelete={deleteTable}
+          onopen={openTable}
+          onresume={resumeTable}
+          oncancel={cancelTableOrder}
+        />
       {/each}
     </div>
-  {/if}
+  {:catch error}
+    <div class="error-banner animate-fade-in">Error al cargar las mesas: {error.message}</div>
+  {/await}
 </div>
 
 <!-- ==========================================
@@ -355,157 +260,12 @@
     padding-bottom: 24px;
   }
 
-  .table-card {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 200px;
-    transition: var(--transition-normal);
-  }
-
-  .table-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
-  }
-
-  .table-card.occupied {
-    border-color: rgba(245, 158, 11, 0.3);
-    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.05);
-  }
-
-  .table-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .table-icon {
-    font-size: 1.25rem;
-  }
-
-  .status-indicator {
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    background: var(--color-market-glow);
-    color: var(--color-market);
-    padding: 3px 8px;
-    border-radius: 4px;
-  }
-
-  .status-indicator.occupied {
-    background: var(--color-cafe-glow);
-    color: var(--color-cafe);
-  }
-
-  .table-card-body {
-    margin: 12px 0;
-  }
-
-  .table-card-body h3 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: var(--text-primary);
-  }
-
-  .empty-msg {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-  }
-
-  .order-summary {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.88rem;
-    margin-bottom: 4px;
-  }
-
-  .items-count {
-    color: var(--text-secondary);
-  }
-
-  .order-total {
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-
-  .order-time {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-  }
-
-  .table-card-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .w-100 {
-    width: 100%;
-  }
-
-  .flex-1 {
-    flex: 1;
-  }
-
-  .btn-cancel-table {
-    background: rgba(244, 63, 94, 0.08);
-    border: 1px solid rgba(244, 63, 94, 0.2);
-    color: var(--color-danger);
-    width: 38px;
-    height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-weight: 600;
-    transition: var(--transition-fast);
-    outline: none;
-  }
-
-  .btn-cancel-table:hover {
-    background: var(--color-danger-glow);
-    border-color: var(--color-danger);
-    transform: scale(1.02);
-  }
-
-  .btn-cancel-table:active {
-    transform: scale(0.98);
-  }
-
   .header-actions {
     display: flex;
     gap: 8px;
   }
 
-  .header-left-side {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
 
-  .btn-delete-table {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 0.95rem;
-    padding: 2px;
-    border-radius: var(--radius-sm);
-    transition: var(--transition-fast);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.6;
-  }
-
-  .btn-delete-table:hover {
-    opacity: 1;
-    background: rgba(244, 63, 94, 0.15);
-  }
 
   /* Modal forms */
   .modal-overlay {

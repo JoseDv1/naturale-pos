@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { logout as apiLogout } from '../api/auth';
   import { user, activeTab } from '../store';
+  import SidebarMenuItem from './molecules/SidebarMenuItem.svelte';
 
   async function logout() {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await apiLogout();
     } catch (e) {
       console.error('Logout request failed:', e);
     }
@@ -34,14 +36,7 @@
 
   <nav class="nav-menu">
     {#each menuItems as item}
-      <button
-        class="nav-item"
-        class:active={$activeTab === item.id}
-        onclick={() => activeTab.set(item.id)}
-      >
-        <span class="nav-icon">{item.icon}</span>
-        <span class="nav-label">{item.label}</span>
-      </button>
+      <SidebarMenuItem {item} active={$activeTab === item.id} onclick={() => activeTab.set(item.id)} />
     {/each}
   </nav>
 
@@ -108,38 +103,6 @@
     flex: 1;
   }
 
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    padding: 12px 14px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.95rem;
-    text-align: left;
-    transition: var(--transition-fast);
-    outline: none;
-    width: 100%;
-  }
-
-  .nav-item:hover {
-    background: rgba(16, 185, 129, 0.06);
-    color: var(--text-primary);
-  }
-
-  .nav-item.active {
-    background: var(--color-general-glow);
-    color: #a5b4fc;
-    border: 1px solid rgba(99, 102, 241, 0.25);
-  }
-
-  .nav-icon {
-    font-size: 1.2rem;
-  }
 
   .user-profile {
     display: flex;

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
+    "dev:frontend": "cd frontend && bun run dev",
     "db:migrate": "bunx prisma migrate dev",
     "db:generate": "bunx prisma generate",
     "db:studio": "bunx prisma studio",

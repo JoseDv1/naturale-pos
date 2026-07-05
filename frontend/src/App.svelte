@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
+  import { me } from './lib/api/auth';
   import { user, activeTab } from './lib/store';
+  import Spinner from './lib/components/atoms/Spinner.svelte';
   import PinLogin from './lib/pages/PinLogin.svelte';
   import Sidebar from './lib/components/Sidebar.svelte';
   import Dashboard from './lib/pages/Dashboard.svelte';
@@ -14,36 +16,37 @@
   const validTabs = ['dashboard', 'checkout', 'tables', 'inventory', 'transfers', 'expenses', 'reports'];
   let isInitializing = $state(true);
 
-  onMount(async () => {
-    // 1. Check if session cookie exists by calling server auth/me
-    try {
-      const meRes = await fetch('/api/auth/me');
-      if (meRes.ok) {
-        const data = await meRes.json();
+  $effect(() => {
+    untrack(async () => {
+      // 1. Check if session cookie exists by calling server auth/me
+      try {
+        const data = await me();
         if (data.user) {
           user.set(data.user);
         }
+      } catch (e) {
+        console.error('Session restore failed:', e);
+      } finally {
+        isInitializing = false;
       }
-    } catch (e) {
-      console.error('Session restore failed:', e);
-    } finally {
-      isInitializing = false;
-    }
+    });
 
     // 2. Handle URL hash routing
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
-      if (validTabs.includes(hash)) {
-        if ($activeTab !== hash) {
-          activeTab.set(hash);
+      untrack(() => {
+        if (validTabs.includes(hash)) {
+          if ($activeTab !== hash) {
+            activeTab.set(hash);
+          }
+        } else {
+          // If logged in and hash is empty/invalid, default to dashboard
+          if ($user) {
+            activeTab.set('dashboard');
+            window.location.hash = '#dashboard';
+          }
         }
-      } else {
-        // If logged in and hash is empty/invalid, default to dashboard
-        if ($user) {
-          activeTab.set('dashboard');
-          window.location.hash = '#dashboard';
-        }
-      }
+      });
     };
 
     // Initialize hash on load
@@ -66,9 +69,27 @@
   });
 </script>
 
+{#snippet activeView()}
+  {#if $activeTab === 'dashboard'}
+    <Dashboard />
+  {:else if $activeTab === 'checkout'}
+    <Checkout />
+  {:else if $activeTab === 'tables'}
+    <Tables />
+  {:else if $activeTab === 'inventory'}
+    <Inventory />
+  {:else if $activeTab === 'transfers'}
+    <Transfers />
+  {:else if $activeTab === 'expenses'}
+    <Expenses />
+  {:else if $activeTab === 'reports'}
+    <Reports />
+  {/if}
+{/snippet}
+
 {#if isInitializing}
   <div class="flex-center animate-fade-in" style="height: 100vh; width: 100vw; flex-direction: column; gap: 16px; background-color: var(--bg-primary); color: var(--text-primary);">
-    <div class="spinner"></div>
+    <Spinner size="40px" />
     <span style="font-weight: 500; font-size: 1rem; letter-spacing: 0.5px;">Iniciando sistema...</span>
   </div>
 {:else if !$user}
@@ -77,21 +98,7 @@
   <div class="app-layout">
     <Sidebar />
     <main class="main-content">
-      {#if $activeTab === 'dashboard'}
-        <Dashboard />
-      {:else if $activeTab === 'checkout'}
-        <Checkout />
-      {:else if $activeTab === 'tables'}
-        <Tables />
-      {:else if $activeTab === 'inventory'}
-        <Inventory />
-      {:else if $activeTab === 'transfers'}
-        <Transfers />
-      {:else if $activeTab === 'expenses'}
-        <Expenses />
-      {:else if $activeTab === 'reports'}
-        <Reports />
-      {/if}
+      {@render activeView()}
     </main>
   </div>
 {/if}
@@ -114,16 +121,4 @@
     flex-direction: column;
   }
 
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--bg-secondary);
-    border-top: 4px solid var(--color-general);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
 </style>

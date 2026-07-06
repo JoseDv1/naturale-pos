@@ -82,15 +82,39 @@
   let isResetOnNext = $state(false);
 
   function pressKey(val: string) {
-    if (calcDisplay === '0' || isResetOnNext) {
-      calcDisplay = val;
+    if (isResetOnNext) {
+      if (val === '.') {
+        calcDisplay = '0.';
+      } else {
+        calcDisplay = val;
+      }
       isResetOnNext = false;
     } else {
-      calcDisplay += val;
+      if (val === '0' && calcDisplay === '0') return;
+      if (val === '.') {
+        if (calcDisplay.includes('.')) return;
+        calcDisplay += '.';
+      } else if (calcDisplay === '0') {
+        calcDisplay = val;
+      } else {
+        calcDisplay += val;
+      }
     }
   }
 
   function pressOperator(op: string) {
+    if (calcEquation !== '' && !isResetOnNext) {
+      try {
+        const fullExpression = calcEquation + calcDisplay;
+        const cleanExpr = fullExpression.replace(/\s+/g, '');
+        if (/^[0-9.+\-*/]+$/.test(cleanExpr)) {
+          const result = new Function(`return ${cleanExpr}`)();
+          calcDisplay = String(Number(result.toFixed(8)));
+        }
+      } catch (e) {
+        // Fallback silently
+      }
+    }
     calcEquation = calcDisplay + ' ' + op + ' ';
     isResetOnNext = true;
   }
@@ -268,27 +292,32 @@
               <span class="calc-val">{calcDisplay}</span>
             </div>
             <div class="calc-keyboard">
+              <!-- Row 1 -->
               <Button label="C" variant="calc-clear" onclick={clearCalc} />
               <Button label="&amp;divide;" variant="calc-op" onclick={() => pressOperator('/')} />
-              <Button label="&amp;times;" variant="calc-op" onclick={() => pressOperator('*')} />
-              <Button label="&amp;minus;" variant="calc-op" onclick={() => pressOperator('-')} />
 
+              <!-- Row 2 -->
               <Button label="7" variant="calc-num" onclick={() => pressKey('7')} />
               <Button label="8" variant="calc-num" onclick={() => pressKey('8')} />
               <Button label="9" variant="calc-num" onclick={() => pressKey('9')} />
-              <Button label="+" variant="calc-op" onclick={() => pressOperator('+')} />
+              <Button label="&amp;times;" variant="calc-op" onclick={() => pressOperator('*')} />
 
+              <!-- Row 3 -->
               <Button label="4" variant="calc-num" onclick={() => pressKey('4')} />
               <Button label="5" variant="calc-num" onclick={() => pressKey('5')} />
               <Button label="6" variant="calc-num" onclick={() => pressKey('6')} />
-              <Button label="=" variant="calc-equal" onclick={calculateResult} />
+              <Button label="&amp;minus;" variant="calc-op" onclick={() => pressOperator('-')} />
 
+              <!-- Row 4 -->
               <Button label="1" variant="calc-num" onclick={() => pressKey('1')} />
               <Button label="2" variant="calc-num" onclick={() => pressKey('2')} />
               <Button label="3" variant="calc-num" onclick={() => pressKey('3')} />
-              <Button label="0" variant="calc-num-zero" onclick={() => pressKey('0')} />
+              <Button label="+" variant="calc-op" onclick={() => pressOperator('+')} />
 
+              <!-- Row 5 -->
+              <Button label="0" variant="calc-num-zero" onclick={() => pressKey('0')} />
               <Button label="." variant="calc-num" onclick={() => pressKey('.')} />
+              <Button label="=" variant="calc-equal" onclick={calculateResult} />
             </div>
           </div>
         </div>

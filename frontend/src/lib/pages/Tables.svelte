@@ -785,6 +785,7 @@
     overflow-y: auto;
     padding-bottom: 24px;
     height: 100%;
+    align-content: start;
   }
 
   /* Interactive Visual Map View Mode */

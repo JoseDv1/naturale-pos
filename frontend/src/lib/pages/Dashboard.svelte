@@ -120,8 +120,8 @@
   }
 </script>
 
-<!-- Snippets for structuring layout elements -->
-{#snippet headerSection()}
+<!-- Main View -->
+<div class="dashboard-container flex-column animate-fade-in">
   <div class="dashboard-header glass-panel">
     <div class="header-left">
       <h2>Inicio y Resumen General 📈</h2>
@@ -163,7 +163,8 @@
         <div class="dashboard-col glass-panel flex-column animate-scale-up">
           <h3>Distribución de Métodos de Pago</h3>
           <div class="payment-distribution">
-            {#each Object.entries(data.paymentMethods) as [method, amount]}
+            {#each Object.entries(data.paymentMethods) as [method, val]}
+              {@const amount = val as number}
               {#if amount > 0 || true}
                 <div class="payment-row">
                   <div class="payment-label">

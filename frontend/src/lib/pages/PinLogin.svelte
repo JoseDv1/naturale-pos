@@ -96,6 +96,10 @@
   </div>
 {/snippet}
 
+<div class="login-wrapper flex-center">
+  <div class="login-container glass-panel animate-scale-up">
+    {@render loginHeader()}
+
     {#if errorMsg}
       <div class="error-banner animate-fade-in">{errorMsg}</div>
     {/if}

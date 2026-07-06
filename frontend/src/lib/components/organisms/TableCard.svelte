@@ -33,7 +33,7 @@
     
     {#if table.status === 'OCCUPIED' && table.currentSale}
       <div class="order-summary">
-        <span class="items-count">📦 {table.currentSale.items.reduce((sum, i) => sum + i.quantity, 0)} Productos</span>
+        <span class="items-count">📦 {table.currentSale.items.reduce((sum: number, i: any) => sum + i.quantity, 0)} Productos</span>
         <span class="order-total">${table.currentSale.total.toLocaleString()}</span>
       </div>
       <div class="order-time">

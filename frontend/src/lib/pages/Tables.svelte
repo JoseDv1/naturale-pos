@@ -1,10 +1,29 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { untrack, onMount } from 'svelte';
   import { user, activeTab, selectedTable, cart, refreshTrigger, triggerRefresh } from '../store';
   import { getTables, openTable as apiOpenTable, cancelTableOrder as apiCancelTableOrder, createTable as apiCreateTable, deleteTable as apiDeleteTable } from '../api/tables';
   import TableCard from '../components/organisms/TableCard.svelte';
 
-  let tablesPromise = $state<Promise<any[]>>(getTables());
+  let tables = $state<any[]>([]);
+  let isLoading = $state(false);
+  let errorMsg = $state('');
+
+  // UI state
+  let isMapView = $state(true); // Toggle Map vs Grid view
+  let isDesignMode = $state(false); // Toggle rearranging tables
+  let selectedMapTable = $state<any | null>(null);
+
+  // Dragging state
+  let containerEl = $state<HTMLDivElement | null>(null);
+  let draggingTableId = $state<string | null>(null);
+  let activeDragOffset = $state({ x: 0, y: 0 });
+  let hasDragged = $state(false);
+  let dragStartPos = { x: 0, y: 0 };
+
+  // Table shapes database (persists in localStorage)
+  let tableShapes = $state<Record<string, 'circle' | 'square' | 'rectangle'>>({});
+
+  let tablesPromise = $state<Promise<any[]>>(Promise.resolve([]));
 
   // Modal state for adding a table
   let showAddModal = $state(false);
@@ -18,9 +37,32 @@
     }
   });
 
-  function loadTables() {
+  async function loadTables() {
+    isLoading = true;
+    errorMsg = '';
     tablesPromise = getTables();
+    try {
+      tables = await tablesPromise;
+    } catch (e: any) {
+      errorMsg = e.message || 'Error al cargar las mesas';
+    } finally {
+      isLoading = false;
+    }
   }
+
+  onMount(() => {
+    loadTables();
+
+    // Load shapes from localStorage
+    const savedShapes = localStorage.getItem('naturale_table_shapes');
+    if (savedShapes) {
+      try {
+        tableShapes = JSON.parse(savedShapes);
+      } catch (e) {
+        console.error('Failed to parse table shapes');
+      }
+    }
+  });
 
   // Handle table selection on click
   function handleTableClick(e: MouseEvent, table: any) {
@@ -254,39 +296,195 @@
     </div>
     
     <div class="header-actions">
+      <!-- Layout Mode toggles -->
+      <div class="mode-toggles">
+        <button class="toggle-btn" class:active={isMapView} onclick={() => isMapView = true} title="Vista Plano">
+          🗺️ Plano
+        </button>
+        <button class="toggle-btn" class:active={!isMapView} onclick={() => { isMapView = false; isDesignMode = false; }} title="Vista Rejilla">
+          🔳 Rejilla
+        </button>
+      </div>
+
+      {#if isMapView}
+        <button class="btn btn-design-mode" class:active={isDesignMode} onclick={() => { isDesignMode = !isDesignMode; if(!isDesignMode) selectedMapTable = null; }}>
+          🛠️ {isDesignMode ? 'Salir de Diseño' : 'Modo Diseño'}
+        </button>
+      {/if}
+
       {#if $user?.role === 'ADMIN'}
         <button class="btn btn-general" onclick={openAddModal}>
           ➕ Nueva Mesa
         </button>
       {/if}
-      <button class="btn btn-secondary" onclick={loadTables}>
-        🔄 Actualizar Salón
+      <button class="btn btn-secondary" onclick={loadTables} disabled={isLoading}>
+        🔄 Actualizar
       </button>
     </div>
   </div>
+{/snippet}
 
-  {#await tablesPromise}
-    <div class="loading-state flex-center glass-panel">
-      <div class="spinner"></div>
-      <p>Cargando salón...</p>
+{#snippet loadingState()}
+  <div class="loading-state flex-center glass-panel">
+    <div class="spinner"></div>
+    <p>Cargando salón...</p>
+  </div>
+{/snippet}
+
+{#snippet mapTableNode(table: any)}
+  {@const shape = tableShapes[table.id] || 'circle'}
+  <div
+    role="button"
+    tabindex="0"
+    aria-label="Mesa {table.name}"
+    class="map-table-node shape-{shape} animate-scale-up"
+    class:occupied={table.status === 'OCCUPIED'}
+    class:dragging={draggingTableId === table.id}
+    class:design-mode={isDesignMode}
+    class:selected={selectedMapTable?.id === table.id}
+    style="left: {table.x}%; top: {table.y}%;"
+    onmousedown={(e) => startDrag(e, table)}
+    ontouchstart={(e) => startDrag(e, table)}
+    onclick={(e) => handleTableClick(e, table)}
+    ondblclick={() => handleTableDoubleClick(table)}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTableClick(e as any, table); }}
+  >
+    <!-- Indicator status dot -->
+    <div class="table-node-dot" class:occupied={table.status === 'OCCUPIED'}></div>
+
+    <span class="table-node-name">{table.name}</span>
+
+    {#if table.status === 'OCCUPIED' && table.currentSale}
+      <span class="table-node-total">${Math.round(table.currentSale.total).toLocaleString()}</span>
+    {/if}
+
+    {#if isDesignMode}
+      <div class="drag-handle-badge">✥</div>
+    {/if}
+  </div>
+{/snippet}
+
+{#snippet tableDetailPanel(table: any)}
+  <div class="panel-container flex-column animate-fade-in">
+    <div class="panel-header">
+      <div class="panel-title-group">
+        <h3>{table.name}</h3>
+        <span class="panel-badge" class:occupied={table.status === 'OCCUPIED'}>
+          {table.status === 'OCCUPIED' ? 'Mesa Ocupada' : 'Mesa Libre'}
+        </span>
+      </div>
+      <button class="btn-close-panel" onclick={() => selectedMapTable = null} title="Cerrar Detalles">✕</button>
     </div>
-  {:then resolvedTables}
-    <div class="tables-grid">
-      {#each resolvedTables as table}
-        <TableCard
-          {table}
-          userRole={$user?.role}
-          ondelete={deleteTable}
-          onopen={openTable}
-          onresume={resumeTable}
-          oncancel={cancelTableOrder}
-        />
-      {/each}
+
+    <div class="panel-content flex-1">
+      {#if table.status === 'OCCUPIED' && table.currentSale}
+        <div class="active-order-details">
+          <h4>Comanda Activa</h4>
+          <p class="opened-time">Abierta: {new Date(table.currentSale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+
+          <div class="order-items-scroll">
+            {#each table.currentSale.items as item}
+              <div class="panel-order-item">
+                <span class="qty-badge">{item.quantity}</span>
+                <span class="item-name">{item.product.name}</span>
+                <span class="item-subtotal">${(item.quantity * parseFloat(item.price)).toLocaleString()}</span>
+              </div>
+            {/each}
+          </div>
+
+          <div class="panel-total-divider"></div>
+          <div class="panel-total-row">
+            <span>Total Acumulado:</span>
+            <span class="grand-total">${parseFloat(table.currentSale.total).toLocaleString()}</span>
+          </div>
+        </div>
+      {:else}
+        <div class="panel-empty-state flex-center">
+          <span class="empty-icon">🪑</span>
+          <p>Mesa disponible. No hay cuentas ni comandas activas registradas en este momento.</p>
+        </div>
+      {/if}
+
+      <!-- Table customization & deletion Section -->
+      <div class="admin-panel-tools">
+        <h4>Ajustes de Mesa</h4>
+
+        <div class="tool-group">
+          <span>Forma del Mobiliario:</span>
+          <div class="shape-selector">
+            <button
+              class="shape-btn"
+              class:active={(tableShapes[table.id] || 'circle') === 'circle'}
+              onclick={() => setTableShape(table.id, 'circle')}
+            >
+              🔴 Círculo
+            </button>
+            <button
+              class="shape-btn"
+              class:active={tableShapes[table.id] === 'square'}
+              onclick={() => setTableShape(table.id, 'square')}
+            >
+              🟩 Cuadrado
+            </button>
+            <button
+              class="shape-btn"
+              class:active={tableShapes[table.id] === 'rectangle'}
+              onclick={() => setTableShape(table.id, 'rectangle')}
+            >
+              ▰ Rectángulo
+            </button>
+          </div>
+        </div>
+
+        {#if isDesignMode}
+          <div class="design-mode-help">
+            <p>✥ Arrastra la mesa en el mapa para ubicarla en su posición física.</p>
+          </div>
+        {/if}
+
+        <button class="btn btn-danger w-100" style="margin-top: 15px;" onclick={() => deleteTable(table)}>
+          🗑️ Eliminar Mesa
+        </button>
+      </div>
     </div>
-  {:catch error}
-    <div class="error-banner animate-fade-in">Error al cargar las mesas: {error.message}</div>
-  {/await}
-</div>
+
+    <div class="panel-footer">
+      {#if table.status === 'AVAILABLE'}
+        <button class="btn btn-market w-100 py-3" onclick={() => openTable(table)}>
+          Abrir Mesa / Comanda 🪑
+        </button>
+      {:else}
+        <div class="footer-actions-row">
+          <button class="btn btn-cafe flex-1 py-3" onclick={() => resumeTable(table)}>
+            Ver Cuenta / Facturar 🛒
+          </button>
+          <button class="btn btn-danger-outline" onclick={() => cancelTableOrder(table)} title="Anular Cuenta">
+            ✕ Anular
+          </button>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/snippet}
+
+{#snippet salonStatsPanel()}
+  <div class="panel-container flex-column animate-fade-in">
+    <div class="panel-header">
+      <h3>Estado General del Salón</h3>
+    </div>
+
+    <div class="panel-content flex-1">
+      <!-- Circle occupancy visualization -->
+      <div class="occupancy-graph flex-center">
+        <div class="occupancy-circle flex-center" style="--occupancy-percent: {totalTablesCount > 0 ? (occupiedCount / totalTablesCount) * 100 : 0}%">
+          <div class="circle-content">
+            <span class="percentage">
+              {totalTablesCount > 0 ? Math.round((occupiedCount / totalTablesCount) * 100) : 0}%
+            </span>
+            <span class="desc">Ocupación</span>
+          </div>
+        </div>
+      </div>
 
       <div class="stats-list">
         <div class="stat-item">
@@ -404,7 +602,14 @@
         {:else}
           <div class="tables-grid">
             {#each tables as table}
-              {@render tableCard(table)}
+              <TableCard
+                {table}
+                userRole={$user?.role}
+                ondelete={deleteTable}
+                onopen={openTable}
+                onresume={resumeTable}
+                oncancel={cancelTableOrder}
+              />
             {/each}
           </div>
         {/if}
@@ -582,6 +787,439 @@
     height: 100%;
   }
 
+  /* Interactive Visual Map View Mode */
+  .map-wrapper {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  .map-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .status-available { background: var(--color-general); }
+  .status-occupied { background: var(--color-cafe); }
+
+  .design-badge {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    font-weight: 500;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .map-container {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    background-color: #f1f6f3; /* Soft sage light blueprint background */
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    /* Soft grid pattern */
+    background-image: radial-gradient(rgba(16, 185, 129, 0.12) 1px, transparent 1px);
+    background-size: 20px 20px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .map-container.design-active {
+    border-color: rgba(245, 158, 11, 0.4);
+    box-shadow: inset 0 0 15px rgba(245, 158, 11, 0.08);
+  }
+
+  .map-grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    border: 1px solid rgba(16, 185, 129, 0.05);
+  }
+
+  /* Table Node on the Map styling */
+  .map-table-node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    border: 2px solid var(--color-general);
+    color: var(--text-primary);
+    z-index: 10;
+    user-select: none;
+    outline: none;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  }
+
+  .map-table-node:hover {
+    transform: translate(-50%, -50%) scale(1.08);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  .map-table-node.selected {
+    border-color: #6366f1 !important; /* Indigo selection ring */
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), 0 6px 16px rgba(99, 102, 241, 0.2) !important;
+  }
+
+  .map-table-node.occupied {
+    border-color: var(--color-cafe);
+    background: #fffcf8;
+  }
+
+  .map-table-node.occupied:hover {
+    border-color: var(--color-cafe-hover);
+  }
+
+  .map-table-node.dragging {
+    opacity: 0.85;
+    z-index: 100;
+    cursor: grabbing;
+    transform: translate(-50%, -50%) scale(1.12);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+  }
+
+  .map-table-node.design-mode {
+    border-style: dashed;
+    cursor: move;
+  }
+
+  /* Table shapes styling */
+  .shape-circle {
+    border-radius: 50%;
+    width: 82px;
+    height: 82px;
+  }
+
+  .shape-square {
+    border-radius: var(--radius-sm);
+    width: 82px;
+    height: 82px;
+  }
+
+  .shape-rectangle {
+    border-radius: var(--radius-sm);
+    width: 110px;
+    height: 72px;
+  }
+
+  /* Nodes visual text decoration */
+  .table-node-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .table-node-total {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-cafe-hover);
+    margin-top: 2px;
+  }
+
+  .table-node-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-general);
+    margin-bottom: 4px;
+  }
+
+  .table-node-dot.occupied {
+    background: var(--color-cafe);
+  }
+
+  .drag-handle-badge {
+    position: absolute;
+    bottom: -6px;
+    background: #f59e0b;
+    color: #fff;
+    font-size: 0.65rem;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Right Side Panels - Detail & Stats */
+  .panel-container {
+    height: 100%;
+    width: 100%;
+    padding: 20px;
+    justify-content: space-between;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-glass);
+    margin-bottom: 16px;
+  }
+
+  .panel-title-group h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .panel-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: var(--color-market-glow);
+    color: var(--color-market);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 4px;
+  }
+
+  .panel-badge.occupied {
+    background: var(--color-cafe-glow);
+    color: var(--color-cafe);
+  }
+
+  .btn-close-panel {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .panel-content {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-right: 2px;
+  }
+
+  /* Active Order Details Panel */
+  .active-order-details h4 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.6px;
+    margin-bottom: 4px;
+  }
+
+  .opened-time {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .order-items-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border-glass);
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  .panel-order-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.82rem;
+    gap: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(0,0,0,0.02);
+  }
+  
+  .panel-order-item:last-child {
+    border-bottom: none;
+  }
+
+  .qty-badge {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    min-width: 22px;
+    text-align: center;
+  }
+
+  .item-name {
+    flex: 1;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .item-subtotal {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .panel-total-divider {
+    height: 1px;
+    background: var(--border-glass);
+    margin: 12px 0 8px 0;
+  }
+
+  .panel-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .panel-total-row span {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .grand-total {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-cafe);
+  }
+
+  .panel-empty-state {
+    text-align: center;
+    flex-direction: column;
+    padding: 30px 10px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    background: rgba(16, 185, 129, 0.02);
+    border: 1px dashed var(--border-glass);
+    border-radius: var(--radius-sm);
+  }
+
+  .empty-icon {
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+    opacity: 0.5;
+  }
+
+  /* Admin tools panel */
+  .admin-panel-tools {
+    border-top: 1px solid var(--border-glass);
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-panel-tools h4 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tool-group span {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .shape-selector {
+    display: flex;
+    gap: 6px;
+  }
+
+  .shape-btn {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    padding: 8px 4px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    outline: none;
+  }
+
+  .shape-btn.active, .shape-btn:hover {
+    background: #ffffff;
+    color: var(--text-primary);
+    border-color: var(--color-general);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  }
+
+  .design-mode-help {
+    background: rgba(245, 158, 11, 0.05);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    color: #b45309;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  /* Salon Stats panel visual graphics */
+  .occupancy-graph {
+    height: 140px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .occupancy-circle {
     width: 110px;
     height: 110px;
@@ -592,6 +1230,109 @@
     );
     position: relative;
     box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .circle-content {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .circle-content .percentage {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .circle-content .desc {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+
+  .stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .stat-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+  }
+
+  .stat-item-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-glass);
+    color: var(--text-primary);
+  }
+
+  .salon-info-box {
+    background: rgba(16, 185, 129, 0.02);
+    border: 1px solid var(--border-glass);
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .salon-info-box h4 {
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--color-general);
+  }
+
+  .salon-info-box p {
+    font-size: 0.75rem;
+  }
+
+  /* Panel footer buttons */
+  .panel-footer {
+    border-top: 1px solid var(--border-glass);
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+
+  .footer-actions-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-danger-outline {
+    background: transparent;
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    color: var(--color-danger);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.88rem;
+    transition: var(--transition-fast);
+    outline: none;
+  }
+
+  .btn-danger-outline:hover {
+    background: var(--color-danger-glow);
+    border-color: var(--color-danger);
   }
 
 

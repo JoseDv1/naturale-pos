@@ -173,10 +173,16 @@ async function main() {
   // 4. Create Tables if none exist
   const tableCount = await prisma.cafeTable.count();
   if (tableCount === 0) {
-    const tablesData = Array.from({ length: 8 }, (_, i) => ({
-      name: `Mesa ${i + 1}`,
-      status: 'AVAILABLE',
-    }));
+    const tablesData = Array.from({ length: 8 }, (_, i) => {
+      const row = Math.floor(i / 4);
+      const col = i % 4;
+      return {
+        name: `Mesa ${i + 1}`,
+        status: 'AVAILABLE',
+        x: 20 + col * 20,
+        y: 30 + row * 25,
+      };
+    });
     for (const t of tablesData) {
       await prisma.cafeTable.create({ data: t });
     }

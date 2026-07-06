@@ -10,6 +10,7 @@
   import MethodBtn from '../components/molecules/MethodBtn.svelte';
   import ReceiptItem from '../components/molecules/ReceiptItem.svelte';
   import ReceiptPaymentRow from '../components/molecules/ReceiptPaymentRow.svelte';
+  import Spinner from '../components/atoms/Spinner.svelte';
 
   // State variables
   let searchQuery = $state('');
@@ -355,37 +356,15 @@
 <!-- ==========================================
      CHECKOUT / PAYMENT DIALOG MODAL
      ========================================== -->
-{#if showPaymentModal}
-
-
-  <div class="modal-overlay flex-center animate-fade-in">
-    <div class="modal-container glass-panel animate-scale-up">
-      {#if !successReceipt}
-        <div class="modal-header">
-          <h2>Registrar Pago Dividido</h2>
-          <button class="close-modal-btn" onclick={closePaymentModal}>✕</button>
-        </div>
-
-        {#if errorMessage}
-          <div class="error-banner">{errorMessage}</div>
-        {/if}
-
-        <div class="payment-math-container">
-          <MathCard label="Total Venta" value={"$" + $cartTotal.toLocaleString()} valueClass="text-general" />
-          <MathCard label="Registrado" value={"$" + totalPaid.toLocaleString()} valueClass="text-market" />
-          <MathCard label="Restante" value={"$" + remainingToPay.toLocaleString()} valueClass={remainingToPay > 0 ? 'text-danger' : 'text-market'} />
-        </div>
-
-        <!-- Add Payment Section -->
-        {#if remainingToPay > 0}
-          <div class="add-payment-section">
-            <h3>Agregar Método de Pago</h3>
-            <div class="payment-inputs">
-              <div class="method-selector">
-                <MethodBtn method="CASH" currentMethod={currentMethod} label="💵 Efectivo" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
-                <MethodBtn method="CARD" currentMethod={currentMethod} label="💳 Tarjeta" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
-                <MethodBtn method="TRANSFER" currentMethod={currentMethod} label="📲 Transferencia" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
-              </div>
+{#snippet addPaymentSection()}
+  <div class="add-payment-section">
+    <h3>Agregar Método de Pago</h3>
+    <div class="payment-inputs">
+      <div class="method-selector">
+        <MethodBtn method="CASH" currentMethod={currentMethod} label="💵 Efectivo" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
+        <MethodBtn method="CARD" currentMethod={currentMethod} label="💳 Tarjeta" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
+        <MethodBtn method="TRANSFER" currentMethod={currentMethod} label="📲 Transferencia" onclick={(m) => { currentMethod = m; currentAmountInput = remainingToPay.toString(); }} />
+      </div>
 
       <div class="amount-input-row">
         <input
@@ -483,20 +462,9 @@
           {/if}
 
           <div class="payment-math-container">
-            <div class="math-card">
-              <span>Total Venta</span>
-              <strong class="text-general">${$cartTotal.toLocaleString()}</strong>
-            </div>
-            <div class="math-card">
-              <span>Registrado</span>
-              <strong class="text-market">${totalPaid.toLocaleString()}</strong>
-            </div>
-            <div class="math-card">
-              <span>Restante</span>
-              <strong class:text-danger={remainingToPay > 0} class:text-market={remainingToPay === 0}>
-                ${remainingToPay.toLocaleString()}
-              </strong>
-            </div>
+            <MathCard label="Total Venta" value={"$" + $cartTotal.toLocaleString()} valueClass="text-general" />
+            <MathCard label="Registrado" value={"$" + paidAmount.toLocaleString()} valueClass="text-market" />
+            <MathCard label="Restante" value={"$" + remainingToPay.toLocaleString()} valueClass={remainingToPay > 0 ? 'text-danger' : 'text-market'} />
           </div>
 
           <!-- Add Payment Section -->
@@ -536,49 +504,6 @@
     </div>
   {/if}
 {/snippet}
-
-<!-- Main Layout Structure -->
-<div class="checkout-layout">
-  <!-- Left Side: Product Grid -->
-  <div class="catalog-section">
-    {@render catalogHeader()}
-
-    <!-- Products Grid -->
-    <div class="products-grid scroll-y">
-      {#each filteredProducts as p}
-        {@render productCard(p)}
-      {:else}
-        <div class="no-results flex-center glass-panel animate-fade-in">
-          <p>No se encontraron productos en esta sección.</p>
-        </div>
-      {/each}
-    </div>
-  </div>
-
-  <!-- Right Side: Shopping Cart -->
-  <div class="cart-section glass-panel">
-    {@render tableBanner()}
-
-    <div class="cart-header">
-      <h2>Carrito de Compra</h2>
-      <button class="btn btn-secondary" onclick={clearCart} disabled={$cart.length === 0}>
-        Vaciar
-      </button>
-    </div>
-
-    <div class="cart-items scroll-y">
-      {#each $cart as item}
-        {@render cartItemRow(item)}
-      {:else}
-        <div class="empty-cart flex-center">
-          🛒 Carrito Vacío
-        </div>
-      {/each}
-    </div>
-
-    {@render cartFooter()}
-  </div>
-</div>
 
 {@render paymentModal()}
 

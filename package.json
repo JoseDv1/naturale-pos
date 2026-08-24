@@ -11,7 +11,8 @@
     "db:generate": "bunx prisma generate",
     "db:studio": "bunx prisma studio",
     "build:frontend": "cd frontend && bun run build",
-    "build:server": "bun build --compile --minify --outfile dist/pos src/index.ts"
+    "build:server": "bun build --compile --minify --outfile dist/pos src/index.ts",
+    "package": "bun scripts/package.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.8.0",

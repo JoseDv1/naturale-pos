@@ -4,6 +4,7 @@ frontend/node_modules/
 
 # Production build outputs
 dist/
+dist-release/
 frontend/dist/
 
 # SQLite databases

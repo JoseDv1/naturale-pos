@@ -4,6 +4,8 @@
   import { getProducts, getCategories } from '../api/products';
   import { saveTableOrder as apiSaveTableOrder, checkoutTable as apiCheckoutTable, cancelTableOrder as apiCancelTableOrder } from '../api/tables';
   import { createSale } from '../api/sales';
+  import { attachHardwareScannerListener } from '../services/scannerListener';
+  import { playScanSuccess, playScanError, isSoundEnabled, setSoundEnabled } from '../services/sound';
   import ProductCard from '../components/organisms/ProductCard.svelte';
   import CartItem from '../components/organisms/CartItem.svelte';
   import MathCard from '../components/molecules/MathCard.svelte';
@@ -11,6 +13,8 @@
   import ReceiptItem from '../components/molecules/ReceiptItem.svelte';
   import ReceiptPaymentRow from '../components/molecules/ReceiptPaymentRow.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
+  import BarcodeScannerModal from '../components/molecules/BarcodeScannerModal.svelte';
+  import ScanToast, { type ToastData } from '../components/atoms/ScanToast.svelte';
 
   // State variables
   let searchQuery = $state('');
@@ -27,8 +31,12 @@
   let errorMessage = $state('');
   let successReceipt = $state<any>(null);
 
-  // Barcode input handler
+  // Barcode & Camera Scanner State
   let barcodeSearchInput = $state<HTMLInputElement>();
+  let showCameraScanner = $state(false);
+  let currentToast = $state<ToastData | null>(null);
+  let toastTimeout: any = null;
+  let soundOn = $state(isSoundEnabled());
 
   let initPromise = $state<Promise<any>>(
     Promise.all([getProducts(), getCategories()]).then(([prods, cats]) => {
@@ -50,6 +58,92 @@
       categories.set(cats);
     });
   }
+
+  function showToast(message: string, type: 'success' | 'error' | 'warning', subtext?: string) {
+    if (toastTimeout) clearTimeout(toastTimeout);
+    currentToast = { message, type, subtext };
+    toastTimeout = setTimeout(() => {
+      currentToast = null;
+    }, 2800);
+  }
+
+  // Handle scanned barcode (from hardware scanner, camera, or search input Enter)
+  function handleBarcodeScanned(code: string) {
+    const cleanCode = code.trim();
+    if (!cleanCode) return;
+
+    // Search exact SKU in product catalog
+    const product = $products.find((p) => p.sku.toLowerCase() === cleanCode.toLowerCase());
+
+    if (!product) {
+      playScanError();
+      showToast('Código no encontrado', 'warning', `SKU: ${cleanCode}`);
+      return;
+    }
+
+    const isCafeInfinite = product.department === 'CAFE' && product.stock >= 900;
+    if (product.stock <= 0 && !isCafeInfinite) {
+      playScanError();
+      showToast('¡Producto sin stock!', 'error', product.name);
+      return;
+    }
+
+    const existing = $cart.find((item) => item.product.id === product.id);
+    if (existing) {
+      if (!isCafeInfinite && existing.quantity >= product.stock) {
+        playScanError();
+        showToast('Stock máximo alcanzado', 'warning', `${product.name} (Stock: ${product.stock})`);
+        return;
+      }
+      existing.quantity += 1;
+      cart.set([...$cart]);
+    } else {
+      cart.set([...$cart, { product, quantity: 1 }]);
+    }
+
+    playScanSuccess();
+    showToast(`+1 ${product.name}`, 'success', `$${product.price.toLocaleString()} • SKU: ${product.sku}`);
+  }
+
+  function handleSearchKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      const query = searchQuery.trim();
+      if (!query) return;
+
+      e.preventDefault();
+      // Try exact SKU match first
+      const exact = $products.find((p) => p.sku.toLowerCase() === query.toLowerCase());
+      if (exact) {
+        handleBarcodeScanned(exact.sku);
+        searchQuery = '';
+        return;
+      }
+
+      // If single search result match
+      if (filteredProducts.length === 1) {
+        handleBarcodeScanned(filteredProducts[0].sku);
+        searchQuery = '';
+        return;
+      }
+
+      // Otherwise attempt scan lookup
+      handleBarcodeScanned(query);
+      searchQuery = '';
+    }
+  }
+
+  // Register global hardware barcode scanner listener
+  $effect(() => {
+    const cleanup = attachHardwareScannerListener({
+      onScan: (barcode) => {
+        handleBarcodeScanned(barcode);
+      },
+    });
+
+    return () => {
+      cleanup();
+    };
+  });
 
   // Filter products based on search, department, and category
   let filteredProducts = $derived($products.filter((p) => {
@@ -247,15 +341,41 @@
     {:then}
       <!-- Header with Search & Tabs -->
       <div class="catalog-header glass-panel">
-        <div class="search-bar-container">
-          <span class="search-icon">🔍</span>
-          <input
-            type="text"
-            placeholder="Buscar producto por nombre o escanear código SKU..."
-            bind:value={searchQuery}
-            bind:this={barcodeSearchInput}
-            class="search-input"
-          />
+        <div class="search-bar-row">
+          <div class="search-bar-container">
+            <span class="search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Buscar por nombre o escanear código / SKU..."
+              bind:value={searchQuery}
+              bind:this={barcodeSearchInput}
+              onkeydown={handleSearchKeyDown}
+              class="search-input"
+            />
+            {#if searchQuery}
+              <button class="clear-search-btn" onclick={() => searchQuery = ''} type="button" aria-label="Limpiar búsqueda">✕</button>
+            {/if}
+          </div>
+
+          <button
+            class="btn btn-general btn-scanner"
+            onclick={() => showCameraScanner = true}
+            title="Abrir lector de códigos de barras con cámara"
+            type="button"
+          >
+            📷 Escanear
+          </button>
+
+          <button
+            class="btn btn-secondary btn-sound"
+            class:muted={!soundOn}
+            onclick={() => { soundOn = !soundOn; setSoundEnabled(soundOn); }}
+            title={soundOn ? 'Sonido activado (Click para silenciar)' : 'Sonido silenciado (Click para activar)'}
+            type="button"
+            aria-label={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
+          >
+            {soundOn ? '🔊' : '🔇'}
+          </button>
         </div>
 
         <div class="tabs-and-filters">
@@ -507,6 +627,19 @@
 
 {@render paymentModal()}
 
+<!-- Visual scan notification toast -->
+<ScanToast toast={currentToast} />
+
+<!-- Camera Barcode Scanner Modal -->
+{#if showCameraScanner}
+  <BarcodeScannerModal
+    title="Escanear Producto para Caja"
+    mode="continuous"
+    onscan={(code) => handleBarcodeScanned(code)}
+    onclose={() => showCameraScanner = false}
+  />
+{/if}
+
 <style>
   .checkout-layout {
     display: flex;
@@ -533,9 +666,16 @@
     gap: 12px;
   }
 
+  .search-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
   .search-bar-container {
     position: relative;
-    width: 100%;
+    flex: 1;
   }
 
   .search-icon {
@@ -549,6 +689,48 @@
   .search-input {
     width: 100%;
     padding-left: 38px;
+    padding-right: 32px;
+  }
+
+  .clear-search-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .clear-search-btn:hover {
+    color: var(--text-primary);
+  }
+
+  .btn-scanner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.88rem;
+    padding: 0 16px;
+    height: 42px;
+    white-space: nowrap;
+  }
+
+  .btn-sound {
+    font-size: 1.1rem;
+    padding: 0 12px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+  .btn-sound.muted {
+    opacity: 0.5;
+    filter: grayscale(1);
   }
 
   .tabs-and-filters {

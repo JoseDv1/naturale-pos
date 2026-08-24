@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 
-const BACKEND_PORT = process.env.PORT || '8080';
+const BACKEND_PORT = process.env.PORT || '3001';
 
 // https://vite.dev/config/
 export default defineConfig({

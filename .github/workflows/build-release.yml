@@ -1,0 +1,86 @@
+name: Build and Package Naturale POS Releases
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-package:
+    name: Build Self-Contained Release Bundles
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun Environment
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install zip utility
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Validate frontend types and Svelte components
+        working-directory: ./frontend
+        run: bun run check
+
+      - name: Initialize Prisma and SQLite Database
+        run: |
+          bun run db:generate
+          bun run db:migrate
+          bun prisma/seed.ts
+
+      - name: Build and package stand-alone bundles (Linux & Windows)
+        run: bun run package
+
+      - name: Verify generated archives
+        run: |
+          ls -lh dist-release/
+
+      - name: Upload Linux Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: naturale-pos-linux-x64
+          path: |
+            dist-release/naturale-pos-linux-x64.zip
+            dist-release/naturale-pos-linux-x64.tar.gz
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload Windows Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: naturale-pos-windows-x64
+          path: |
+            dist-release/naturale-pos-windows-x64.zip
+            dist-release/naturale-pos-windows-x64.tar.gz
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Create GitHub Release (on Tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist-release/*.zip
+            dist-release/*.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}

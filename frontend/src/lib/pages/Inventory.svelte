@@ -3,6 +3,8 @@
   import { getProducts, getCategories, createProduct, updateProduct, deleteProduct as apiDeleteProduct, createCategory, updateCategory, deleteCategory as apiDeleteCategory } from '../api/products';
   import ProductRow from '../components/organisms/ProductRow.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
+  import BarcodeScannerModal from '../components/molecules/BarcodeScannerModal.svelte';
+  import { playScanSuccess } from '../services/sound';
 
   // Sub-tab Navigation
   let currentSubTab = $state('products'); // 'products' | 'categories'
@@ -11,11 +13,13 @@
   let searchQuery = $state('');
   let filterCategory = $state('');
   let filterDept = $state('');
+  let showFilterScanner = $state(false);
 
   // Add / Edit Product Modal State
   let showProductModal = $state(false);
   let modalMode = $state('add'); // 'add' | 'edit'
   let currentProduct = $state<any>({});
+  let showProductSkuScanner = $state(false);
 
   // Add / Edit Category Modal State
   let showCategoryModal = $state(false);
@@ -200,7 +204,17 @@
     {#if currentSubTab === 'products'}
       <!-- CATALOG WORKSPACE -->
       <div class="catalog-filters glass-panel animate-fade-in">
-        <input type="text" placeholder="Buscar por SKU o Nombre..." bind:value={searchQuery} class="filter-input" />
+        <div class="filter-search-box">
+          <input type="text" placeholder="Buscar por SKU o Nombre..." bind:value={searchQuery} class="filter-input" />
+          <button
+            class="btn-filter-scan"
+            onclick={() => showFilterScanner = true}
+            type="button"
+            title="Escanear código de barras para filtrar"
+          >
+            📷
+          </button>
+        </div>
         
         <select bind:value={filterCategory} class="filter-select">
           <option value="">Todas las Categorías</option>
@@ -308,7 +322,19 @@
         <div class="form-row">
           <div class="form-group flex-1">
             <label for="p-sku">Código / SKU (Opcional)</label>
-            <input type="text" id="p-sku" bind:value={currentProduct.sku} placeholder="Autogenerado si se deja vacío" disabled={modalMode === 'edit'} />
+            <div class="input-with-action">
+              <input type="text" id="p-sku" bind:value={currentProduct.sku} placeholder="Autogenerado si se deja vacío" disabled={modalMode === 'edit'} />
+              {#if modalMode === 'add'}
+                <button
+                  class="btn-inline-scan"
+                  onclick={() => showProductSkuScanner = true}
+                  type="button"
+                  title="Escanear código de barras con la cámara"
+                >
+                  📷
+                </button>
+              {/if}
+            </div>
           </div>
           <div class="form-group flex-1">
             <label for="p-name">Nombre Comercial *</label>
@@ -401,19 +427,42 @@
   </div>
 {/if}
 
+<!-- Scanner Modal for Product SKU Input -->
+{#if showProductSkuScanner}
+  <BarcodeScannerModal
+    title="Escanear Código / SKU del Producto"
+    mode="single"
+    onscan={(code) => {
+      currentProduct.sku = code;
+      playScanSuccess();
+      showProductSkuScanner = false;
+    }}
+    onclose={() => showProductSkuScanner = false}
+  />
+{/if}
+
+<!-- Scanner Modal for Inventory Filter -->
+{#if showFilterScanner}
+  <BarcodeScannerModal
+    title="Escanear para Buscar en Inventario"
+    mode="single"
+    onscan={(code) => {
+      searchQuery = code;
+      playScanSuccess();
+      showFilterScanner = false;
+    }}
+    onclose={() => showFilterScanner = false}
+  />
+{/if}
+
 <style>
-  .inventory-container {
+  .flex-column {
+    display: flex;
+    flex-direction: column;
     height: 100%;
     width: 100%;
     gap: 16px;
     padding: 6px;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .flex-column {
-    display: flex;
-    flex-direction: column;
   }
 
   .flex-1 {
@@ -433,11 +482,6 @@
     margin-bottom: 4px;
   }
 
-  .subtitle {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-  }
-
   .header-actions {
     display: flex;
     gap: 10px;
@@ -450,12 +494,62 @@
     align-items: center;
   }
 
-  .filter-input {
+  .filter-search-box {
     flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .filter-input {
+    width: 100%;
+    padding-right: 36px;
+  }
+
+  .btn-filter-scan {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    padding: 4px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+  }
+  .btn-filter-scan:hover {
+    color: var(--text-primary);
   }
 
   .filter-select {
     width: 200px;
+  }
+
+  .input-with-action {
+    display: flex;
+    position: relative;
+    align-items: center;
+    width: 100%;
+  }
+
+  .input-with-action input {
+    width: 100%;
+    padding-right: 36px;
+  }
+
+  .btn-inline-scan {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    padding: 4px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+  }
+  .btn-inline-scan:hover {
+    color: var(--text-primary);
   }
 
   .table-card {
@@ -463,18 +557,7 @@
     overflow: hidden;
   }
 
-  .product-name-txt {
-    display: block;
-    font-size: 0.92rem;
-    color: var(--text-primary);
-  }
 
-  .product-desc-txt {
-    display: block;
-    font-size: 0.76rem;
-    color: var(--text-secondary);
-    margin-top: 2px;
-  }
 
   .text-right {
     text-align: right;

@@ -13,7 +13,7 @@ app.use('*', serveStatic({ root: './frontend/dist' }));
 // For Single Page Application (SPA) routing, fallback to index.html
 app.get('*', serveStatic({ path: './frontend/dist/index.html' }));
 
-const port = process.env.PORT || 3000;
+const port = Number(process.env.PORT) || 3001;
 console.log(`Server is running on http://localhost:${port}`);
 
 export default {

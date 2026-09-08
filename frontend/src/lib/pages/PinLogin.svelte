@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
   import { user } from '../store';
   import { getUsers } from '../api/users';
   import { login } from '../api/auth';
   import Button from '../components/atoms/Button.svelte';
   import Dot from '../components/atoms/Dot.svelte';
+  import Logo from '../components/atoms/Logo.svelte';
 
   let usersPromise = $state<Promise<any[]>>(getUsers());
   let selectedUsername = $state('');
@@ -90,9 +90,8 @@
 
 {#snippet loginHeader()}
   <div class="login-header">
-    <div class="logo">🌿</div>
-    <h2>Naturale POS</h2>
-    <p>Selecciona tu usuario e ingresa tu PIN</p>
+    <Logo variant="stacked" size="lg" animated={true} />
+    <p class="login-instruction">Selecciona tu usuario e ingresa tu PIN</p>
   </div>
 {/snippet}
 
@@ -155,24 +154,15 @@
 
   .login-header {
     margin-bottom: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
-  .logo {
-    font-size: 3rem;
-    margin-bottom: 10px;
-    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
-  }
-
-  h2 {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin-bottom: 6px;
-    letter-spacing: -0.5px;
-  }
-
-  .login-header p {
+  .login-instruction {
     color: var(--text-secondary);
     font-size: 0.9rem;
+    margin-top: 12px;
   }
 
   .error-banner {

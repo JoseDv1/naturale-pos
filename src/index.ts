@@ -1,6 +1,10 @@
+import { runAutoMigrations } from './migrator';
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
 import api from './api';
+
+// 1. Run migrations and ensure database is ready
+await runAutoMigrations();
 
 const app = new Hono();
 
@@ -14,7 +18,7 @@ app.use('*', serveStatic({ root: './frontend/dist' }));
 app.get('*', serveStatic({ path: './frontend/dist/index.html' }));
 
 const port = Number(process.env.PORT) || 3001;
-console.log(`Server is running on http://localhost:${port}`);
+console.log(`🚀 Naturale POS server is running on http://localhost:${port}`);
 
 export default {
   port,

@@ -2,6 +2,7 @@
   import { logout as apiLogout } from '../api/auth';
   import { user, activeTab } from '../store';
   import SidebarMenuItem from './molecules/SidebarMenuItem.svelte';
+  import Logo from './atoms/Logo.svelte';
 
   async function logout() {
     try {
@@ -27,11 +28,7 @@
 
 <aside class="sidebar glass-panel">
   <div class="brand">
-    <span class="logo">🌿</span>
-    <div class="brand-info">
-      <h1>Naturale</h1>
-      <span>Mercado & Café</span>
-    </div>
+    <Logo variant="full" size="md" />
   </div>
 
   <nav class="nav-menu">
@@ -50,7 +47,7 @@
         <span class="user-role">{$user.role === 'ADMIN' ? 'Administrador' : 'Cajero'}</span>
       </div>
     {/if}
-    <button class="logout-btn" onclick={logout} title="Cerrar Sesión">
+    <button class="logout-btn" onclick={logout} title="Cerrar Sesión" aria-label="Cerrar Sesión">
       🚪
     </button>
   </div>
@@ -72,28 +69,8 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 12px;
     margin-bottom: 35px;
     padding: 0 8px;
-  }
-
-  .brand .logo {
-    font-size: 2rem;
-    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.2));
-  }
-
-  .brand-info h1 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    line-height: 1;
-    margin-bottom: 2px;
-  }
-
-  .brand-info span {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 1px;
   }
 
   .nav-menu {

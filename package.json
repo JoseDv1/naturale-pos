@@ -5,13 +5,14 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
+    "dev": "bun run build:migrations && bun --watch src/index.ts",
     "dev:frontend": "cd frontend && bun run dev",
-    "db:migrate": "bunx prisma migrate dev",
-    "db:generate": "bunx prisma generate",
+    "db:migrate": "bunx prisma migrate dev && bun run build:migrations",
+    "db:generate": "bunx prisma generate && bun run build:migrations",
     "db:studio": "bunx prisma studio",
+    "build:migrations": "bun scripts/generate-migrations.ts",
     "build:frontend": "cd frontend && bun run build",
-    "build:server": "bun build --compile --minify --outfile dist/pos src/index.ts",
+    "build:server": "bun run build:migrations && bun build --compile --minify --outfile dist/pos src/index.ts",
     "package": "bun scripts/package.ts"
   },
   "dependencies": {

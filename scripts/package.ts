@@ -177,9 +177,10 @@ async function main() {
   console.log('🔨 Compilando frontend...');
   await runCommand('bun run build:frontend');
 
-  // Ensure DB client & dev.db exists
-  console.log('🔨 Generando cliente Prisma y verificando base de datos...');
+  // Ensure DB client, migrations & dev.db exists
+  console.log('🔨 Generando cliente Prisma y módulo de migraciones...');
   await runCommand('bun run db:generate');
+  await runCommand('bun run build:migrations');
   if (!existsSync(join(ROOT_DIR, 'prisma', 'dev.db'))) {
     await runCommand('bun run db:migrate');
     await runCommand('bun prisma/seed.ts');

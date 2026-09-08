@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
 import { prisma } from '../db';
@@ -6,12 +8,18 @@ import { JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE } from '../middleware/auth';
 
 const auth = new Hono();
 
-auth.post('/login', async (c) => {
+const loginSchema = z.object({
+  username: z.string().min(1, 'Usuario y PIN son requeridos'),
+  pin: z.string().min(1, 'Usuario y PIN son requeridos'),
+});
+
+auth.post('/login', zValidator('json', loginSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
   try {
-    const { username, pin } = await c.req.json();
-    if (!username || !pin) {
-      return c.json({ error: 'Usuario y PIN son requeridos' }, 400);
-    }
+    const { username, pin } = c.req.valid('json');
 
     const user = await prisma.user.findUnique({
       where: { username },

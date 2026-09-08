@@ -10,6 +10,8 @@ frontend/dist/
 # SQLite databases
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite-journal
 

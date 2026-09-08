@@ -53,14 +53,14 @@ reports.get('/dashboard', async (c) => {
       for (const pay of sale.payments) {
         const method = pay.method as keyof typeof data.paymentMethods;
         if (data.paymentMethods[method] !== undefined) {
-          data.paymentMethods[method] += pay.amount;
+          data.paymentMethods[method] += Number(pay.amount);
         }
       }
 
       // Aggregate items to respect departments
       for (const item of sale.items) {
-        const itemRevenue = item.price * item.quantity;
-        const itemCost = item.product.cost * item.quantity;
+        const itemRevenue = Number(item.price) * item.quantity;
+        const itemCost = Number(item.product.cost) * item.quantity;
 
         const dept = item.product.department; // 'MARKET' | 'CAFE'
         if (dept === 'MARKET' || dept === 'CAFE') {
@@ -77,12 +77,13 @@ reports.get('/dashboard', async (c) => {
     // Calculate expenses
     for (const exp of expenses) {
       const dept = exp.department; // 'MARKET' | 'CAFE' | 'GENERAL'
+      const expAmount = Number(exp.amount);
       if (dept === 'MARKET' || dept === 'CAFE') {
-        data[dept].expenses += exp.amount;
+        data[dept].expenses += expAmount;
       } else {
-        data.GENERAL.expenses += exp.amount;
+        data.GENERAL.expenses += expAmount;
       }
-      data.CONSOLIDATED.expenses += exp.amount;
+      data.CONSOLIDATED.expenses += expAmount;
     }
 
     // Complete math

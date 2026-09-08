@@ -1,6 +1,6 @@
 {
   "name": "naturale-pos",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Local-first POS system for healthy market and café",
   "main": "src/index.ts",
   "type": "module",
@@ -13,7 +13,8 @@
     "build:migrations": "bun scripts/generate-migrations.ts",
     "build:frontend": "cd frontend && bun run build",
     "build:server": "bun run build:migrations && bun build --compile --minify --outfile dist/pos src/index.ts",
-    "package": "bun scripts/package.ts"
+    "package": "bun scripts/package.ts",
+    "test": "bun test"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.8.0",

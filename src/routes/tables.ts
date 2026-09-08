@@ -2,36 +2,35 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { prisma } from '../db';
-import { adminMiddleware } from '../middleware/auth';
 
 const tables = new Hono();
 
 const tableItemsSchema = z.object({
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de producto inválido'),
-    quantity: z.union([z.number(), z.string()]).transform((val) => {
-      const int = typeof val === 'string' ? parseInt(val) : val;
-      if (isNaN(int) || int <= 0) throw new Error('La cantidad debe ser mayor a cero');
-      return int;
-    }),
-    price: z.union([z.number(), z.string()]).transform((val) => {
-      const num = typeof val === 'string' ? parseFloat(val) : val;
-      if (isNaN(num) || num < 0) throw new Error('El precio no puede ser negativo');
-      return num;
-    })
+    quantity: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseInt(val) : val)
+      .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
+    price: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+      .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio no puede ser negativo' }),
   }))
 });
 
 const tableCheckoutSchema = z.object({
   payments: z.array(z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
-    amount: z.union([z.number(), z.string()]).transform((val) => {
-      const num = typeof val === 'string' ? parseFloat(val) : val;
-      if (isNaN(num) || num <= 0) throw new Error('El monto del pago debe ser mayor a cero');
-      return num;
-    })
+    amount: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+      .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del pago debe ser mayor a cero' }),
   })).min(1, 'Debe ingresar al menos un método de pago')
 });
+
+class ApiError extends Error {
+  constructor(message: string, public status: 400 | 404 = 400) {
+    super(message);
+  }
+}
 
 tables.get('/', async (c) => {
   try {
@@ -67,8 +66,8 @@ tables.post('/:id/open', async (c) => {
 
     const result = await prisma.$transaction(async (tx) => {
       const table = await tx.cafeTable.findUnique({ where: { id } });
-      if (!table) throw new Error('Mesa no encontrada');
-      if (table.status !== 'AVAILABLE') throw new Error('La mesa no está disponible');
+      if (!table) throw new ApiError('Mesa no encontrada', 404);
+      if (table.status !== 'AVAILABLE') throw new ApiError('La mesa no está disponible', 400);
 
       // Create an open, empty sale associated with this table
       const sale = await tx.sale.create({
@@ -103,6 +102,9 @@ tables.post('/:id/open', async (c) => {
 
     return c.json(result);
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
     return c.json({ error: error.message || 'Error al abrir la mesa' }, 500);
   }
 });
@@ -126,8 +128,9 @@ tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
         }
       });
 
-      if (!table || !table.currentSaleId || !table.currentSale) {
-        throw new Error('Mesa no ocupada o sin orden activa');
+      if (!table) throw new ApiError('Mesa no encontrada', 404);
+      if (!table.currentSaleId || !table.currentSale) {
+        throw new ApiError('Mesa no ocupada o sin orden activa', 400);
       }
 
       const saleId = table.currentSaleId;
@@ -155,12 +158,12 @@ tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
 
         if (diff !== 0) {
           const prod = await tx.product.findUnique({ where: { id: prodId } });
-          if (!prod) throw new Error(`Producto no encontrado: ID ${prodId}`);
+          if (!prod) throw new ApiError(`Producto no encontrado: ID ${prodId}`, 404);
 
           // Skip stock checks for café products that have mock infinite stock
           if (!(prod.department === 'CAFE' && prod.stock >= 900)) {
             if (diff > 0 && prod.stock < diff) {
-              throw new Error(`Stock insuficiente para "${prod.name}". Disponible: ${prod.stock}, Requerido adicional: ${diff}`);
+              throw new ApiError(`Stock insuficiente para "${prod.name}". Disponible: ${prod.stock}, Requerido adicional: ${diff}`, 400);
             }
             await tx.product.update({
               where: { id: prodId },
@@ -225,6 +228,9 @@ tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
 
     return c.json({ success: true, sale: result });
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
     return c.json({ error: error.message || 'Error al guardar la orden de la mesa' }, 500);
   }
 });
@@ -248,17 +254,18 @@ tables.post('/:id/checkout', zValidator('json', tableCheckoutSchema, (result, c)
         }
       });
 
-      if (!table || !table.currentSaleId || !table.currentSale) {
-        throw new Error('Mesa no ocupada o sin orden activa');
+      if (!table) throw new ApiError('Mesa no encontrada', 404);
+      if (!table.currentSaleId || !table.currentSale) {
+        throw new ApiError('Mesa no ocupada o sin orden activa', 400);
       }
 
       const saleId = table.currentSaleId;
-      const total = table.currentSale.total;
+      const total = Number(table.currentSale.total);
 
       // Verify payments match the total
       const paymentSum = payments.reduce((acc: number, p: any) => acc + parseFloat(p.amount), 0);
       if (Math.abs(paymentSum - total) > 0.01) {
-        throw new Error('La suma de pagos no coincide con el total de la cuenta');
+        throw new ApiError('La suma de pagos no coincide con el total de la cuenta', 400);
       }
 
       // Record payments
@@ -296,6 +303,9 @@ tables.post('/:id/checkout', zValidator('json', tableCheckoutSchema, (result, c)
 
     return c.json({ success: true, sale: result });
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
     return c.json({ error: error.message || 'Error al facturar la mesa' }, 500);
   }
 });
@@ -313,8 +323,9 @@ tables.post('/:id/cancel', async (c) => {
         }
       });
 
-      if (!table || !table.currentSaleId || !table.currentSale) {
-        throw new Error('Mesa no ocupada o sin orden activa');
+      if (!table) throw new ApiError('Mesa no encontrada', 404);
+      if (!table.currentSaleId || !table.currentSale) {
+        throw new ApiError('Mesa no ocupada o sin orden activa', 400);
       }
 
       const saleId = table.currentSaleId;
@@ -350,6 +361,9 @@ tables.post('/:id/cancel', async (c) => {
 
     return c.json({ success: true, table: result });
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
     return c.json({ error: error.message || 'Error al anular la cuenta de la mesa' }, 500);
   }
 });
@@ -442,6 +456,11 @@ tables.delete('/:id', async (c) => {
 tables.put('/:id/position', async (c) => {
   const id = c.req.param('id');
   try {
+    const existing = await prisma.cafeTable.findUnique({ where: { id } });
+    if (!existing) {
+      return c.json({ error: 'Mesa no encontrada' }, 404);
+    }
+
     const { x, y } = await c.req.json();
     if (typeof x !== 'number' || typeof y !== 'number') {
       return c.json({ error: 'Coordenadas x e y requeridas y deben ser números' }, 400);

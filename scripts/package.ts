@@ -148,25 +148,35 @@ async function packagePlatform(target: 'linux' | 'windows') {
   await createStartScripts(packageDir, isWin);
   await createReadme(packageDir);
 
-  // 5. Create Archive (ZIP or TAR.GZ)
+  // 5. Create Archive (both ZIP and TAR.GZ)
   console.log(`🗜️  Comprimiendo ${folderName}...`);
+  const zipName = `${folderName}.zip`;
+  const zipPath = join(DIST_DIR, zipName);
+  if (existsSync(zipPath)) {
+    await rm(zipPath, { force: true });
+  }
   try {
-    const zipName = `${folderName}.zip`;
-    const zipPath = join(DIST_DIR, zipName);
-    if (existsSync(zipPath)) {
-      await rm(zipPath, { force: true });
-    }
     await runCommand(`zip -r ${zipName} ${folderName}`, DIST_DIR);
     console.log(`✅ ${target.toUpperCase()} comprimido en ZIP: ${zipPath}`);
   } catch (e) {
-    console.log(`⚠️  'zip' no disponible, comprimiendo en .tar.gz...`);
-    const tarName = `${folderName}.tar.gz`;
-    const tarPath = join(DIST_DIR, tarName);
-    if (existsSync(tarPath)) {
-      await rm(tarPath, { force: true });
+    try {
+      await runCommand(`python3 -m zipfile -c ${zipName} ${folderName}`, DIST_DIR);
+      console.log(`✅ ${target.toUpperCase()} comprimido en ZIP con python3: ${zipPath}`);
+    } catch (err) {
+      console.warn(`⚠️ No se pudo generar archivo ZIP:`, err);
     }
+  }
+
+  const tarName = `${folderName}.tar.gz`;
+  const tarPath = join(DIST_DIR, tarName);
+  if (existsSync(tarPath)) {
+    await rm(tarPath, { force: true });
+  }
+  try {
     await runCommand(`tar -czf ${tarName} ${folderName}`, DIST_DIR);
     console.log(`✅ ${target.toUpperCase()} comprimido en TAR.GZ: ${tarPath}`);
+  } catch (e) {
+    console.warn(`⚠️ No se pudo generar archivo TAR.GZ:`, e);
   }
 }
 

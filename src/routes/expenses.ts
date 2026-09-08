@@ -20,26 +20,24 @@ expenses.get('/', async (c) => {
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'La descripción del gasto es obligatoria'),
-  amount: z.union([z.number(), z.string()]).transform((val) => {
-    const num = typeof val === 'string' ? parseFloat(val) : val;
-    if (isNaN(num) || num <= 0) throw new Error('El monto del gasto debe ser mayor a cero');
-    return num;
+  amount: z.union([z.number(), z.string()])
+    .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+    .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del gasto debe ser mayor a cero' }),
+  category: z.enum(['rent', 'utilities', 'supplies', 'INTERNAL_TRANSFER'], {
+    message: 'Categoría de gasto inválida'
+  }).default('supplies'),
+  department: z.enum(['MARKET', 'CAFE', 'GENERAL'], {
+    message: 'Departamento inválido'
   }),
-  category: z.string().default('supplies'),
-  department: z.string().min(1, 'El departamento del gasto es obligatorio'),
   userId: z.string().nullable().optional(),
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de producto inválido'),
-    quantity: z.union([z.number(), z.string()]).transform((val) => {
-      const int = typeof val === 'string' ? parseInt(val) : val;
-      if (isNaN(int) || int <= 0) throw new Error('La cantidad debe ser mayor a cero');
-      return int;
-    }),
-    unitCost: z.union([z.number(), z.string()]).transform((val) => {
-      const num = typeof val === 'string' ? parseFloat(val) : val;
-      if (isNaN(num) || num <= 0) throw new Error('El costo unitario debe ser mayor a cero');
-      return num;
-    })
+    quantity: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseInt(val) : val)
+      .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
+    unitCost: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+      .refine((num) => !isNaN(num) && num > 0, { message: 'El costo unitario debe ser mayor a cero' }),
   })).optional()
 });
 
@@ -56,15 +54,15 @@ expenses.post('/', zValidator('json', expenseSchema, (result, c) => {
       const expense = await tx.expense.create({
         data: {
           description,
-          amount: parseFloat(amount),
+          amount,
           category: category || 'supplies',
           department,
           userId,
           items: items && items.length ? {
             create: items.map((item: any) => ({
               productId: item.productId,
-              quantity: parseInt(item.quantity),
-              unitCost: parseFloat(item.unitCost),
+              quantity: item.quantity,
+              unitCost: item.unitCost,
             })),
           } : undefined,
         },
@@ -79,8 +77,8 @@ expenses.post('/', zValidator('json', expenseSchema, (result, c) => {
           await tx.product.update({
             where: { id: item.productId },
             data: {
-              stock: { increment: parseInt(item.quantity) },
-              cost: parseFloat(item.unitCost),
+              stock: { increment: item.quantity },
+              cost: item.unitCost,
             },
           });
         }

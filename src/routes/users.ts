@@ -1,8 +1,19 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import { prisma } from '../db';
 import { adminMiddleware } from '../middleware/auth';
 
 const users = new Hono();
+
+const userSchema = z.object({
+  username: z.string().min(1, 'El nombre de usuario es obligatorio'),
+  name: z.string().min(1, 'El nombre es obligatorio'),
+  pin: z.string().min(1, 'El PIN es obligatorio'),
+  role: z.enum(['ADMIN', 'CASHIER'], {
+    message: 'El rol debe ser ADMIN o CASHIER'
+  }),
+});
 
 users.get('/', async (c) => {
   const list = await prisma.user.findMany({
@@ -12,12 +23,13 @@ users.get('/', async (c) => {
   return c.json(list);
 });
 
-users.post('/', adminMiddleware, async (c) => {
+users.post('/', adminMiddleware, zValidator('json', userSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
   try {
-    const { username, name, pin, role } = await c.req.json();
-    if (!username || !name || !pin || !role) {
-      return c.json({ error: 'Todos los campos son obligatorios' }, 400);
-    }
+    const { username, name, pin, role } = c.req.valid('json');
 
     const exists = await prisma.user.findUnique({ where: { username } });
     if (exists) {

@@ -21,31 +21,23 @@ sales.get('/', async (c) => {
 
 const saleSchema = z.object({
   userId: z.string().min(1, 'El usuario es requerido'),
-  total: z.union([z.number(), z.string()]).transform((val) => {
-    const num = typeof val === 'string' ? parseFloat(val) : val;
-    if (isNaN(num) || num <= 0) throw new Error('El total debe ser mayor a cero');
-    return num;
-  }),
+  total: z.union([z.number(), z.string()])
+    .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+    .refine((num) => !isNaN(num) && num > 0, { message: 'El total debe ser mayor a cero' }),
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de producto inválido'),
-    quantity: z.union([z.number(), z.string()]).transform((val) => {
-      const int = typeof val === 'string' ? parseInt(val) : val;
-      if (isNaN(int) || int <= 0) throw new Error('La cantidad debe ser mayor a cero');
-      return int;
-    }),
-    price: z.union([z.number(), z.string()]).transform((val) => {
-      const num = typeof val === 'string' ? parseFloat(val) : val;
-      if (isNaN(num) || num < 0) throw new Error('El precio no puede ser negativo');
-      return num;
-    })
+    quantity: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseInt(val) : val)
+      .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
+    price: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+      .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio no puede ser negativo' }),
   })).min(1, 'La venta debe contener al menos un producto'),
   payments: z.array(z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
-    amount: z.union([z.number(), z.string()]).transform((val) => {
-      const num = typeof val === 'string' ? parseFloat(val) : val;
-      if (isNaN(num) || num <= 0) throw new Error('El monto del pago debe ser mayor a cero');
-      return num;
-    })
+    amount: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+      .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del pago debe ser mayor a cero' }),
   })).min(1, 'La venta debe contener al menos un método de pago')
 }).superRefine((data, ctx) => {
   // Validate item sum matches total
@@ -69,6 +61,12 @@ const saleSchema = z.object({
   }
 });
 
+class ApiError extends Error {
+  constructor(message: string, public status: 400 | 404 = 400) {
+    super(message);
+  }
+}
+
 sales.post('/', zValidator('json', saleSchema, (result, c) => {
   if (!result.success) {
     return c.json({ error: result.error.issues[0].message }, 400);
@@ -82,7 +80,7 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
       // 1. Stock check and decrement
       for (const item of items) {
         const prod = await tx.product.findUnique({ where: { id: item.productId } });
-        if (!prod) throw new Error(`Producto no encontrado: ID ${item.productId}`);
+        if (!prod) throw new ApiError(`Producto no encontrado: ID ${item.productId}`, 404);
         
         // Skip stock check for Cafe products with infinite/on-demand code (e.g. prepared drinks, stock coded as 999)
         if (prod.department === 'CAFE' && prod.stock >= 900) {
@@ -90,7 +88,7 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
         }
 
         if (prod.stock < item.quantity) {
-          throw new Error(`Stock insuficiente para "${prod.name}". Disponible: ${prod.stock}, Solicitado: ${item.quantity}`);
+          throw new ApiError(`Stock insuficiente para "${prod.name}". Disponible: ${prod.stock}, Solicitado: ${item.quantity}`, 400);
         }
 
         await tx.product.update({
@@ -103,19 +101,19 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
       const sale = await tx.sale.create({
         data: {
           userId,
-          total: parseFloat(total),
+          total,
           status: 'COMPLETED',
           items: {
             create: items.map((item: any) => ({
               productId: item.productId,
               quantity: item.quantity,
-              price: parseFloat(item.price),
+              price: item.price,
             })),
           },
           payments: {
             create: payments.map((pay: any) => ({
               method: pay.method,
-              amount: parseFloat(pay.amount),
+              amount: pay.amount,
             })),
           },
         },
@@ -130,6 +128,9 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
 
     return c.json({ success: true, sale: result });
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
     return c.json({ error: error.message || 'Error al procesar la venta' }, 500);
   }
 });
@@ -144,8 +145,8 @@ sales.post('/:id/cancel', async (c) => {
         include: { items: true },
       });
 
-      if (!sale) throw new Error('Venta no encontrada');
-      if (sale.status === 'CANCELLED') throw new Error('La venta ya está cancelada');
+      if (!sale) throw new ApiError('Venta no encontrada', 404);
+      if (sale.status === 'CANCELLED') throw new ApiError('La venta ya está cancelada', 400);
 
       // Restore stock for all items
       for (const item of sale.items) {
@@ -169,6 +170,9 @@ sales.post('/:id/cancel', async (c) => {
 
     return c.json({ success: true, sale: result });
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
     return c.json({ error: error.message || 'Error al cancelar la venta' }, 500);
   }
 });

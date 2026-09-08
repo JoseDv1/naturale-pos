@@ -1,8 +1,15 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import { prisma } from '../db';
 import { adminMiddleware } from '../middleware/auth';
 
 const categories = new Hono();
+
+const categorySchema = z.object({
+  name: z.string().min(1, 'Nombre es requerido'),
+  description: z.string().nullable().optional(),
+});
 
 categories.get('/', async (c) => {
   const list = await prisma.category.findMany({
@@ -11,10 +18,13 @@ categories.get('/', async (c) => {
   return c.json(list);
 });
 
-categories.post('/', adminMiddleware, async (c) => {
+categories.post('/', adminMiddleware, zValidator('json', categorySchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
   try {
-    const { name, description } = await c.req.json();
-    if (!name) return c.json({ error: 'Nombre es requerido' }, 400);
+    const { name, description } = c.req.valid('json');
 
     const exists = await prisma.category.findUnique({ where: { name } });
     if (exists) return c.json({ error: 'La categoría ya existe' }, 400);
@@ -28,11 +38,14 @@ categories.post('/', adminMiddleware, async (c) => {
   }
 });
 
-categories.put('/:id', async (c) => {
+categories.put('/:id', zValidator('json', categorySchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
   try {
     const id = c.req.param('id');
-    const { name, description } = await c.req.json();
-    if (!name) return c.json({ error: 'Nombre es requerido' }, 400);
+    const { name, description } = c.req.valid('json');
 
     const currentCategory = await prisma.category.findUnique({ where: { id } });
     if (!currentCategory) {

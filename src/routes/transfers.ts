@@ -20,16 +20,14 @@ transfers.get('/', async (c) => {
 const transferSchema = z.object({
   productId: z.string().min(1, 'El producto de origen es obligatorio'),
   targetProductId: z.string().nullable().optional(),
-  quantity: z.union([z.number(), z.string()]).transform((val) => {
-    const int = typeof val === 'string' ? parseInt(val) : val;
-    if (isNaN(int) || int <= 0) throw new Error('La cantidad del traslado debe ser un número entero mayor a cero');
-    return int;
-  }),
+  quantity: z.union([z.number(), z.string()])
+    .transform((val) => typeof val === 'string' ? parseInt(val) : val)
+    .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad del traslado debe ser un número entero mayor a cero' }),
   fromDepartment: z.enum(['MARKET', 'CAFE'], {
-    errorMap: () => ({ message: 'Departamento de origen inválido (debe ser MARKET o CAFE)' })
+    message: 'Departamento de origen inválido (debe ser MARKET o CAFE)'
   }),
   toDepartment: z.enum(['MARKET', 'CAFE'], {
-    errorMap: () => ({ message: 'Departamento de destino inválido (debe ser MARKET o CAFE)' })
+    message: 'Departamento de destino inválido (debe ser MARKET o CAFE)'
   }),
   userId: z.string().min(1, 'El usuario es obligatorio')
 }).superRefine((data, ctx) => {
@@ -49,6 +47,12 @@ const transferSchema = z.object({
   }
 });
 
+class ApiError extends Error {
+  constructor(message: string, public status: 400 | 404 = 400) {
+    super(message);
+  }
+}
+
 transfers.post('/', zValidator('json', transferSchema, (result, c) => {
   if (!result.success) {
     return c.json({ error: result.error.issues[0].message }, 400);
@@ -61,13 +65,13 @@ transfers.post('/', zValidator('json', transferSchema, (result, c) => {
     const result = await prisma.$transaction(async (tx) => {
       // 1. Retrieve the source product to check stock and cost
       const sourceProduct = await tx.product.findUnique({ where: { id: productId } });
-      if (!sourceProduct) throw new Error('Producto origen no encontrado');
+      if (!sourceProduct) throw new ApiError('Producto origen no encontrado', 404);
 
       if (sourceProduct.stock < qty) {
-        throw new Error(`Stock insuficiente para trasladar. Disponible: ${sourceProduct.stock}, Solicitado: ${qty}`);
+        throw new ApiError(`Stock insuficiente para trasladar. Disponible: ${sourceProduct.stock}, Solicitado: ${qty}`, 400);
       }
 
-      const totalCost = qty * sourceProduct.cost;
+      const totalCost = qty * Number(sourceProduct.cost);
 
       // 2. Decrement source product stock
       await tx.product.update({
@@ -77,6 +81,9 @@ transfers.post('/', zValidator('json', transferSchema, (result, c) => {
 
       // 3. Increment target product stock (if target product ID provided)
       if (targetProductId) {
+        const targetProduct = await tx.product.findUnique({ where: { id: targetProductId } });
+        if (!targetProduct) throw new ApiError('Producto destino no encontrado', 404);
+
         await tx.product.update({
           where: { id: targetProductId },
           data: { stock: { increment: qty } },
@@ -140,6 +147,9 @@ transfers.post('/', zValidator('json', transferSchema, (result, c) => {
 
     return c.json({ success: true, transfer: result });
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
     return c.json({ error: error.message || 'Error al procesar el traslado' }, 500);
   }
 });

@@ -780,4 +780,107 @@ describe('Naturale POS v1.2.0 QA Comprehensive Pre-Release Test Suite', () => {
       }
     });
   });
+
+  // ===========================================================================
+  // 10. PRODUCT IMAGE & FILE UPLOAD ENDPOINTS
+  // ===========================================================================
+  describe('10. Product Image & File Upload Endpoints', () => {
+    let uploadedFileUrl = '';
+    let testProductId = '';
+
+    it('POST /upload should upload an image file and return its static URL', async () => {
+      const boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW';
+      const fileContent = 'FakePNGImageData';
+      const body = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="image"; filename="test-product.png"',
+        'Content-Type: image/png',
+        '',
+        fileContent,
+        `--${boundary}--`,
+      ].join('\r\n');
+
+      const res = await api.request('/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          Cookie: adminCookie,
+        },
+        body,
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.url).toBeDefined();
+      expect(data.url.startsWith('/uploads/')).toBe(true);
+      uploadedFileUrl = data.url;
+    });
+
+    it('POST /products should save product with imageUrl', async () => {
+      const cat = await prisma.category.findFirst();
+      const res = await api.request('/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+        body: JSON.stringify({
+          name: 'Producto con Foto ' + Date.now(),
+          price: 15000,
+          cost: 8000,
+          stock: 10,
+          categoryId: cat!.id,
+          department: 'MARKET',
+          imageUrl: uploadedFileUrl,
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const prod = await res.json();
+      expect(prod.imageUrl).toBe(uploadedFileUrl);
+      testProductId = prod.id;
+    });
+
+    it('PUT /products/:id should allow editing the imageUrl', async () => {
+      const updatedUrl = '/uploads/updated-photo.jpg';
+      const res = await api.request(`/products/${testProductId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+        body: JSON.stringify({
+          imageUrl: updatedUrl,
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const prod = await res.json();
+      expect(prod.imageUrl).toBe(updatedUrl);
+    });
+
+    it('PUT /products/:id should allow removing the imageUrl (setting to null)', async () => {
+      const res = await api.request(`/products/${testProductId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+        body: JSON.stringify({
+          imageUrl: null,
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const prod = await res.json();
+      expect(prod.imageUrl).toBeNull();
+
+      // Clean up test product
+      await prisma.product.delete({ where: { id: testProductId } });
+    });
+
+    it('DELETE /upload should remove the uploaded file from disk', async () => {
+      const res = await api.request('/upload', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+        body: JSON.stringify({ url: uploadedFileUrl }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+    });
+  });
 });

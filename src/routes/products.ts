@@ -10,6 +10,7 @@ const productCreateSchema = z.object({
   sku: z.string().optional(),
   name: z.string().min(1, 'El nombre es obligatorio'),
   description: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
   price: z.union([z.number(), z.string()])
     .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
     .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio debe ser un número válido mayor o igual a cero' }),
@@ -54,7 +55,7 @@ products.post('/', adminMiddleware, zValidator('json', productCreateSchema, (res
   }
 }), async (c) => {
   try {
-    const { sku, name, description, price, cost, stock, categoryId, department, isRawMaterial } = c.req.valid('json');
+    const { sku, name, description, imageUrl, price, cost, stock, categoryId, department, isRawMaterial } = c.req.valid('json');
 
     const catExists = await prisma.category.findUnique({ where: { id: categoryId } });
     if (!catExists) {
@@ -74,6 +75,7 @@ products.post('/', adminMiddleware, zValidator('json', productCreateSchema, (res
         sku: finalSku,
         name,
         description,
+        imageUrl: imageUrl || null,
         price,
         cost,
         stock,
@@ -97,13 +99,14 @@ products.put('/:id', adminMiddleware, async (c) => {
       return c.json({ error: 'Producto no encontrado' }, 404);
     }
 
-    const { name, description, price, cost, stock, categoryId, department, isRawMaterial } = await c.req.json();
+    const { name, description, imageUrl, price, cost, stock, categoryId, department, isRawMaterial } = await c.req.json();
 
     const product = await prisma.product.update({
       where: { id },
       data: {
         name,
         description,
+        imageUrl: imageUrl !== undefined ? (imageUrl || null) : undefined,
         price: price !== undefined ? parseFloat(price) : undefined,
         cost: cost !== undefined ? parseFloat(cost) : undefined,
         stock: stock !== undefined ? parseInt(stock) : undefined,

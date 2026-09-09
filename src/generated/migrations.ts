@@ -20,5 +20,9 @@ export const EMBEDDED_MIGRATIONS: Migration[] = [
   {
     "name": "20260704051037_add_table_coordinates",
     "sql": "-- RedefineTables\nPRAGMA defer_foreign_keys=ON;\nPRAGMA foreign_keys=OFF;\nCREATE TABLE \"new_CafeTable\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"name\" TEXT NOT NULL,\n    \"status\" TEXT NOT NULL DEFAULT 'AVAILABLE',\n    \"currentSaleId\" TEXT,\n    \"x\" REAL NOT NULL DEFAULT 0.0,\n    \"y\" REAL NOT NULL DEFAULT 0.0,\n    \"createdAt\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    \"updatedAt\" DATETIME NOT NULL,\n    CONSTRAINT \"CafeTable_currentSaleId_fkey\" FOREIGN KEY (\"currentSaleId\") REFERENCES \"Sale\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\nINSERT INTO \"new_CafeTable\" (\"createdAt\", \"currentSaleId\", \"id\", \"name\", \"status\", \"updatedAt\") SELECT \"createdAt\", \"currentSaleId\", \"id\", \"name\", \"status\", \"updatedAt\" FROM \"CafeTable\";\nDROP TABLE \"CafeTable\";\nALTER TABLE \"new_CafeTable\" RENAME TO \"CafeTable\";\nCREATE UNIQUE INDEX \"CafeTable_name_key\" ON \"CafeTable\"(\"name\");\nCREATE UNIQUE INDEX \"CafeTable_currentSaleId_key\" ON \"CafeTable\"(\"currentSaleId\");\nPRAGMA foreign_keys=ON;\nPRAGMA defer_foreign_keys=OFF;\n"
+  },
+  {
+    "name": "20260908224000_add_product_image",
+    "sql": "-- AlterTable\nALTER TABLE \"Product\" ADD COLUMN \"imageUrl\" TEXT;\n"
   }
 ];

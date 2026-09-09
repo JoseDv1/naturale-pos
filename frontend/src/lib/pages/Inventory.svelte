@@ -1,6 +1,6 @@
 <script lang="ts">
   import { products, categories, refreshTrigger, triggerRefresh } from '../store';
-  import { getProducts, getCategories, createProduct, updateProduct, deleteProduct as apiDeleteProduct, createCategory, updateCategory, deleteCategory as apiDeleteCategory } from '../api/products';
+  import { getProducts, getCategories, createProduct, updateProduct, deleteProduct as apiDeleteProduct, createCategory, updateCategory, deleteCategory as apiDeleteCategory, uploadProductImage } from '../api/products';
   import ProductRow from '../components/organisms/ProductRow.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
   import BarcodeScannerModal from '../components/molecules/BarcodeScannerModal.svelte';
@@ -20,6 +20,11 @@
   let modalMode = $state('add'); // 'add' | 'edit'
   let currentProduct = $state<any>({});
   let showProductSkuScanner = $state(false);
+
+  // Image Upload State
+  let isUploadingImage = $state(false);
+  let imageUploadError = $state('');
+  let fileInputRef = $state<HTMLInputElement | null>(null);
 
   // Add / Edit Category Modal State
   let showCategoryModal = $state(false);
@@ -64,10 +69,12 @@
   // Open product form (Add)
   function openAddProduct() {
     modalMode = 'add';
+    imageUploadError = '';
     currentProduct = {
       sku: '',
       name: '',
       description: '',
+      imageUrl: null,
       price: '',
       cost: '',
       stock: 0,
@@ -81,8 +88,34 @@
   // Open product form (Edit)
   function openEditProduct(product: any) {
     modalMode = 'edit';
-    currentProduct = { ...product };
+    imageUploadError = '';
+    currentProduct = { 
+      ...product,
+      imageUrl: product.imageUrl || null,
+    };
     showProductModal = true;
+  }
+
+  async function handleImageFileSelect(e: Event) {
+    const target = e.target as HTMLInputElement;
+    if (!target.files || target.files.length === 0) return;
+    const file = target.files[0];
+    isUploadingImage = true;
+    imageUploadError = '';
+    try {
+      const res = await uploadProductImage(file);
+      currentProduct.imageUrl = res.url;
+    } catch (err: any) {
+      imageUploadError = err.message || 'Error al subir la imagen';
+    } finally {
+      isUploadingImage = false;
+      target.value = '';
+    }
+  }
+
+  function handleRemoveImage() {
+    currentProduct.imageUrl = null;
+    imageUploadError = '';
   }
 
   async function saveProduct() {
@@ -211,6 +244,7 @@
             onclick={() => showFilterScanner = true}
             type="button"
             title="Escanear código de barras para filtrar"
+            aria-label="Escanear código de barras para filtrar"
           >
             📷
           </button>
@@ -315,7 +349,7 @@
     <div class="modal-container glass-panel animate-scale-up">
       <div class="modal-header">
         <h2>{modalMode === 'add' ? 'Registrar Nuevo Producto' : 'Editar Producto'}</h2>
-        <button class="close-modal-btn" onclick={() => showProductModal = false}>✕</button>
+        <button class="close-modal-btn" onclick={() => showProductModal = false} aria-label="Cerrar modal">✕</button>
       </div>
 
       <div class="product-form-body">
@@ -330,6 +364,7 @@
                   onclick={() => showProductSkuScanner = true}
                   type="button"
                   title="Escanear código de barras con la cámara"
+                  aria-label="Escanear código de barras con la cámara"
                 >
                   📷
                 </button>
@@ -345,6 +380,67 @@
         <div class="form-group">
           <label for="p-desc">Descripción (Opcional)</label>
           <textarea id="p-desc" bind:value={currentProduct.description} placeholder="Notas o detalles adicionales..." rows="2"></textarea>
+        </div>
+
+        <!-- Product Image Section -->
+        <div class="form-group image-upload-group">
+          <label for="product-image-input">Fotografía del Producto (Opcional)</label>
+          <div class="image-uploader-card">
+            {#if currentProduct.imageUrl}
+              <div class="image-preview-wrapper">
+                <img src={currentProduct.imageUrl} alt="Vista previa del producto" class="image-preview" />
+                <div class="image-preview-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    onclick={() => fileInputRef?.click()}
+                    disabled={isUploadingImage}
+                  >
+                    🔄 Cambiar Foto
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger btn-sm"
+                    onclick={handleRemoveImage}
+                    disabled={isUploadingImage}
+                  >
+                    🗑️ Quitar Foto
+                  </button>
+                </div>
+              </div>
+            {:else}
+              <div
+                class="upload-dropzone"
+                onclick={() => fileInputRef?.click()}
+                role="button"
+                tabindex="0"
+                aria-label="Seleccionar o tomar fotografía del producto"
+                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef?.click(); }}
+              >
+                {#if isUploadingImage}
+                  <Spinner size="26px" />
+                  <span class="upload-text">Subiendo imagen...</span>
+                {:else}
+                  <span class="upload-icon">📷</span>
+                  <span class="upload-title">Seleccionar o tomar fotografía</span>
+                  <span class="upload-subtitle">Formatos: PNG, JPG, WebP hasta 5MB</span>
+                {/if}
+              </div>
+            {/if}
+
+            <input
+              id="product-image-input"
+              type="file"
+              accept="image/*"
+              bind:this={fileInputRef}
+              onchange={handleImageFileSelect}
+              style="display: none;"
+            />
+
+            {#if imageUploadError}
+              <p class="upload-error-msg">{imageUploadError}</p>
+            {/if}
+          </div>
         </div>
 
         <div class="form-row">
@@ -404,7 +500,7 @@
     <div class="modal-container glass-panel animate-scale-up" style="max-width: 480px;">
       <div class="modal-header">
         <h2>{categoryModalMode === 'add' ? 'Registrar Nueva Categoría' : 'Editar Categoría'}</h2>
-        <button class="close-modal-btn" onclick={() => showCategoryModal = false}>✕</button>
+        <button class="close-modal-btn" onclick={() => showCategoryModal = false} aria-label="Cerrar modal">✕</button>
       </div>
 
       <div class="product-form-body">
@@ -696,5 +792,91 @@
     background: rgba(255, 255, 255, 0.07);
     color: var(--text-primary);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Image Uploader & Preview Styles */
+  .image-uploader-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px dashed var(--border-glass);
+    border-radius: var(--radius-md, 10px);
+    padding: 14px;
+    transition: var(--transition-fast);
+  }
+
+  .image-uploader-card:hover {
+    border-color: var(--color-general);
+  }
+
+  .upload-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+    cursor: pointer;
+    border-radius: var(--radius-sm, 8px);
+    transition: background var(--transition-fast);
+    outline: none;
+    text-align: center;
+  }
+
+  .upload-dropzone:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .upload-icon {
+    font-size: 2rem;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  }
+
+  .upload-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+
+  .upload-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .upload-text {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-top: 8px;
+  }
+
+  .image-preview-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .image-preview {
+    width: 90px;
+    height: 90px;
+    border-radius: var(--radius-sm, 8px);
+    object-fit: cover;
+    border: 1px solid var(--border-glass);
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  .image-preview-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.82rem;
+  }
+
+  .upload-error-msg {
+    color: var(--color-danger);
+    font-size: 0.8rem;
+    margin-top: 8px;
   }
 </style>

@@ -136,9 +136,10 @@ async function packagePlatform(target: 'linux' | 'windows') {
   await mkdir(join(packageDir, 'frontend'), { recursive: true });
   await cp(frontendDistSrc, frontendDistDest, { recursive: true });
 
-  // 3. Copy/Create Prisma Dev DB
+  // 3. Copy/Create Prisma Dev DB and Uploads folder
   const prismaDest = join(packageDir, 'prisma');
   await mkdir(prismaDest, { recursive: true });
+  await mkdir(join(packageDir, 'uploads'), { recursive: true });
   const dbSrc = join(ROOT_DIR, 'prisma', 'dev.db');
   if (existsSync(dbSrc)) {
     await cp(dbSrc, join(prismaDest, 'dev.db'));

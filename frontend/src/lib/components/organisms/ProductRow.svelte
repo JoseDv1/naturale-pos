@@ -13,12 +13,23 @@
 <tr class="animate-fade-in">
   <td><code>{p.sku}</code></td>
   <td>
-    <strong class="product-name-txt">{p.name}</strong>
-    {#if p.description}
-      <span class="product-desc-txt">{p.description}</span>
-    {/if}
+    <div class="product-info-cell">
+      {#if p.imageUrl}
+        <img src={p.imageUrl} alt={p.name} class="table-product-thumb" loading="lazy" />
+      {:else}
+        <div class="table-product-thumb placeholder">
+          {p.department === 'MARKET' ? '🌿' : '☕'}
+        </div>
+      {/if}
+      <div class="product-text-details">
+        <strong class="product-name-txt">{p.name}</strong>
+        {#if p.description}
+          <span class="product-desc-txt">{p.description}</span>
+        {/if}
+      </div>
+    </div>
   </td>
-  <td>{p.category.name}</td>
+  <td>{p.category?.name || '—'}</td>
   <td>
     <Badge text={p.department === 'MARKET' ? 'Mercado' : 'Café'} type={p.department === 'MARKET' ? 'market' : 'cafe'} />
   </td>
@@ -29,20 +40,49 @@
       <span class="text-secondary">Venta Directa</span>
     {/if}
   </td>
-  <td class="text-right">${p.cost.toLocaleString()}</td>
-  <td class="text-right">${p.price.toLocaleString()}</td>
+  <td class="text-right">${Number(p.cost).toLocaleString()}</td>
+  <td class="text-right">${Number(p.price).toLocaleString()}</td>
   <td class="text-center">
     <span class="stock-badge" class:low-stock={p.stock <= 3 && !(p.department === 'CAFE' && p.stock >= 900)}>
       {p.department === 'CAFE' && p.stock >= 900 ? 'Ilimitado' : p.stock}
     </span>
   </td>
   <td class="text-center actions-cell">
-    <button class="action-edit-btn" onclick={() => onedit(p)} title="Editar">✏️</button>
-    <button class="action-delete-btn" onclick={() => ondelete(p.id)} title="Eliminar">🗑️</button>
+    <button class="action-edit-btn" onclick={() => onedit(p)} title="Editar" aria-label="Editar producto">✏️</button>
+    <button class="action-delete-btn" onclick={() => ondelete(p.id)} title="Eliminar" aria-label="Eliminar producto">🗑️</button>
   </td>
 </tr>
 
 <style>
+  .product-info-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .table-product-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm, 6px);
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--border-glass);
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .table-product-thumb.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .product-text-details {
+    display: flex;
+    flex-direction: column;
+  }
+
   .product-name-txt {
     display: block;
     font-size: 0.9rem;

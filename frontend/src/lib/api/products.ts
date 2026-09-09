@@ -83,3 +83,36 @@ export async function deleteCategory(id: string) {
   }
   return res.json();
 }
+
+export async function uploadProductImage(file: File): Promise<{ url: string; filename: string }> {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al subir la imagen');
+  }
+
+  return res.json();
+}
+
+export async function deleteProductImage(url: string): Promise<{ success: boolean }> {
+  const res = await fetch('/api/upload', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al eliminar la imagen');
+  }
+
+  return res.json();
+}
+

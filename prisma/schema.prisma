@@ -82,6 +82,7 @@ model Product {
   sku            String            @unique
   name           String
   description    String?
+  imageUrl       String?           // URL o ruta relativa a la imagen del producto
   price          Decimal           // Cambiado de Float a Decimal para precisión monetaria
   cost           Decimal           // Cambiado de Float a Decimal para precisión monetaria
   stock          Int               @default(0)

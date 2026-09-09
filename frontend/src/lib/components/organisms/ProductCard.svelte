@@ -9,18 +9,34 @@
   let { product: p, onclick }: Props = $props();
 </script>
 
+{#snippet badges()}
+  <Badge text={p.department === 'MARKET' ? 'Mercado' : 'Café'} type={p.department === 'MARKET' ? 'market' : 'cafe'} />
+  {#if p.isRawMaterial}
+    <Badge text="Insumo" type="raw" />
+  {/if}
+{/snippet}
+
 <button class="product-card glass-panel animate-scale-up" {onclick}>
-  <div class="product-header">
-    <Badge text={p.department === 'MARKET' ? 'Mercado' : 'Café'} type={p.department === 'MARKET' ? 'market' : 'cafe'} />
-    {#if p.isRawMaterial}
-      <Badge text="Insumo" type="raw" />
-    {/if}
+  {#if p.imageUrl}
+    <div class="product-image-box">
+      <img src={p.imageUrl} alt={p.name} class="product-img" loading="lazy" />
+      <div class="image-badges-overlay">
+        {@render badges()}
+      </div>
+    </div>
+  {:else}
+    <div class="product-header">
+      {@render badges()}
+    </div>
+  {/if}
+
+  <div class="product-body">
+    <h3 class="product-name">{p.name}</h3>
+    <p class="product-sku">{p.sku}</p>
   </div>
-  <h3 class="product-name">{p.name}</h3>
-  <p class="product-sku">{p.sku}</p>
   
   <div class="product-footer">
-    <span class="product-price">${p.price.toLocaleString()}</span>
+    <span class="product-price">${Number(p.price).toLocaleString()}</span>
     <span class="product-stock" class:out={p.stock <= 0 && !(p.department === 'CAFE' && p.stock >= 900)}>
       {#if p.department === 'CAFE' && p.stock >= 900}
         Ilimitado
@@ -34,7 +50,7 @@
 <style>
   .product-card {
     text-align: left;
-    padding: 16px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -44,12 +60,45 @@
     outline: none;
     box-sizing: border-box;
     width: 100%;
+    border-radius: var(--radius-md, 12px);
+    transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   }
   
   .product-card:hover {
     border-color: var(--color-general);
     transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+
+  .product-image-box {
+    position: relative;
+    width: 100%;
+    height: 110px;
+    border-radius: var(--radius-sm, 8px);
+    overflow: hidden;
+    margin-bottom: 10px;
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform var(--transition-normal, 0.25s ease);
+  }
+
+  .product-card:hover .product-img {
+    transform: scale(1.05);
+  }
+
+  .image-badges-overlay {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    display: flex;
+    gap: 4px;
+    z-index: 2;
   }
 
   .product-header {
@@ -58,8 +107,12 @@
     margin-bottom: 10px;
   }
 
+  .product-body {
+    flex: 1;
+  }
+
   .product-name {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 500;
     margin-bottom: 4px;
     color: var(--text-primary);
@@ -67,9 +120,9 @@
   }
 
   .product-sku {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-secondary);
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
 
   .product-footer {

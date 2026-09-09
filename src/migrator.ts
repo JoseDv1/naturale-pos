@@ -58,6 +58,15 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
           cafeTableHasCoordinates = tableInfo.some((col) => col.name === 'x');
         }
 
+        let productHasImageUrl = false;
+        const productTableExists = db.query(`
+          SELECT name FROM sqlite_master WHERE type='table' AND name='Product'
+        `).get();
+        if (productTableExists) {
+          const tableInfo = db.query(`PRAGMA table_info('Product')`).all() as Array<{ name: string }>;
+          productHasImageUrl = tableInfo.some((col) => col.name === 'imageUrl');
+        }
+
         const baselineMigrations: string[] = ['20260703201908_init'];
         if (cafeTableExists) {
           baselineMigrations.push('20260703205317_add_tables_feature');
@@ -65,6 +74,9 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
         }
         if (cafeTableHasCoordinates) {
           baselineMigrations.push('20260704051037_add_table_coordinates');
+        }
+        if (productHasImageUrl) {
+          baselineMigrations.push('20260908224000_add_product_image');
         }
 
         const insertBaseline = db.prepare(`

@@ -1,12 +1,28 @@
 <script lang="ts">
   import { untrack, onMount } from 'svelte';
   import { user, activeTab, selectedTable, cart, refreshTrigger, triggerRefresh } from '../store';
-  import { getTables, openTable as apiOpenTable, cancelTableOrder as apiCancelTableOrder, createTable as apiCreateTable, deleteTable as apiDeleteTable } from '../api/tables';
+  import { 
+    getTables, 
+    openTable as apiOpenTable, 
+    cancelTableOrder as apiCancelTableOrder, 
+    createTable as apiCreateTable, 
+    deleteTable as apiDeleteTable,
+    mergeTables as apiMergeTables,
+    transferTableItems as apiTransferTableItems,
+    partialCheckoutTable as apiPartialCheckoutTable
+  } from '../api/tables';
   import TableCard from '../components/organisms/TableCard.svelte';
+  import MergeTableModal from '../components/organisms/MergeTableModal.svelte';
+  import SplitTableModal from '../components/organisms/SplitTableModal.svelte';
 
   let tables = $state<any[]>([]);
   let isLoading = $state(false);
   let errorMsg = $state('');
+
+  // Modals for merging & splitting
+  let showMergeModal = $state(false);
+  let showSplitModal = $state(false);
+  let activeModalTable = $state<any | null>(null);
 
   // UI state
   let isMapView = $state(true); // Toggle Map vs Grid view
@@ -132,6 +148,43 @@
       alert(e.message || 'Error al cancelar la cuenta de la mesa');
     }
   }
+
+  function openMergeModal(table: any) {
+    activeModalTable = table;
+    showMergeModal = true;
+  }
+
+  function openSplitModal(table: any) {
+    activeModalTable = table;
+    showSplitModal = true;
+  }
+
+  async function handleMerge(sourceId: string, targetTableId: string) {
+    await apiMergeTables(sourceId, targetTableId);
+    triggerRefresh();
+    await loadTables();
+    selectedMapTable = null;
+  }
+
+  async function handleTransfer(sourceId: string, targetTableId: string, items: any[]) {
+    await apiTransferTableItems(sourceId, targetTableId, items);
+    triggerRefresh();
+    await loadTables();
+    if (selectedMapTable) {
+      selectedMapTable = tables.find(t => t.id === selectedMapTable.id) || null;
+    }
+  }
+
+  async function handlePartialCheckout(tableId: string, payload: any) {
+    const res = await apiPartialCheckoutTable(tableId, payload);
+    triggerRefresh();
+    await loadTables();
+    if (selectedMapTable) {
+      selectedMapTable = tables.find(t => t.id === selectedMapTable.id) || null;
+    }
+    return res;
+  }
+
 
   function openAddModal() {
     newTableName = '';
@@ -298,26 +351,26 @@
     <div class="header-actions">
       <!-- Layout Mode toggles -->
       <div class="mode-toggles">
-        <button class="toggle-btn" class:active={isMapView} onclick={() => isMapView = true} title="Vista Plano">
+        <button type="button" class="toggle-btn" class:active={isMapView} onclick={() => isMapView = true} title="Vista Plano">
           🗺️ Plano
         </button>
-        <button class="toggle-btn" class:active={!isMapView} onclick={() => { isMapView = false; isDesignMode = false; }} title="Vista Rejilla">
+        <button type="button" class="toggle-btn" class:active={!isMapView} onclick={() => { isMapView = false; isDesignMode = false; }} title="Vista Rejilla">
           🔳 Rejilla
         </button>
       </div>
 
       {#if isMapView}
-        <button class="btn btn-design-mode" class:active={isDesignMode} onclick={() => { isDesignMode = !isDesignMode; if(!isDesignMode) selectedMapTable = null; }}>
+        <button type="button" class="btn btn-design-mode" class:active={isDesignMode} onclick={() => { isDesignMode = !isDesignMode; if(!isDesignMode) selectedMapTable = null; }}>
           🛠️ {isDesignMode ? 'Salir de Diseño' : 'Modo Diseño'}
         </button>
       {/if}
 
       {#if $user?.role === 'ADMIN'}
-        <button class="btn btn-general" onclick={openAddModal}>
+        <button type="button" class="btn btn-general" onclick={openAddModal}>
           ➕ Nueva Mesa
         </button>
       {/if}
-      <button class="btn btn-secondary" onclick={loadTables} disabled={isLoading}>
+      <button type="button" class="btn btn-secondary" onclick={loadTables} disabled={isLoading}>
         🔄 Actualizar
       </button>
     </div>
@@ -373,7 +426,7 @@
           {table.status === 'OCCUPIED' ? 'Mesa Ocupada' : 'Mesa Libre'}
         </span>
       </div>
-      <button class="btn-close-panel" onclick={() => selectedMapTable = null} title="Cerrar Detalles">✕</button>
+      <button type="button" class="btn-close-panel" onclick={() => selectedMapTable = null} title="Cerrar Detalles" aria-label="Cerrar Detalles">✕</button>
     </div>
 
     <div class="panel-content flex-1">
@@ -413,6 +466,7 @@
           <span>Forma del Mobiliario:</span>
           <div class="shape-selector">
             <button
+              type="button"
               class="shape-btn"
               class:active={(tableShapes[table.id] || 'circle') === 'circle'}
               onclick={() => setTableShape(table.id, 'circle')}
@@ -420,6 +474,7 @@
               🔴 Círculo
             </button>
             <button
+              type="button"
               class="shape-btn"
               class:active={tableShapes[table.id] === 'square'}
               onclick={() => setTableShape(table.id, 'square')}
@@ -427,6 +482,7 @@
               🟩 Cuadrado
             </button>
             <button
+              type="button"
               class="shape-btn"
               class:active={tableShapes[table.id] === 'rectangle'}
               onclick={() => setTableShape(table.id, 'rectangle')}
@@ -442,7 +498,7 @@
           </div>
         {/if}
 
-        <button class="btn btn-danger w-100" style="margin-top: 15px;" onclick={() => deleteTable(table)}>
+        <button type="button" class="btn btn-danger w-100" style="margin-top: 15px;" onclick={() => deleteTable(table)}>
           🗑️ Eliminar Mesa
         </button>
       </div>
@@ -450,16 +506,24 @@
 
     <div class="panel-footer">
       {#if table.status === 'AVAILABLE'}
-        <button class="btn btn-market w-100 py-3" onclick={() => openTable(table)}>
+        <button type="button" class="btn btn-market w-100 py-3" onclick={() => openTable(table)}>
           Abrir Mesa / Comanda 🪑
         </button>
       {:else}
         <div class="footer-actions-row">
-          <button class="btn btn-cafe flex-1 py-3" onclick={() => resumeTable(table)}>
+          <button type="button" class="btn btn-cafe flex-1 py-3" onclick={() => resumeTable(table)}>
             Ver Cuenta / Facturar 🛒
           </button>
-          <button class="btn btn-danger-outline" onclick={() => cancelTableOrder(table)} title="Anular Cuenta">
+          <button type="button" class="btn btn-danger-outline" onclick={() => cancelTableOrder(table)} title="Anular Cuenta" aria-label="Anular Cuenta">
             ✕ Anular
+          </button>
+        </div>
+        <div class="footer-subactions-row" style="display: flex; gap: 8px; margin-top: 8px;">
+          <button type="button" class="btn btn-secondary flex-1" onclick={() => openMergeModal(table)}>
+            🔀 Fusionar / Mover
+          </button>
+          <button type="button" class="btn btn-secondary flex-1" onclick={() => openSplitModal(table)}>
+            ✂️ Dividir Cuenta
           </button>
         </div>
       {/if}
@@ -515,15 +579,15 @@
 
 {#snippet addTableModal()}
   {#if showAddModal}
-    <div class="modal-overlay flex-center animate-fade-in">
+    <div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="add-table-title">
       <div class="modal-container glass-panel animate-scale-up" style="max-width: 400px;">
         <div class="modal-header">
-          <h2>Registrar Nueva Mesa</h2>
-          <button class="close-modal-btn" onclick={() => showAddModal = false}>✕</button>
+          <h2 id="add-table-title">Registrar Nueva Mesa</h2>
+          <button type="button" class="close-modal-btn" onclick={() => showAddModal = false} aria-label="Cerrar modal">✕</button>
         </div>
 
         {#if addTableError}
-          <div class="error-banner">{addTableError}</div>
+          <div class="error-banner" role="alert">{addTableError}</div>
         {/if}
 
         <div class="product-form-body">
@@ -539,8 +603,8 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn btn-secondary" onclick={() => showAddModal = false}>Cancelar</button>
-          <button class="btn btn-general" onclick={addTable}>Crear Mesa 🪑</button>
+          <button type="button" class="btn btn-secondary" onclick={() => showAddModal = false}>Cancelar</button>
+          <button type="button" class="btn btn-general" onclick={addTable}>Crear Mesa 🪑</button>
         </div>
       </div>
     </div>
@@ -609,6 +673,8 @@
                 onopen={openTable}
                 onresume={resumeTable}
                 oncancel={cancelTableOrder}
+                onmerge={openMergeModal}
+                onsplit={openSplitModal}
               />
             {/each}
           </div>
@@ -628,6 +694,27 @@
 </div>
 
 {@render addTableModal()}
+
+{#if showMergeModal && activeModalTable}
+  <MergeTableModal
+    sourceTable={activeModalTable}
+    {tables}
+    onmerge={handleMerge}
+    onclose={() => { showMergeModal = false; activeModalTable = null; }}
+  />
+{/if}
+
+{#if showSplitModal && activeModalTable}
+  <SplitTableModal
+    table={activeModalTable}
+    {tables}
+    userId={$user?.id || ''}
+    ontransfer={handleTransfer}
+    oncheckout={handlePartialCheckout}
+    onclose={() => { showSplitModal = false; activeModalTable = null; }}
+  />
+{/if}
+
 
 <style>
   .tables-view-container {
@@ -666,8 +753,9 @@
 
   .error-banner {
     background: var(--color-danger-glow);
-    border: 1px solid rgba(244, 63, 94, 0.2);
-    color: #fda4af;
+    border: 1px solid rgba(190, 18, 60, 0.3);
+    color: #991b1b;
+    font-weight: 500;
     padding: 10px;
     border-radius: var(--radius-sm);
     font-size: 0.88rem;
@@ -734,7 +822,7 @@
 
   .mode-toggles {
     display: flex;
-    background: rgba(0, 0, 0, 0.15);
+    background: rgba(0, 0, 0, 0.05);
     padding: 3px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-glass);
@@ -760,21 +848,21 @@
   }
 
   .btn-design-mode {
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.2);
-    color: #f59e0b;
+    background: rgba(180, 83, 9, 0.1);
+    border: 1px solid rgba(180, 83, 9, 0.3);
+    color: #92400e;
     font-size: 0.88rem;
     padding: 9px 15px;
     border-radius: var(--radius-sm);
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: var(--transition-fast);
   }
 
   .btn-design-mode.active, .btn-design-mode:hover {
-    background: #f59e0b;
+    background: var(--color-cafe);
     color: #fff;
-    box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+    box-shadow: 0 0 15px rgba(180, 83, 9, 0.2);
   }
 
   /* Regular Grid View Mode */
@@ -823,12 +911,12 @@
   .status-occupied { background: var(--color-cafe); }
 
   .design-badge {
-    background: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
+    background: rgba(180, 83, 9, 0.1);
+    color: #92400e;
     padding: 3px 10px;
     border-radius: 4px;
-    border: 1px solid rgba(245, 158, 11, 0.2);
-    font-weight: 500;
+    border: 1px solid rgba(180, 83, 9, 0.3);
+    font-weight: 600;
   }
 
   @keyframes pulse {
@@ -970,7 +1058,7 @@
   .drag-handle-badge {
     position: absolute;
     bottom: -6px;
-    background: #f59e0b;
+    background: var(--color-cafe);
     color: #fff;
     font-size: 0.65rem;
     width: 16px;

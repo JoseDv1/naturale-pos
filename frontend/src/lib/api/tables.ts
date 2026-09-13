@@ -77,3 +77,43 @@ export async function openTable(id: string, userId?: string) {
   }
   return res.json();
 }
+
+export async function mergeTables(sourceTableId: string, targetTableId: string) {
+  const res = await fetch(`/api/tables/${sourceTableId}/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetTableId })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al fusionar las mesas');
+  }
+  return res.json();
+}
+
+export async function transferTableItems(sourceTableId: string, targetTableId: string, items: Array<{ productId: string; quantity: number }>) {
+  const res = await fetch(`/api/tables/${sourceTableId}/transfer-items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetTableId, items })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al transferir productos');
+  }
+  return res.json();
+}
+
+export async function partialCheckoutTable(tableId: string, payload: { userId: string; items: any[]; payments: any[] }) {
+  const res = await fetch(`/api/tables/${tableId}/partial-checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al procesar el cobro parcial');
+  }
+  return res.json();
+}
+

@@ -2,7 +2,15 @@
   import { untrack } from 'svelte';
   import { user, cart, cartTotal, products, categories, refreshTrigger, triggerRefresh, selectedTable, activeTab } from '../store';
   import { getProducts, getCategories } from '../api/products';
-  import { saveTableOrder as apiSaveTableOrder, checkoutTable as apiCheckoutTable, cancelTableOrder as apiCancelTableOrder } from '../api/tables';
+  import { 
+    saveTableOrder as apiSaveTableOrder, 
+    checkoutTable as apiCheckoutTable, 
+    cancelTableOrder as apiCancelTableOrder,
+    getTables,
+    mergeTables as apiMergeTables,
+    transferTableItems as apiTransferTableItems,
+    partialCheckoutTable as apiPartialCheckoutTable
+  } from '../api/tables';
   import { createSale } from '../api/sales';
   import { attachHardwareScannerListener } from '../services/scannerListener';
   import { playScanSuccess, playScanError, isSoundEnabled, setSoundEnabled } from '../services/sound';
@@ -15,12 +23,21 @@
   import Spinner from '../components/atoms/Spinner.svelte';
   import BarcodeScannerModal from '../components/molecules/BarcodeScannerModal.svelte';
   import ScanToast, { type ToastData } from '../components/atoms/ScanToast.svelte';
+  import MergeTableModal from '../components/organisms/MergeTableModal.svelte';
+  import SplitTableModal from '../components/organisms/SplitTableModal.svelte';
 
   // State variables
   let searchQuery = $state('');
   let selectedCategory = $state('');
   let activeDept = $state('MARKET'); // 'MARKET' | 'CAFE'
   let wasTableSale = $state(false);
+
+  // Table merge & split modal state
+  let showCheckoutMergeModal = $state(false);
+  let showCheckoutSplitModal = $state(false);
+  let activeCheckoutTableObj = $state<any | null>(null);
+  let allTablesList = $state<any[]>([]);
+
   
   // Checkout Modal State
   let showPaymentModal = $state(false);
@@ -321,6 +338,119 @@
     activeTab.set('tables');
   }
 
+  async function openTableMerge() {
+    if (!$selectedTable) return;
+    try {
+      // 1. Auto-save current cart if there are items
+      if ($cart.length > 0) {
+        const itemsPayload = $cart.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: item.product.price,
+        }));
+        await apiSaveTableOrder($selectedTable.id, itemsPayload);
+      }
+      // 2. Fetch full table details
+      const tables = await getTables();
+      allTablesList = tables;
+      const current = tables.find((t: any) => t.id === $selectedTable!.id);
+      if (!current) throw new Error('Mesa no encontrada');
+      activeCheckoutTableObj = current;
+      showCheckoutMergeModal = true;
+    } catch (e: any) {
+      alert(e.message || 'Error al preparar fusión de mesa');
+    }
+  }
+
+  async function openTableSplit() {
+    if (!$selectedTable) return;
+    try {
+      // 1. Auto-save current cart if there are items
+      if ($cart.length > 0) {
+        const itemsPayload = $cart.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: item.product.price,
+        }));
+        await apiSaveTableOrder($selectedTable.id, itemsPayload);
+      }
+      // 2. Fetch full table details
+      const tables = await getTables();
+      allTablesList = tables;
+      const current = tables.find((t: any) => t.id === $selectedTable!.id);
+      if (!current) throw new Error('Mesa no encontrada');
+      activeCheckoutTableObj = current;
+      showCheckoutSplitModal = true;
+    } catch (e: any) {
+      alert(e.message || 'Error al preparar división de mesa');
+    }
+  }
+
+  async function handleCheckoutMerge(sourceId: string, targetTableId: string) {
+    await apiMergeTables(sourceId, targetTableId);
+    triggerRefresh();
+    selectedTable.set(null);
+    cart.set([]);
+    showCheckoutMergeModal = false;
+    activeCheckoutTableObj = null;
+    activeTab.set('tables');
+  }
+
+  async function handleCheckoutTransfer(sourceId: string, targetTableId: string, items: any[]) {
+    const res = await apiTransferTableItems(sourceId, targetTableId, items);
+    triggerRefresh();
+    if (res.source && res.source.status === 'OCCUPIED' && res.source.currentSale) {
+      const remainingItems = res.source.currentSale.items.map((i: any) => ({
+        product: i.product,
+        quantity: i.quantity,
+      }));
+      cart.set(remainingItems);
+      selectedTable.set({
+        id: res.source.id,
+        name: res.source.name,
+        status: res.source.status,
+        currentSaleId: res.source.currentSaleId,
+      });
+    } else {
+      selectedTable.set(null);
+      cart.set([]);
+      activeTab.set('tables');
+    }
+    showCheckoutSplitModal = false;
+    activeCheckoutTableObj = null;
+  }
+
+  async function handleCheckoutPartialPay(tableId: string, payload: any) {
+    const res = await apiPartialCheckoutTable(tableId, payload);
+    triggerRefresh();
+    if (res.table && res.table.status === 'OCCUPIED' && res.table.currentSale) {
+      const remainingItems = res.table.currentSale.items.map((i: any) => ({
+        product: i.product,
+        quantity: i.quantity,
+      }));
+      cart.set(remainingItems);
+      selectedTable.set({
+        id: res.table.id,
+        name: res.table.name,
+        status: res.table.status,
+        currentSaleId: res.table.currentSaleId,
+      });
+    } else {
+      selectedTable.set(null);
+      cart.set([]);
+      activeTab.set('tables');
+    }
+    showCheckoutSplitModal = false;
+    activeCheckoutTableObj = null;
+
+    // Show receipt modal for partial checkout
+    successReceipt = res.sale;
+    wasTableSale = true;
+    showPaymentModal = true;
+    return res;
+  }
+
+
   function closePaymentModal() {
     showPaymentModal = false;
     const redirect = wasTableSale && successReceipt;
@@ -427,9 +557,17 @@
     {#if $selectedTable}
       <div class="table-mode-banner">
         <span>📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
-        <button class="btn-exit-table" onclick={exitTableMode} title="Salir de la mesa sin guardar cambios locales">
-          Volver ↩
-        </button>
+        <div class="table-banner-actions">
+          <button type="button" class="btn-table-tool" onclick={openTableMerge} title="Fusionar o mover esta mesa">
+            🔀 Mover / Unir
+          </button>
+          <button type="button" class="btn-table-tool" onclick={openTableSplit} title="Dividir cuenta o transferir productos">
+            ✂️ Dividir
+          </button>
+          <button type="button" class="btn-exit-table" onclick={exitTableMode} title="Salir de la mesa">
+            Volver ↩
+          </button>
+        </div>
       </div>
     {/if}
 
@@ -515,7 +653,7 @@
             {/if}
             : <strong>${pay.amount.toLocaleString()}</strong>
           </span>
-          <button class="remove-payment-btn" onclick={() => removePayment(i)}>✕</button>
+          <button type="button" class="remove-payment-btn" onclick={() => removePayment(i)} aria-label="Eliminar pago">✕</button>
         </div>
       {:else}
         <p class="no-payments">No se han agregado pagos aún.</p>
@@ -569,12 +707,12 @@
 
 {#snippet paymentModal()}
   {#if showPaymentModal}
-    <div class="modal-overlay flex-center animate-fade-in">
+    <div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
       <div class="modal-container glass-panel animate-scale-up">
         {#if !successReceipt}
           <div class="modal-header">
-            <h2>Registrar Pago Dividido</h2>
-            <button class="close-modal-btn" onclick={closePaymentModal}>✕</button>
+            <h2 id="payment-modal-title">Registrar Pago Dividido</h2>
+            <button type="button" class="close-modal-btn" onclick={closePaymentModal} aria-label="Cerrar ventana de pago">✕</button>
           </div>
 
           {#if errorMessage}
@@ -639,6 +777,27 @@
     onclose={() => showCameraScanner = false}
   />
 {/if}
+
+{#if showCheckoutMergeModal && activeCheckoutTableObj}
+  <MergeTableModal
+    sourceTable={activeCheckoutTableObj}
+    tables={allTablesList}
+    onmerge={handleCheckoutMerge}
+    onclose={() => { showCheckoutMergeModal = false; activeCheckoutTableObj = null; }}
+  />
+{/if}
+
+{#if showCheckoutSplitModal && activeCheckoutTableObj}
+  <SplitTableModal
+    table={activeCheckoutTableObj}
+    tables={allTablesList}
+    userId={$user?.id || ''}
+    ontransfer={handleCheckoutTransfer}
+    oncheckout={handleCheckoutPartialPay}
+    onclose={() => { showCheckoutSplitModal = false; activeCheckoutTableObj = null; }}
+  />
+{/if}
+
 
 <style>
   .checkout-layout {
@@ -985,8 +1144,9 @@
 
   .change-banner {
     background: var(--color-cafe-glow);
-    border: 1px solid rgba(245, 158, 11, 0.2);
-    color: #fde047;
+    border: 1px solid rgba(180, 83, 9, 0.25);
+    color: #78350f;
+    font-weight: 600;
     padding: 12px;
     border-radius: var(--radius-sm);
     display: flex;
@@ -1087,27 +1247,29 @@
     justify-content: space-between;
     align-items: center;
     background: var(--color-cafe-glow);
-    border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+    border-bottom: 1px solid rgba(180, 83, 9, 0.25);
     padding: 10px 18px;
     font-size: 0.9rem;
-    color: #fde047;
+    color: #78350f;
+    font-weight: 600;
     border-top-left-radius: var(--radius-md);
     border-top-right-radius: var(--radius-md);
   }
 
   .btn-exit-table {
-    background: transparent;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: #fde047;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(180, 83, 9, 0.4);
+    color: #78350f;
     padding: 4px 8px;
     font-size: 0.75rem;
+    font-weight: 600;
     border-radius: 4px;
     cursor: pointer;
     transition: var(--transition-fast);
     outline: none;
   }
   .btn-exit-table:hover {
-    background: rgba(245, 158, 11, 0.1);
+    background: rgba(255, 255, 255, 0.8);
   }
 
   .table-action-buttons {
@@ -1120,5 +1282,29 @@
     flex: 1;
     height: 48px;
     font-size: 1rem;
+  }
+
+  .table-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-table-tool {
+    background: rgba(180, 83, 9, 0.12);
+    border: 1px solid rgba(180, 83, 9, 0.35);
+    color: #78350f;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    outline: none;
+  }
+
+  .btn-table-tool:hover {
+    background: rgba(180, 83, 9, 0.22);
+    border-color: rgba(180, 83, 9, 0.5);
   }
 </style>

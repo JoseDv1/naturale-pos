@@ -26,6 +26,40 @@ const tableCheckoutSchema = z.object({
   })).min(1, 'Debe ingresar al menos un método de pago')
 });
 
+const tableMergeSchema = z.object({
+  targetTableId: z.string().min(1, 'ID de mesa destino requerido')
+});
+
+const tableTransferItemsSchema = z.object({
+  targetTableId: z.string().min(1, 'ID de mesa destino requerido'),
+  items: z.array(z.object({
+    productId: z.string().min(1, 'ID de producto inválido'),
+    quantity: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseInt(val) : val)
+      .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' })
+  })).min(1, 'Debe incluir al menos un producto a transferir')
+});
+
+const tablePartialCheckoutSchema = z.object({
+  userId: z.string().min(1, 'ID de usuario requerido'),
+  items: z.array(z.object({
+    productId: z.string().min(1, 'ID de producto inválido'),
+    quantity: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseInt(val) : val)
+      .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
+    price: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+      .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio no puede ser negativo' })
+  })).min(1, 'Debe incluir al menos un producto para cobrar'),
+  payments: z.array(z.object({
+    method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
+    amount: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+      .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del pago debe ser mayor a cero' })
+  })).min(1, 'Debe ingresar al menos un método de pago')
+});
+
+
 class ApiError extends Error {
   constructor(message: string, public status: 400 | 404 = 400) {
     super(message);
@@ -474,6 +508,465 @@ tables.put('/:id/position', async (c) => {
     return c.json({ success: true, table });
   } catch (error) {
     return c.json({ error: 'Error al actualizar la posición de la mesa' }, 500);
+  }
+});
+
+// POST /:id/merge - Fusionar mesa o mover mesa completa a otra
+tables.post('/:id/merge', zValidator('json', tableMergeSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
+  const sourceId = c.req.param('id');
+  const { targetTableId } = c.req.valid('json');
+
+  if (sourceId === targetTableId) {
+    return c.json({ error: 'No se puede fusionar una mesa consigo misma' }, 400);
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const source = await tx.cafeTable.findUnique({
+        where: { id: sourceId },
+        include: {
+          currentSale: {
+            include: { items: true }
+          }
+        }
+      });
+
+      if (!source) throw new ApiError('Mesa origen no encontrada', 404);
+      if (source.status !== 'OCCUPIED' || !source.currentSale || source.currentSale.items.length === 0) {
+        throw new ApiError('La mesa de origen no tiene una cuenta activa con productos', 400);
+      }
+
+      const target = await tx.cafeTable.findUnique({
+        where: { id: targetTableId },
+        include: {
+          currentSale: {
+            include: { items: true }
+          }
+        }
+      });
+
+      if (!target) throw new ApiError('Mesa destino no encontrada', 404);
+
+      if (target.status === 'AVAILABLE') {
+        // Mover mesa completa a mesa disponible
+        const saleId = source.currentSale.id;
+
+        // 1. Liberar mesa origen primero para no violar restricción unique de currentSaleId
+        await tx.cafeTable.update({
+          where: { id: sourceId },
+          data: {
+            status: 'AVAILABLE',
+            currentSaleId: null
+          }
+        });
+
+        // 2. Reasignar venta a la mesa destino
+        await tx.sale.update({
+          where: { id: saleId },
+          data: { tableId: targetTableId }
+        });
+
+        // 3. Ocupar mesa destino
+        await tx.cafeTable.update({
+          where: { id: targetTableId },
+          data: {
+            status: 'OCCUPIED',
+            currentSaleId: saleId
+          }
+        });
+      } else {
+        // Mesa destino ocupada: fusionar ítems
+        if (!target.currentSale) {
+          throw new ApiError('Mesa destino en estado inconsistente', 400);
+        }
+
+        const targetSaleId = target.currentSale.id;
+        const targetItems = target.currentSale.items;
+        const sourceItems = source.currentSale.items;
+
+        for (const sItem of sourceItems) {
+          const existingTItem = targetItems.find(ti => ti.productId === sItem.productId);
+          if (existingTItem) {
+            await tx.saleItem.update({
+              where: { id: existingTItem.id },
+              data: { quantity: existingTItem.quantity + sItem.quantity }
+            });
+            existingTItem.quantity += sItem.quantity;
+          } else {
+            const newItem = await tx.saleItem.create({
+              data: {
+                saleId: targetSaleId,
+                productId: sItem.productId,
+                quantity: sItem.quantity,
+                price: Number(sItem.price)
+              }
+            });
+            targetItems.push(newItem as any);
+          }
+        }
+
+        // Eliminar ítems de la venta origen
+        await tx.saleItem.deleteMany({ where: { saleId: source.currentSale.id } });
+
+        // Marcar venta origen como TRANSFER_OUT
+        await tx.sale.update({
+          where: { id: source.currentSale.id },
+          data: { status: 'TRANSFER_OUT', total: 0 }
+        });
+
+        // Liberar mesa origen
+        await tx.cafeTable.update({
+          where: { id: sourceId },
+          data: {
+            status: 'AVAILABLE',
+            currentSaleId: null
+          }
+        });
+
+        // Recalcular total de la mesa destino
+        const allTargetItems = await tx.saleItem.findMany({ where: { saleId: targetSaleId } });
+        const newTotal = allTargetItems.reduce((acc, it) => acc + (it.quantity * Number(it.price)), 0);
+
+        await tx.sale.update({
+          where: { id: targetSaleId },
+          data: { total: newTotal }
+        });
+      }
+
+      const [updatedSource, updatedTarget] = await Promise.all([
+        tx.cafeTable.findUnique({
+          where: { id: sourceId },
+          include: { currentSale: { include: { items: { include: { product: true } } } } }
+        }),
+        tx.cafeTable.findUnique({
+          where: { id: targetTableId },
+          include: { currentSale: { include: { items: { include: { product: true } } } } }
+        })
+      ]);
+
+      return { source: updatedSource, target: updatedTarget };
+    });
+
+    return c.json({ success: true, ...result });
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json({ error: error.message || 'Error al fusionar mesas' }, 500);
+  }
+});
+
+// POST /:id/transfer-items - Transferir ítems específicos a otra mesa
+tables.post('/:id/transfer-items', zValidator('json', tableTransferItemsSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
+  const sourceId = c.req.param('id');
+  const { targetTableId, items } = c.req.valid('json');
+
+  if (sourceId === targetTableId) {
+    return c.json({ error: 'No se pueden transferir productos a la misma mesa' }, 400);
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const source = await tx.cafeTable.findUnique({
+        where: { id: sourceId },
+        include: {
+          currentSale: {
+            include: { items: true }
+          }
+        }
+      });
+
+      if (!source) throw new ApiError('Mesa origen no encontrada', 404);
+      if (source.status !== 'OCCUPIED' || !source.currentSale) {
+        throw new ApiError('La mesa de origen no tiene una cuenta activa', 400);
+      }
+
+      const target = await tx.cafeTable.findUnique({
+        where: { id: targetTableId },
+        include: {
+          currentSale: {
+            include: { items: true }
+          }
+        }
+      });
+
+      if (!target) throw new ApiError('Mesa destino no encontrada', 404);
+
+      // Validar que los productos y cantidades existan en la mesa origen
+      for (const reqItem of items) {
+        const srcItem = source.currentSale.items.find(it => it.productId === reqItem.productId);
+        if (!srcItem) {
+          throw new ApiError(`El producto seleccionado (ID: ${reqItem.productId}) no existe en la mesa origen`, 400);
+        }
+        if (reqItem.quantity > srcItem.quantity) {
+          throw new ApiError(`Cantidad solicitada (${reqItem.quantity}) mayor a la existente (${srcItem.quantity})`, 400);
+        }
+      }
+
+      // Preparar venta destino
+      let targetSaleId: string;
+      if (target.status === 'AVAILABLE') {
+        const newSale = await tx.sale.create({
+          data: {
+            userId: source.currentSale.userId,
+            total: 0,
+            status: 'OPEN',
+            tableId: targetTableId
+          }
+        });
+        await tx.cafeTable.update({
+          where: { id: targetTableId },
+          data: {
+            status: 'OCCUPIED',
+            currentSaleId: newSale.id
+          }
+        });
+        targetSaleId = newSale.id;
+      } else {
+        if (!target.currentSale) {
+          throw new ApiError('Mesa destino en estado inconsistente', 400);
+        }
+        targetSaleId = target.currentSale.id;
+      }
+
+      const targetItems = await tx.saleItem.findMany({ where: { saleId: targetSaleId } });
+
+      // Transferir cada producto
+      for (const reqItem of items) {
+        const srcItem = source.currentSale.items.find(it => it.productId === reqItem.productId)!;
+        const itemPrice = Number(srcItem.price);
+
+        // 1. Deducir de origen
+        if (reqItem.quantity === srcItem.quantity) {
+          await tx.saleItem.delete({ where: { id: srcItem.id } });
+        } else {
+          await tx.saleItem.update({
+            where: { id: srcItem.id },
+            data: { quantity: srcItem.quantity - reqItem.quantity }
+          });
+        }
+
+        // 2. Agregar a destino
+        const existingTItem = targetItems.find(it => it.productId === reqItem.productId);
+        if (existingTItem) {
+          await tx.saleItem.update({
+            where: { id: existingTItem.id },
+            data: { quantity: existingTItem.quantity + reqItem.quantity }
+          });
+          existingTItem.quantity += reqItem.quantity;
+        } else {
+          const createdItem = await tx.saleItem.create({
+            data: {
+              saleId: targetSaleId,
+              productId: reqItem.productId,
+              quantity: reqItem.quantity,
+              price: itemPrice
+            }
+          });
+          targetItems.push(createdItem as any);
+        }
+      }
+
+      // Actualizar total destino
+      const updatedTargetItems = await tx.saleItem.findMany({ where: { saleId: targetSaleId } });
+      const targetTotal = updatedTargetItems.reduce((acc, it) => acc + (it.quantity * Number(it.price)), 0);
+      await tx.sale.update({
+        where: { id: targetSaleId },
+        data: { total: targetTotal }
+      });
+
+      // Revisar estado de la mesa origen
+      const remainingSourceItems = await tx.saleItem.findMany({ where: { saleId: source.currentSale.id } });
+      if (remainingSourceItems.length === 0) {
+        await tx.sale.update({
+          where: { id: source.currentSale.id },
+          data: { status: 'TRANSFER_OUT', total: 0 }
+        });
+        await tx.cafeTable.update({
+          where: { id: sourceId },
+          data: {
+            status: 'AVAILABLE',
+            currentSaleId: null
+          }
+        });
+      } else {
+        const sourceTotal = remainingSourceItems.reduce((acc, it) => acc + (it.quantity * Number(it.price)), 0);
+        await tx.sale.update({
+          where: { id: source.currentSale.id },
+          data: { total: sourceTotal }
+        });
+      }
+
+      const [updatedSource, updatedTarget] = await Promise.all([
+        tx.cafeTable.findUnique({
+          where: { id: sourceId },
+          include: { currentSale: { include: { items: { include: { product: true } } } } }
+        }),
+        tx.cafeTable.findUnique({
+          where: { id: targetTableId },
+          include: { currentSale: { include: { items: { include: { product: true } } } } }
+        })
+      ]);
+
+      return { source: updatedSource, target: updatedTarget };
+    });
+
+    return c.json({ success: true, ...result });
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json({ error: error.message || 'Error al transferir productos' }, 500);
+  }
+});
+
+// POST /:id/partial-checkout - Cobro parcial inmediato de ítems seleccionados
+tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
+  const tableId = c.req.param('id');
+  const { userId, items, payments } = c.req.valid('json');
+
+  const itemsTotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+  const paymentSum = payments.reduce((acc, p) => acc + p.amount, 0);
+
+  if (Math.abs(paymentSum - itemsTotal) > 0.01) {
+    return c.json({ error: 'La suma de pagos no coincide con el total de los productos a facturar' }, 400);
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const table = await tx.cafeTable.findUnique({
+        where: { id: tableId },
+        include: {
+          currentSale: {
+            include: { items: true }
+          }
+        }
+      });
+
+      if (!table) throw new ApiError('Mesa no encontrada', 404);
+      if (table.status !== 'OCCUPIED' || !table.currentSale) {
+        throw new ApiError('Mesa no ocupada o sin orden activa', 400);
+      }
+
+      // Validar que cada ítem solicitado exista en la comanda de la mesa con suficiente cantidad
+      for (const reqItem of items) {
+        const currentItem = table.currentSale.items.find(it => it.productId === reqItem.productId);
+        if (!currentItem) {
+          throw new ApiError(`El producto seleccionado (ID: ${reqItem.productId}) no existe en la comanda`, 400);
+        }
+        if (reqItem.quantity > currentItem.quantity) {
+          throw new ApiError(`Cantidad solicitada (${reqItem.quantity}) mayor a la existente (${currentItem.quantity})`, 400);
+        }
+      }
+
+      // 1. Crear nueva venta independiente COMPLETED para los ítems cobrados
+      const completedSale = await tx.sale.create({
+        data: {
+          userId,
+          total: itemsTotal,
+          status: 'COMPLETED',
+          tableId
+        }
+      });
+
+      // Crear ítems de la venta completada
+      await tx.saleItem.createMany({
+        data: items.map(it => ({
+          saleId: completedSale.id,
+          productId: it.productId,
+          quantity: it.quantity,
+          price: it.price
+        }))
+      });
+
+      // Registrar los pagos
+      await tx.salePayment.createMany({
+        data: payments.map(p => ({
+          saleId: completedSale.id,
+          method: p.method,
+          amount: p.amount
+        }))
+      });
+
+      // 2. Deducir de la comanda activa de la mesa
+      for (const reqItem of items) {
+        const currentItem = table.currentSale.items.find(it => it.productId === reqItem.productId)!;
+        if (reqItem.quantity === currentItem.quantity) {
+          await tx.saleItem.delete({ where: { id: currentItem.id } });
+        } else {
+          await tx.saleItem.update({
+            where: { id: currentItem.id },
+            data: { quantity: currentItem.quantity - reqItem.quantity }
+          });
+        }
+      }
+
+      // 3. Revisar si quedan ítems en la comanda activa
+      const remainingItems = await tx.saleItem.findMany({ where: { saleId: table.currentSale.id } });
+      let updatedTable: any;
+
+      if (remainingItems.length === 0) {
+        // Se cobró la comanda completa
+        await tx.sale.update({
+          where: { id: table.currentSale.id },
+          data: { status: 'CANCELLED', total: 0 }
+        });
+        updatedTable = await tx.cafeTable.update({
+          where: { id: tableId },
+          data: {
+            status: 'AVAILABLE',
+            currentSaleId: null
+          },
+          include: { currentSale: true }
+        });
+      } else {
+        const newTotal = remainingItems.reduce((acc, it) => acc + (it.quantity * Number(it.price)), 0);
+        await tx.sale.update({
+          where: { id: table.currentSale.id },
+          data: { total: newTotal }
+        });
+        updatedTable = await tx.cafeTable.findUnique({
+          where: { id: tableId },
+          include: {
+            currentSale: {
+              include: { items: { include: { product: true } } }
+            }
+          }
+        });
+      }
+
+      const finalCompletedSale = await tx.sale.findUnique({
+        where: { id: completedSale.id },
+        include: {
+          items: { include: { product: true } },
+          payments: true
+        }
+      });
+
+      return {
+        sale: finalCompletedSale,
+        table: updatedTable
+      };
+    });
+
+    return c.json({ success: true, ...result });
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json({ error: error.message || 'Error al procesar cobro parcial' }, 500);
   }
 });
 

@@ -13,7 +13,7 @@
     <input type="checkbox" checked={todo.completed} onchange={() => ontoggle(todo.id)} />
     <span class="todo-text">{todo.text}</span>
   </label>
-  <button class="remove-todo-btn" onclick={() => ondelete(todo.id)}>✕</button>
+  <button type="button" class="remove-todo-btn" onclick={() => ondelete(todo.id)} aria-label="Eliminar tarea">✕</button>
 </div>
 
 <style>
@@ -36,7 +36,7 @@
   }
 
   .todo-item.completed {
-    opacity: 0.5;
+    background: rgba(0, 0, 0, 0.02);
   }
 
   .todo-item.completed .todo-text {

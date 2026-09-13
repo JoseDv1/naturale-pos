@@ -86,10 +86,10 @@
   .border-market { border-left: 4px solid var(--color-market); }
   .border-danger { border-left: 4px solid var(--color-danger); }
   .border-net { 
-    border-left: 4px solid #3b82f6; 
+    border-left: 4px solid #1d4ed8; 
   }
   .border-net .kpi-value {
-    color: #60a5fa;
+    color: #1d4ed8;
   }
   .border-net.negative {
     border-left-color: var(--color-danger);

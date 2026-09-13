@@ -544,14 +544,15 @@
   }
 
   .last-scanned-banner {
-    background: rgba(16, 185, 129, 0.12);
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: rgba(4, 120, 87, 0.12);
+    border: 1px solid rgba(4, 120, 87, 0.3);
     padding: 8px 14px;
     border-radius: var(--radius-sm);
     display: flex;
     justify-content: space-between;
     font-size: 0.88rem;
-    color: #a7f3d0;
+    color: #064e3b;
+    font-weight: 600;
   }
 
   .close-btn-bottom {

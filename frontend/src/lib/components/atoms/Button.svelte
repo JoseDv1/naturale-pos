@@ -69,14 +69,15 @@
 
   .btn-secondary {
     height: 40px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.85);
     color: var(--text-primary);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-sm);
     padding: 0 16px;
   }
   .btn-secondary:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
+    background: #ffffff;
+    border-color: rgba(4, 120, 87, 0.3);
   }
 
   .btn-market {
@@ -88,7 +89,7 @@
     padding: 0 16px;
   }
   .btn-market:hover:not(:disabled) {
-    background: #059669;
+    background: var(--color-market-hover);
   }
 
   .btn-cafe {
@@ -100,7 +101,7 @@
     padding: 0 16px;
   }
   .btn-cafe:hover:not(:disabled) {
-    background: #d97706;
+    background: var(--color-cafe-hover);
   }
 
   .btn-danger {
@@ -112,7 +113,7 @@
     padding: 0 16px;
   }
   .btn-danger:hover:not(:disabled) {
-    background: #e11d48;
+    background: var(--color-danger-hover);
   }
 
   .btn-flat {

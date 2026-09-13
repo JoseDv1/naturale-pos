@@ -235,30 +235,22 @@
           </div>
         </div>
 
+{#snippet shortcutBtn(icon: string, title: string, desc: string, tab: string)}
+  <button type="button" class="shortcut-btn" onclick={() => navigateTo(tab)}>
+    <span class="shortcut-icon">{icon}</span>
+    <strong>{title}</strong>
+    <span>{desc}</span>
+  </button>
+{/snippet}
+
         <!-- Quick Actions Grid -->
         <div class="dashboard-col glass-panel flex-column flex-1 animate-scale-up">
           <h3>Atajos Operacionales Rápidos</h3>
           <div class="shortcuts-grid">
-            <button class="shortcut-btn" onclick={() => navigateTo('checkout')}>
-              <span class="shortcut-icon">🛒</span>
-              <strong>Terminal Venta</strong>
-              <span>Procesar pagos y comandas</span>
-            </button>
-            <button class="shortcut-btn" onclick={() => navigateTo('tables')}>
-              <span class="shortcut-icon">🪑</span>
-              <strong>Mapa de Mesas</strong>
-              <span>Gestionar mesas y salón</span>
-            </button>
-            <button class="shortcut-btn" onclick={() => navigateTo('expenses')}>
-              <span class="shortcut-icon">💸</span>
-              <strong>Registrar Gasto</strong>
-              <span>Gastos fijos o suministros</span>
-            </button>
-            <button class="shortcut-btn" onclick={() => navigateTo('transfers')}>
-              <span class="shortcut-icon">🔄</span>
-              <strong>Trasladar Stock</strong>
-              <span>Mover del Mercado al Café</span>
-            </button>
+            {@render shortcutBtn('🛒', 'Terminal Venta', 'Procesar pagos y comandas', 'checkout')}
+            {@render shortcutBtn('🪑', 'Mapa de Mesas', 'Gestionar mesas y salón', 'tables')}
+            {@render shortcutBtn('💸', 'Registrar Gasto', 'Gastos fijos o suministros', 'expenses')}
+            {@render shortcutBtn('🔄', 'Trasladar Stock', 'Mover del Mercado al Café', 'transfers')}
           </div>
         </div>
       </div>
@@ -354,15 +346,6 @@
   .subtitle {
     font-size: 0.85rem;
     color: var(--text-secondary);
-  }
-
-  .error-banner {
-    background: var(--color-danger-glow);
-    border: 1px solid rgba(244, 63, 94, 0.2);
-    color: #fda4af;
-    padding: 10px;
-    border-radius: var(--radius-sm);
-    font-size: 0.88rem;
   }
 
   .loading-state {

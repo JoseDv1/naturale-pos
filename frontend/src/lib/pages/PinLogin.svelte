@@ -167,8 +167,9 @@
 
   .error-banner {
     background: var(--color-danger-glow);
-    border: 1px solid rgba(244, 63, 94, 0.2);
-    color: #fda4af;
+    border: 1px solid rgba(190, 18, 60, 0.3);
+    color: #991b1b;
+    font-weight: 500;
     padding: 10px;
     border-radius: var(--radius-sm);
     font-size: 0.88rem;

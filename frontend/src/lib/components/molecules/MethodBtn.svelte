@@ -44,7 +44,8 @@
 
   :global(.method-btn.active) {
     background: var(--color-general-glow);
-    color: #a5b4fc;
+    color: var(--color-general);
+    font-weight: 600;
     border-color: var(--color-general) !important;
   }
 </style>

@@ -176,7 +176,7 @@
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--color-market, #16a34a);
+    color: var(--color-market, #15803d);
     line-height: 1.2;
     margin-top: 2px;
   }

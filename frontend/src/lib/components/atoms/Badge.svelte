@@ -34,12 +34,13 @@
 
   .badge-general {
     background: var(--color-general-glow);
-    color: #a5b4fc;
+    color: var(--color-general);
   }
 
   .badge-raw {
-    background: rgba(99, 102, 241, 0.15);
-    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.12);
+    color: #4338ca;
+    border: 1px solid rgba(99, 102, 241, 0.25);
   }
 
   .badge-completed {
@@ -48,8 +49,9 @@
   }
 
   .badge-transfer {
-    background: var(--color-general-glow);
-    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.12);
+    color: #4338ca;
+    border: 1px solid rgba(99, 102, 241, 0.25);
   }
 
   .badge-cancelled {
@@ -58,14 +60,14 @@
   }
 
   .badge-zero {
-    background: rgba(244, 63, 94, 0.12);
+    background: var(--color-danger-glow);
     color: var(--color-danger);
-    border: 1px solid rgba(244, 63, 94, 0.2);
+    border: 1px solid rgba(190, 18, 60, 0.25);
   }
 
   .badge-low {
-    background: rgba(245, 158, 11, 0.12);
+    background: var(--color-cafe-glow);
     color: var(--color-cafe);
-    border: 1px solid rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(180, 83, 9, 0.25);
   }
 </style>

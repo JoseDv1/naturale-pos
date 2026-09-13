@@ -354,7 +354,7 @@
                       <td class="text-right">${item.unitCost.toLocaleString()}</td>
                       <td class="text-right">${(item.quantity * item.unitCost).toLocaleString()}</td>
                       <td class="text-center">
-                        <button class="remove-item-btn" onclick={() => removeItemFromSupplies(idx)}>✕</button>
+                        <button type="button" class="remove-item-btn" onclick={() => removeItemFromSupplies(idx)} aria-label="Eliminar producto">✕</button>
                       </td>
                     </tr>
                   {:else}
@@ -527,7 +527,8 @@
 
   .type-btn.active {
     background: var(--color-danger-glow);
-    color: #fca5a5;
+    color: #991b1b;
+    font-weight: 600;
     border-color: var(--color-danger);
   }
 
@@ -695,12 +696,12 @@
   }
 
   .info-note {
-    background: rgba(99, 102, 241, 0.05);
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
     border-radius: var(--radius-sm);
     padding: 12px;
     font-size: 0.78rem;
-    color: #a5b4fc;
+    color: #3730a3;
     line-height: 1.4;
     margin-top: 10px;
   }

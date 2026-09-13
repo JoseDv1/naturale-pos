@@ -52,8 +52,10 @@
     padding: 12px 20px;
     border-radius: var(--radius-md, 10px);
     backdrop-filter: blur(12px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-    border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    background: #112217;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     pointer-events: none;
     max-width: 90vw;
     animation: slideUpToast 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -71,21 +73,15 @@
   }
 
   .scan-toast-container.success {
-    background: rgba(16, 185, 129, 0.18);
-    border-color: rgba(16, 185, 129, 0.4);
-    color: #a7f3d0;
+    border-left: 4px solid #10b981;
   }
 
   .scan-toast-container.error {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.45);
-    color: #fecaca;
+    border-left: 4px solid #ef4444;
   }
 
   .scan-toast-container.warning {
-    background: rgba(245, 158, 11, 0.18);
-    border-color: rgba(245, 158, 11, 0.4);
-    color: #fef08a;
+    border-left: 4px solid #f59e0b;
   }
 
   .toast-icon {
@@ -103,10 +99,12 @@
     font-size: 0.95rem;
     font-weight: 600;
     line-height: 1.2;
+    color: #ffffff;
   }
 
   .toast-subtitle {
     font-size: 0.8rem;
-    opacity: 0.85;
+    color: #e5ede7;
+    opacity: 0.95;
   }
 </style>

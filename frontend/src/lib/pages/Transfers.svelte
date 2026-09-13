@@ -144,21 +144,21 @@
 <!-- ==========================================
      PRODUCT STOCK TRANSFER MODAL
      ========================================== -->
-{#if showTransferModal}
-  <div class="modal-overlay flex-center animate-fade-in">
+{#snippet transferModal()}
+  <div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
     <div class="modal-container glass-panel animate-scale-up" style="max-width: 480px;">
       <div class="modal-header">
-        <h2>Trasladar Producto ({transferDirection === 'MARKET_TO_CAFE' ? 'Mercado ➜ Café' : 'Café ➜ Mercado'})</h2>
-        <button class="close-modal-btn" onclick={() => showTransferModal = false}>✕</button>
+        <h2 id="transfer-modal-title">Trasladar Producto ({transferDirection === 'MARKET_TO_CAFE' ? 'Mercado ➜ Café' : 'Café ➜ Mercado'})</h2>
+        <button type="button" class="close-modal-btn" onclick={() => showTransferModal = false} aria-label="Cerrar modal">✕</button>
       </div>
 
       {#if transferError}
-        <div class="error-banner">{transferError}</div>
+        <div class="error-banner" role="alert">{transferError}</div>
       {/if}
 
       <div class="product-form-body">
         <div class="form-group">
-          <label>Dirección del Traslado</label>
+          <span class="form-label">Dirección del Traslado</span>
           <div class="segmented-control">
             <button
               type="button"
@@ -220,11 +220,15 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick={() => showTransferModal = false}>Cancelar</button>
-        <button class="btn btn-general" onclick={submitTransfer}>Realizar Traslado 🔄</button>
+        <button type="button" class="btn btn-secondary" onclick={() => showTransferModal = false}>Cancelar</button>
+        <button type="button" class="btn btn-general" onclick={submitTransfer}>Realizar Traslado 🔄</button>
       </div>
     </div>
   </div>
+{/snippet}
+
+{#if showTransferModal}
+  {@render transferModal()}
 {/if}
 
 <style>
@@ -278,11 +282,12 @@
     overflow: hidden;
   }
 
-  .product-desc-txt {
+  .form-label {
     display: block;
-    font-size: 0.76rem;
+    font-size: 0.82rem;
+    font-weight: 500;
     color: var(--text-secondary);
-    margin-top: 2px;
+    margin-bottom: 6px;
   }
 
   .text-right {
@@ -369,8 +374,9 @@
 
   .error-banner {
     background: var(--color-danger-glow);
-    border: 1px solid rgba(225, 29, 72, 0.2);
-    color: var(--color-danger);
+    border: 1px solid rgba(190, 18, 60, 0.3);
+    color: #991b1b;
+    font-weight: 500;
     padding: 10px;
     border-radius: var(--radius-sm);
     font-size: 0.88rem;
@@ -381,7 +387,9 @@
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-sm);
     padding: 12px;
-    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .math-row {
@@ -389,18 +397,22 @@
     justify-content: space-between;
     font-size: 0.85rem;
     color: var(--text-secondary);
-    margin-bottom: 6px;
   }
 
-  .math-row:last-child {
-    margin-bottom: 0;
-  }
-
-  .transfer-math-summary .total-row {
-    border-top: 1px solid var(--border-glass);
-    padding-top: 8px;
+  .math-row.total-row {
     font-size: 0.95rem;
     color: var(--text-primary);
+    border-top: 1px solid var(--border-glass);
+    padding-top: 4px;
+    margin-top: 2px;
+  }
+
+  .text-market {
+    color: var(--color-market);
+  }
+
+  .text-cafe {
+    color: var(--color-cafe);
   }
 
   .loading-state {
@@ -408,19 +420,6 @@
     flex-direction: column;
     gap: 12px;
     color: var(--text-secondary);
-  }
-
-  .spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid rgba(16, 185, 129, 0.05);
-    border-top: 3px solid var(--color-general);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
   }
 
   .text-market {

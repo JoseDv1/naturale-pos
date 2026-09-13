@@ -42,8 +42,9 @@
 
   :global(.nav-item.active) {
     background: var(--color-general-glow);
-    color: #a5b4fc;
-    border: 1px solid rgba(99, 102, 241, 0.25) !important;
+    color: var(--color-general);
+    font-weight: 600;
+    border: 1px solid rgba(4, 120, 87, 0.3) !important;
   }
 
   .nav-icon {

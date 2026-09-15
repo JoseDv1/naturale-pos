@@ -25,6 +25,7 @@ reports.get('/dashboard', async (c) => {
         items: {
           include: {
             product: true,
+            variant: true,
           },
         },
         payments: true,
@@ -60,7 +61,10 @@ reports.get('/dashboard', async (c) => {
       // Aggregate items to respect departments
       for (const item of sale.items) {
         const itemRevenue = Number(item.price) * item.quantity;
-        const itemCost = Number(item.product.cost) * item.quantity;
+        const unitCost = item.variant?.cost !== undefined && item.variant?.cost !== null
+          ? Number(item.variant.cost)
+          : Number(item.product.cost);
+        const itemCost = unitCost * item.quantity;
 
         const dept = item.product.department; // 'MARKET' | 'CAFE'
         if (dept === 'MARKET' || dept === 'CAFE') {
@@ -106,13 +110,33 @@ reports.get('/inventory-alerts', async (c) => {
   const lowStockProducts = await prisma.product.findMany({
     where: {
       active: true,
-      stock: { lte: 3 },
-      // Exclude café products with mock infinite stock (999)
-      NOT: {
-        stock: { gte: 900 },
+      OR: [
+        {
+          stock: { lte: 3 },
+          NOT: {
+            stock: { gte: 900 },
+          },
+        },
+        {
+          variants: {
+            some: {
+              active: true,
+              stock: { lte: 3 },
+              NOT: {
+                stock: { gte: 900 },
+              },
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      category: true,
+      variants: {
+        where: { active: true },
+        orderBy: { price: 'asc' },
       },
     },
-    include: { category: true },
     orderBy: { stock: 'asc' },
   });
   return c.json(lowStockProducts);

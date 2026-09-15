@@ -16,6 +16,17 @@ export const products = writable<any[]>([]);
 export const categories = writable<any[]>([]);
 
 // Shopping cart store
+export interface ProductVariant {
+  id: string;
+  productId?: string;
+  name: string;
+  sku?: string | null;
+  price: number;
+  cost?: number;
+  stock?: number;
+  active?: boolean;
+}
+
 export interface CartItem {
   product: {
     id: string;
@@ -26,7 +37,10 @@ export interface CartItem {
     stock: number;
     department: string;
     isRawMaterial: boolean;
+    imageUrl?: string | null;
+    variants?: ProductVariant[];
   };
+  variant?: ProductVariant | null;
   quantity: number;
 }
 
@@ -34,7 +48,10 @@ export const cart = writable<CartItem[]>([]);
 
 // Derived cart total
 export const cartTotal = derived(cart, ($cart) => {
-  return $cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  return $cart.reduce((sum, item) => {
+    const unitPrice = item.variant ? Number(item.variant.price) : Number(item.product.price);
+    return sum + unitPrice * item.quantity;
+  }, 0);
 });
 
 // Trigger updates in other views (e.g. re-fetch data)

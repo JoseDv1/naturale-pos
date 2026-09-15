@@ -221,7 +221,18 @@
               <div class="alert-item animate-fade-in">
                 <div class="alert-info">
                   <strong class="product-name">{item.name}</strong>
-                  <span class="product-sku">SKU: {item.sku} | Cat: {item.category.name}</span>
+                  {#if item.variants && item.variants.length > 0}
+                    {@const lowVars = item.variants.filter((v: any) => (v.stock ?? 0) <= 3 && !(item.department === 'CAFE' && ((item.stock >= 900) || (v.stock >= 900))))}
+                    {#if lowVars.length > 0}
+                      <span class="product-sku" style="color: var(--color-danger); font-weight: 500;">
+                        Variantes bajas: {lowVars.map((v: any) => `${v.name} (${v.stock})`).join(', ')}
+                      </span>
+                    {:else}
+                      <span class="product-sku">SKU: {item.sku} | Cat: {item.category?.name || '—'}</span>
+                    {/if}
+                  {:else}
+                    <span class="product-sku">SKU: {item.sku} | Cat: {item.category?.name || '—'}</span>
+                  {/if}
                 </div>
                 <div class="alert-badge" class:badge-zero={item.stock === 0} class:badge-low={item.stock > 0}>
                   {item.stock === 0 ? 'Sin Stock' : `${item.stock} unidades`}

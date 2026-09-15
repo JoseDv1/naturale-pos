@@ -8,6 +8,13 @@
   }
 
   let { product: p, onedit, ondelete }: Props = $props();
+
+  let hasVariants = $derived(Boolean(p.variants && p.variants.length > 0));
+  let minVariantPrice = $derived(hasVariants ? Math.min(...p.variants.map((v: any) => Number(v.price))) : Number(p.price));
+  let maxVariantPrice = $derived(hasVariants ? Math.max(...p.variants.map((v: any) => Number(v.price))) : Number(p.price));
+  let minVariantCost = $derived(hasVariants ? Math.min(...p.variants.map((v: any) => Number(v.cost ?? 0))) : Number(p.cost));
+  let maxVariantCost = $derived(hasVariants ? Math.max(...p.variants.map((v: any) => Number(v.cost ?? 0))) : Number(p.cost));
+  let totalStock = $derived(hasVariants ? p.variants.reduce((acc: number, v: any) => acc + Number(v.stock || 0), 0) : Number(p.stock));
 </script>
 
 <tr class="animate-fade-in">
@@ -23,6 +30,11 @@
       {/if}
       <div class="product-text-details">
         <strong class="product-name-txt">{p.name}</strong>
+        {#if hasVariants}
+          <span class="row-variants-pill" title={p.variants.map((v: any) => `${v.name}: $${Number(v.price).toLocaleString()} (Stock: ${v.stock})`).join('\n')}>
+            ✨ {p.variants.length} var: {p.variants.map((v: any) => v.name).join(', ')}
+          </span>
+        {/if}
         {#if p.description}
           <span class="product-desc-txt">{p.description}</span>
         {/if}
@@ -40,11 +52,27 @@
       <span class="text-secondary">Venta Directa</span>
     {/if}
   </td>
-  <td class="text-right">${Number(p.cost).toLocaleString()}</td>
-  <td class="text-right">${Number(p.price).toLocaleString()}</td>
+  <td class="text-right">
+    {#if hasVariants && minVariantCost !== maxVariantCost}
+      ${minVariantCost.toLocaleString()} - ${maxVariantCost.toLocaleString()}
+    {:else}
+      ${Number(hasVariants ? minVariantCost : p.cost).toLocaleString()}
+    {/if}
+  </td>
+  <td class="text-right">
+    {#if hasVariants && minVariantPrice !== maxVariantPrice}
+      <strong>${minVariantPrice.toLocaleString()} - ${maxVariantPrice.toLocaleString()}</strong>
+    {:else}
+      <strong>${Number(hasVariants ? minVariantPrice : p.price).toLocaleString()}</strong>
+    {/if}
+  </td>
   <td class="text-center">
-    <span class="stock-badge" class:low-stock={p.stock <= 3 && !(p.department === 'CAFE' && p.stock >= 900)}>
-      {p.department === 'CAFE' && p.stock >= 900 ? 'Ilimitado' : p.stock}
+    <span class="stock-badge" class:low-stock={totalStock <= 3 && !(p.department === 'CAFE' && (p.stock >= 900 || totalStock >= 900))}>
+      {#if p.department === 'CAFE' && (p.stock >= 900 || totalStock >= 900)}
+        Ilimitado
+      {:else}
+        {totalStock}
+      {/if}
     </span>
   </td>
   <td class="text-center actions-cell">
@@ -87,6 +115,22 @@
     display: block;
     font-size: 0.9rem;
     color: var(--text-primary);
+  }
+
+  .row-variants-pill {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-general);
+    background: var(--color-general-glow);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 2px;
+    width: fit-content;
+    white-space: nowrap;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .product-desc-txt {

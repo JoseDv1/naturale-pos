@@ -7,12 +7,22 @@
   }
 
   let { product: p, onclick }: Props = $props();
+
+  let hasVariants = $derived(Boolean(p.variants && p.variants.length > 0));
+  let minVariantPrice = $derived(hasVariants ? Math.min(...p.variants.map((v: any) => Number(v.price))) : Number(p.price));
+  let maxVariantPrice = $derived(hasVariants ? Math.max(...p.variants.map((v: any) => Number(v.price))) : Number(p.price));
+  let totalStock = $derived(hasVariants ? p.variants.reduce((acc: number, v: any) => acc + Number(v.stock || 0), 0) : Number(p.stock));
 </script>
 
 {#snippet badges()}
   <Badge text={p.department === 'MARKET' ? 'Mercado' : 'Café'} type={p.department === 'MARKET' ? 'market' : 'cafe'} />
   {#if p.isRawMaterial}
     <Badge text="Insumo" type="raw" />
+  {/if}
+  {#if hasVariants}
+    <span class="variant-count-pill" title={`${p.variants.length} opciones disponibles`}>
+      {p.variants.length} var.
+    </span>
   {/if}
 {/snippet}
 
@@ -36,12 +46,19 @@
   </div>
   
   <div class="product-footer">
-    <span class="product-price">${Number(p.price).toLocaleString()}</span>
-    <span class="product-stock" class:out={p.stock <= 0 && !(p.department === 'CAFE' && p.stock >= 900)}>
-      {#if p.department === 'CAFE' && p.stock >= 900}
+    <div class="price-box">
+      {#if hasVariants && minVariantPrice !== maxVariantPrice}
+        <span class="product-price-from">Desde</span>
+        <span class="product-price">${minVariantPrice.toLocaleString()}</span>
+      {:else}
+        <span class="product-price">${(hasVariants ? minVariantPrice : Number(p.price)).toLocaleString()}</span>
+      {/if}
+    </div>
+    <span class="product-stock" class:out={totalStock <= 0 && !(p.department === 'CAFE' && totalStock >= 900)}>
+      {#if p.department === 'CAFE' && (p.stock >= 900 || totalStock >= 900)}
         Ilimitado
       {:else}
-        Stock: {p.stock}
+        Stock: {totalStock}
       {/if}
     </span>
   </div>
@@ -131,6 +148,31 @@
     align-items: center;
     border-top: 1px solid var(--border-glass);
     padding-top: 10px;
+  }
+
+  .variant-count-pill {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(4, 120, 87, 0.15);
+    color: var(--color-general);
+    border: 1px solid rgba(4, 120, 87, 0.3);
+    backdrop-filter: blur(4px);
+  }
+
+  .price-box {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+
+  .product-price-from {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
   }
 
   .product-price {

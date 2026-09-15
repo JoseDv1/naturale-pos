@@ -70,6 +70,12 @@ body {
   background: rgba(16, 185, 129, 0.4);
 }
 
+/* Scrolling utilities */
+.scroll-y {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Glassmorphism Styles */
 .glass-panel {
   background: var(--bg-glass);

@@ -3,7 +3,7 @@
     table: any;
     tables: any[];
     userId: string;
-    ontransfer: (sourceId: string, targetTableId: string, items: Array<{ productId: string; quantity: number }>) => Promise<void>;
+    ontransfer: (sourceId: string, targetTableId: string, items: Array<{ productId: string; variantId?: string | null; quantity: number }>) => Promise<void>;
     oncheckout: (tableId: string, payload: { userId: string; items: any[]; payments: any[] }) => Promise<any>;
     onclose: () => void;
   }
@@ -11,7 +11,7 @@
   let { table, tables = [], userId, ontransfer, oncheckout, onclose }: Props = $props();
 
   // State: item quantities selected for splitting
-  // Map of productId -> selected quantity
+  // Map of itemId -> selected quantity
   let selectedQuantities = $state<Record<string, number>>({});
   let activeAction = $state<'TRANSFER' | 'CHECKOUT'>('TRANSFER');
   let selectedTargetTableId = $state<string | null>(null);
@@ -39,7 +39,7 @@
   // Subtotal for selected items
   const selectedSubtotal = $derived(
     items.reduce((sum: number, it: any) => {
-      const q = selectedQuantities[it.productId] || 0;
+      const q = selectedQuantities[it.id] || 0;
       return sum + (q * parseFloat(it.price));
     }, 0)
   );
@@ -65,28 +65,28 @@
     totalPaid > selectedSubtotal ? totalPaid - selectedSubtotal : 0
   );
 
-  function incrementItem(productId: string, maxQty: number) {
-    const current = selectedQuantities[productId] || 0;
+  function incrementItem(itemId: string, maxQty: number) {
+    const current = selectedQuantities[itemId] || 0;
     if (current < maxQty) {
-      selectedQuantities = { ...selectedQuantities, [productId]: current + 1 };
+      selectedQuantities = { ...selectedQuantities, [itemId]: current + 1 };
     }
   }
 
-  function decrementItem(productId: string) {
-    const current = selectedQuantities[productId] || 0;
+  function decrementItem(itemId: string) {
+    const current = selectedQuantities[itemId] || 0;
     if (current > 0) {
-      selectedQuantities = { ...selectedQuantities, [productId]: current - 1 };
+      selectedQuantities = { ...selectedQuantities, [itemId]: current - 1 };
     }
   }
 
-  function selectAllOfItem(productId: string, maxQty: number) {
-    selectedQuantities = { ...selectedQuantities, [productId]: maxQty };
+  function selectAllOfItem(itemId: string, maxQty: number) {
+    selectedQuantities = { ...selectedQuantities, [itemId]: maxQty };
   }
 
   function selectAllItems() {
     const updated: Record<string, number> = {};
     for (const item of items) {
-      updated[item.productId] = item.quantity;
+      updated[item.id] = item.quantity;
     }
     selectedQuantities = updated;
   }
@@ -124,9 +124,13 @@
       return;
     }
 
-    const payloadItems = Object.entries(selectedQuantities)
-      .filter(([_, qty]) => qty > 0)
-      .map(([productId, quantity]) => ({ productId, quantity }));
+    const payloadItems = items
+      .filter((it: any) => (selectedQuantities[it.id] || 0) > 0)
+      .map((it: any) => ({
+        productId: it.productId,
+        variantId: it.variantId || null,
+        quantity: selectedQuantities[it.id]
+      }));
 
     isLoading = true;
     errorMsg = '';
@@ -151,10 +155,11 @@
     }
 
     const payloadItems = items
-      .filter((it: any) => (selectedQuantities[it.productId] || 0) > 0)
+      .filter((it: any) => (selectedQuantities[it.id] || 0) > 0)
       .map((it: any) => ({
         productId: it.productId,
-        quantity: selectedQuantities[it.productId],
+        variantId: it.variantId || null,
+        quantity: selectedQuantities[it.id],
         price: parseFloat(it.price)
       }));
 
@@ -198,11 +203,16 @@
     {/if}
 
 {#snippet itemRow(item: any)}
-  {@const selectedQty = selectedQuantities[item.productId] || 0}
+  {@const selectedQty = selectedQuantities[item.id] || 0}
   {@const unitPrice = parseFloat(item.price)}
   <div class="item-split-row" class:has-selected={selectedQty > 0}>
     <div class="item-info">
-      <span class="item-name">{item.product.name}</span>
+      <span class="item-name">
+        {item.product.name}
+        {#if item.variant}
+          <small class="variant-split-chip">({item.variant.name})</small>
+        {/if}
+      </span>
       <span class="item-price-desc">${unitPrice.toLocaleString()} c/u (Disp: {item.quantity})</span>
     </div>
 
@@ -210,7 +220,7 @@
       <button
         type="button"
         class="stepper-btn"
-        onclick={() => decrementItem(item.productId)}
+        onclick={() => decrementItem(item.id)}
         disabled={selectedQty === 0}
         aria-label="Disminuir"
       >
@@ -220,7 +230,7 @@
       <button
         type="button"
         class="stepper-btn"
-        onclick={() => incrementItem(item.productId, item.quantity)}
+        onclick={() => incrementItem(item.id, item.quantity)}
         disabled={selectedQty >= item.quantity}
         aria-label="Aumentar"
       >
@@ -229,7 +239,7 @@
       <button
         type="button"
         class="stepper-all-btn"
-        onclick={() => selectAllOfItem(item.productId, item.quantity)}
+        onclick={() => selectAllOfItem(item.id, item.quantity)}
         title="Seleccionar todo de este producto"
       >
         Todo
@@ -613,6 +623,12 @@
     font-size: 0.88rem;
     font-weight: 600;
     color: var(--text-primary);
+  }
+
+  .variant-split-chip {
+    color: var(--color-general);
+    font-weight: 600;
+    font-size: 0.85em;
   }
 
   .item-price-desc {

@@ -8,6 +8,7 @@ const tables = new Hono();
 const tableItemsSchema = z.object({
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de producto inválido'),
+    variantId: z.string().nullable().optional(),
     quantity: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseInt(val) : val)
       .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
@@ -34,6 +35,7 @@ const tableTransferItemsSchema = z.object({
   targetTableId: z.string().min(1, 'ID de mesa destino requerido'),
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de producto inválido'),
+    variantId: z.string().nullable().optional(),
     quantity: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseInt(val) : val)
       .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' })
@@ -44,6 +46,7 @@ const tablePartialCheckoutSchema = z.object({
   userId: z.string().min(1, 'ID de usuario requerido'),
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de producto inválido'),
+    variantId: z.string().nullable().optional(),
     quantity: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseInt(val) : val)
       .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
@@ -76,7 +79,8 @@ tables.get('/', async (c) => {
               include: {
                 product: {
                   include: { category: true }
-                }
+                },
+                variant: true
               }
             }
           }
@@ -124,7 +128,7 @@ tables.post('/:id/open', async (c) => {
           currentSale: {
             include: {
               items: {
-                include: { product: true }
+                include: { product: true, variant: true }
               }
             }
           }
@@ -170,21 +174,35 @@ tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
       const saleId = table.currentSaleId;
       const existingItems = table.currentSale.items;
 
+      // Validate that all items with variantId belong to the product and are active
+      for (const item of items) {
+        if (item.variantId) {
+          const v = await tx.productVariant.findUnique({ where: { id: item.variantId } });
+          if (!v) throw new ApiError(`Variante no encontrada: ID ${item.variantId}`, 404);
+          if (v.productId !== item.productId) {
+            throw new ApiError('La variante no pertenece al producto seleccionado', 400);
+          }
+          if (!v.active) {
+            throw new ApiError(`La variante "${v.name}" no está disponible`, 400);
+          }
+        }
+      }
+
       // Map of existing product stock reservations
       const existingQtyMap = new Map<string, number>();
       for (const item of existingItems) {
-        existingQtyMap.set(item.productId, item.quantity);
+        existingQtyMap.set(item.productId, (existingQtyMap.get(item.productId) || 0) + item.quantity);
       }
 
       // Map of new requested product quantities
       const newQtyMap = new Map<string, number>();
       for (const item of items) {
-        newQtyMap.set(item.productId, item.quantity);
+        newQtyMap.set(item.productId, (newQtyMap.get(item.productId) || 0) + item.quantity);
       }
 
       const allProductIds = new Set([...existingQtyMap.keys(), ...newQtyMap.keys()]);
 
-      // Handle stock reservation adjustments
+      // Handle stock reservation adjustments for base products
       for (const prodId of allProductIds) {
         const existingQty = existingQtyMap.get(prodId) || 0;
         const newQty = newQtyMap.get(prodId) || 0;
@@ -201,6 +219,41 @@ tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
             }
             await tx.product.update({
               where: { id: prodId },
+              data: { stock: { decrement: diff } }
+            });
+          }
+        }
+      }
+
+      // Handle stock reservation adjustments for variants
+      const existingVarQtyMap = new Map<string, number>();
+      for (const item of existingItems) {
+        if (item.variantId) {
+          existingVarQtyMap.set(item.variantId, (existingVarQtyMap.get(item.variantId) || 0) + item.quantity);
+        }
+      }
+
+      const newVarQtyMap = new Map<string, number>();
+      for (const item of items) {
+        if (item.variantId) {
+          newVarQtyMap.set(item.variantId, (newVarQtyMap.get(item.variantId) || 0) + item.quantity);
+        }
+      }
+
+      const allVarIds = new Set([...existingVarQtyMap.keys(), ...newVarQtyMap.keys()]);
+      for (const varId of allVarIds) {
+        const existingQty = existingVarQtyMap.get(varId) || 0;
+        const newQty = newVarQtyMap.get(varId) || 0;
+        const diff = newQty - existingQty;
+
+        if (diff !== 0) {
+          const v = await tx.productVariant.findUnique({ where: { id: varId }, include: { product: true } });
+          if (v && !(v.product.department === 'CAFE' && v.product.stock >= 900)) {
+            if (diff > 0 && v.stock < diff) {
+              throw new ApiError(`Stock insuficiente para "${v.product.name} (${v.name})". Disponible: ${v.stock}, Requerido adicional: ${diff}`, 400);
+            }
+            await tx.productVariant.update({
+              where: { id: varId },
               data: { stock: { decrement: diff } }
             });
           }
@@ -238,6 +291,7 @@ tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
           data: items.map((item: any) => ({
             saleId,
             productId: item.productId,
+            variantId: item.variantId || null,
             quantity: item.quantity,
             price: parseFloat(item.price)
           }))
@@ -252,7 +306,7 @@ tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
         data: { total },
         include: {
           items: {
-            include: { product: true }
+            include: { product: true, variant: true }
           }
         }
       });
@@ -317,7 +371,7 @@ tables.post('/:id/checkout', zValidator('json', tableCheckoutSchema, (result, c)
         data: { status: 'COMPLETED' },
         include: {
           items: {
-            include: { product: true }
+            include: { product: true, variant: true }
           },
           payments: true
         }
@@ -368,6 +422,12 @@ tables.post('/:id/cancel', async (c) => {
       for (const item of table.currentSale.items) {
         const prod = await tx.product.findUnique({ where: { id: item.productId } });
         if (prod && !(prod.department === 'CAFE' && prod.stock >= 900)) {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantity } }
+            }).catch(() => {});
+          }
           await tx.product.update({
             where: { id: item.productId },
             data: { stock: { increment: item.quantity } }
@@ -454,6 +514,12 @@ tables.delete('/:id', async (c) => {
         for (const item of table.currentSale.items) {
           const prod = await tx.product.findUnique({ where: { id: item.productId } });
           if (prod && !(prod.department === 'CAFE' && prod.stock >= 900)) {
+            if (item.variantId) {
+              await tx.productVariant.update({
+                where: { id: item.variantId },
+                data: { stock: { increment: item.quantity } }
+              }).catch(() => {});
+            }
             await tx.product.update({
               where: { id: item.productId },
               data: { stock: { increment: item.quantity } }
@@ -589,7 +655,7 @@ tables.post('/:id/merge', zValidator('json', tableMergeSchema, (result, c) => {
         const sourceItems = source.currentSale.items;
 
         for (const sItem of sourceItems) {
-          const existingTItem = targetItems.find(ti => ti.productId === sItem.productId);
+          const existingTItem = targetItems.find(ti => ti.productId === sItem.productId && (sItem.variantId ? ti.variantId === sItem.variantId : !ti.variantId));
           if (existingTItem) {
             await tx.saleItem.update({
               where: { id: existingTItem.id },
@@ -601,6 +667,7 @@ tables.post('/:id/merge', zValidator('json', tableMergeSchema, (result, c) => {
               data: {
                 saleId: targetSaleId,
                 productId: sItem.productId,
+                variantId: sItem.variantId || null,
                 quantity: sItem.quantity,
                 price: Number(sItem.price)
               }
@@ -640,11 +707,11 @@ tables.post('/:id/merge', zValidator('json', tableMergeSchema, (result, c) => {
       const [updatedSource, updatedTarget] = await Promise.all([
         tx.cafeTable.findUnique({
           where: { id: sourceId },
-          include: { currentSale: { include: { items: { include: { product: true } } } } }
+          include: { currentSale: { include: { items: { include: { product: true, variant: true } } } } }
         }),
         tx.cafeTable.findUnique({
           where: { id: targetTableId },
-          include: { currentSale: { include: { items: { include: { product: true } } } } }
+          include: { currentSale: { include: { items: { include: { product: true, variant: true } } } } }
         })
       ]);
 
@@ -702,7 +769,7 @@ tables.post('/:id/transfer-items', zValidator('json', tableTransferItemsSchema, 
 
       // Validar que los productos y cantidades existan en la mesa origen
       for (const reqItem of items) {
-        const srcItem = source.currentSale.items.find(it => it.productId === reqItem.productId);
+        const srcItem = source.currentSale.items.find(it => it.productId === reqItem.productId && (reqItem.variantId ? it.variantId === reqItem.variantId : !it.variantId));
         if (!srcItem) {
           throw new ApiError(`El producto seleccionado (ID: ${reqItem.productId}) no existe en la mesa origen`, 400);
         }
@@ -741,7 +808,7 @@ tables.post('/:id/transfer-items', zValidator('json', tableTransferItemsSchema, 
 
       // Transferir cada producto
       for (const reqItem of items) {
-        const srcItem = source.currentSale.items.find(it => it.productId === reqItem.productId)!;
+        const srcItem = source.currentSale.items.find(it => it.productId === reqItem.productId && (reqItem.variantId ? it.variantId === reqItem.variantId : !it.variantId))!;
         const itemPrice = Number(srcItem.price);
 
         // 1. Deducir de origen
@@ -755,7 +822,7 @@ tables.post('/:id/transfer-items', zValidator('json', tableTransferItemsSchema, 
         }
 
         // 2. Agregar a destino
-        const existingTItem = targetItems.find(it => it.productId === reqItem.productId);
+        const existingTItem = targetItems.find(it => it.productId === reqItem.productId && (reqItem.variantId ? it.variantId === reqItem.variantId : !it.variantId));
         if (existingTItem) {
           await tx.saleItem.update({
             where: { id: existingTItem.id },
@@ -767,6 +834,7 @@ tables.post('/:id/transfer-items', zValidator('json', tableTransferItemsSchema, 
             data: {
               saleId: targetSaleId,
               productId: reqItem.productId,
+              variantId: reqItem.variantId || null,
               quantity: reqItem.quantity,
               price: itemPrice
             }
@@ -808,18 +876,18 @@ tables.post('/:id/transfer-items', zValidator('json', tableTransferItemsSchema, 
       const [updatedSource, updatedTarget] = await Promise.all([
         tx.cafeTable.findUnique({
           where: { id: sourceId },
-          include: { currentSale: { include: { items: { include: { product: true } } } } }
+          include: { currentSale: { include: { items: { include: { product: true, variant: true } } } } }
         }),
         tx.cafeTable.findUnique({
           where: { id: targetTableId },
-          include: { currentSale: { include: { items: { include: { product: true } } } } }
+          include: { currentSale: { include: { items: { include: { product: true, variant: true } } } } }
         })
       ]);
 
-      return { source: updatedSource, target: updatedTarget };
+      return { success: true, source: updatedSource, target: updatedTarget };
     });
 
-    return c.json({ success: true, ...result });
+    return c.json(result);
   } catch (error: any) {
     if (error instanceof ApiError) {
       return c.json({ error: error.message }, error.status);
@@ -862,7 +930,7 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
 
       // Validar que cada ítem solicitado exista en la comanda de la mesa con suficiente cantidad
       for (const reqItem of items) {
-        const currentItem = table.currentSale.items.find(it => it.productId === reqItem.productId);
+        const currentItem = table.currentSale.items.find(it => it.productId === reqItem.productId && (reqItem.variantId ? it.variantId === reqItem.variantId : !it.variantId));
         if (!currentItem) {
           throw new ApiError(`El producto seleccionado (ID: ${reqItem.productId}) no existe en la comanda`, 400);
         }
@@ -886,6 +954,7 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
         data: items.map(it => ({
           saleId: completedSale.id,
           productId: it.productId,
+          variantId: it.variantId || null,
           quantity: it.quantity,
           price: it.price
         }))
@@ -902,7 +971,7 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
 
       // 2. Deducir de la comanda activa de la mesa
       for (const reqItem of items) {
-        const currentItem = table.currentSale.items.find(it => it.productId === reqItem.productId)!;
+        const currentItem = table.currentSale.items.find(it => it.productId === reqItem.productId && (reqItem.variantId ? it.variantId === reqItem.variantId : !it.variantId))!;
         if (reqItem.quantity === currentItem.quantity) {
           await tx.saleItem.delete({ where: { id: currentItem.id } });
         } else {
@@ -941,7 +1010,7 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
           where: { id: tableId },
           include: {
             currentSale: {
-              include: { items: { include: { product: true } } }
+              include: { items: { include: { product: true, variant: true } } }
             }
           }
         });
@@ -950,7 +1019,7 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
       const finalCompletedSale = await tx.sale.findUnique({
         where: { id: completedSale.id },
         include: {
-          items: { include: { product: true } },
+          items: { include: { product: true, variant: true } },
           payments: true
         }
       });

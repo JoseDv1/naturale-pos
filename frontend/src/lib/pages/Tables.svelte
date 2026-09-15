@@ -130,6 +130,7 @@
 
     const items = table.currentSale.items.map((item: any) => ({
       product: item.product,
+      variant: item.variant || null,
       quantity: item.quantity,
     }));
     cart.set(items);

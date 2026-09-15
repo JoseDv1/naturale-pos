@@ -20,6 +20,8 @@
   let modalMode = $state('add'); // 'add' | 'edit'
   let currentProduct = $state<any>({});
   let showProductSkuScanner = $state(false);
+  let activeVariantSkuIndex = $state<number | null>(null);
+  let showVariantSkuScanner = $state(false);
 
   // Image Upload State
   let isUploadingImage = $state(false);
@@ -54,7 +56,14 @@
 
   // Filtered Products
   let filteredProducts = $derived($products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.includes(searchQuery);
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.sku.toLowerCase().includes(q) ||
+      (p.variants && p.variants.some((v: any) =>
+        v.name.toLowerCase().includes(q) ||
+        (v.sku && v.sku.toLowerCase().includes(q))
+      ));
     const matchesCategory = filterCategory ? p.categoryId === filterCategory : true;
     const matchesDept = filterDept ? p.department === filterDept : true;
     return matchesSearch && matchesCategory && matchesDept;
@@ -81,6 +90,8 @@
       categoryId: $categories[0]?.id || '',
       department: 'MARKET',
       isRawMaterial: false,
+      hasVariants: false,
+      variants: [],
     };
     showProductModal = true;
   }
@@ -92,8 +103,60 @@
     currentProduct = { 
       ...product,
       imageUrl: product.imageUrl || null,
+      hasVariants: Boolean(product.variants && product.variants.length > 0),
+      variants: (product.variants || []).map((v: any) => ({
+        id: v.id,
+        name: v.name,
+        sku: v.sku || '',
+        price: Number(v.price),
+        cost: Number(v.cost ?? 0),
+        stock: Number(v.stock ?? 0),
+      })),
     };
     showProductModal = true;
+  }
+
+  function addVariantRow(name = '', price: any = '', cost: any = '', stock = 0, sku = '') {
+    if (!currentProduct.variants) {
+      currentProduct.variants = [];
+    }
+    currentProduct.variants.push({
+      id: undefined,
+      name,
+      sku,
+      price: price !== '' ? price : (currentProduct.price || ''),
+      cost: cost !== '' ? cost : (currentProduct.cost || ''),
+      stock: stock || 0,
+    });
+  }
+
+  function removeVariantRow(index: number) {
+    if (currentProduct.variants) {
+      currentProduct.variants.splice(index, 1);
+    }
+  }
+
+  function applyPreset(presetType: 'sizes' | 'flavors' | 'milks') {
+    currentProduct.hasVariants = true;
+    if (!currentProduct.variants) currentProduct.variants = [];
+
+    const basePrice = currentProduct.price !== '' ? Number(currentProduct.price) : 5000;
+    const baseCost = currentProduct.cost !== '' ? Number(currentProduct.cost) : 2000;
+
+    if (presetType === 'sizes') {
+      addVariantRow('Pequeño (8oz)', basePrice, baseCost, 10);
+      addVariantRow('Mediano (12oz)', basePrice + 2000, baseCost + 800, 10);
+      addVariantRow('Grande (16oz)', basePrice + 4000, baseCost + 1500, 10);
+    } else if (presetType === 'flavors') {
+      addVariantRow('Vainilla', basePrice, baseCost, 10);
+      addVariantRow('Chocolate', basePrice, baseCost, 10);
+      addVariantRow('Fresa', basePrice, baseCost, 10);
+    } else if (presetType === 'milks') {
+      addVariantRow('Leche Entera', basePrice, baseCost, 10);
+      addVariantRow('Leche Deslactosada', basePrice, baseCost, 10);
+      addVariantRow('Leche de Almendras', basePrice + 1500, baseCost + 700, 10);
+      addVariantRow('Leche de Avena', basePrice + 1500, baseCost + 700, 10);
+    }
   }
 
   async function handleImageFileSelect(e: Event) {
@@ -119,17 +182,54 @@
   }
 
   async function saveProduct() {
-    if (!currentProduct.name || currentProduct.price === '' || currentProduct.cost === '') {
-      alert('Por favor completa todos los campos requeridos.');
+    if (!currentProduct.name || currentProduct.name.trim() === '') {
+      alert('Por favor escribe el nombre del producto.');
       return;
+    }
+
+    if (currentProduct.hasVariants) {
+      if (!currentProduct.variants || currentProduct.variants.length === 0) {
+        alert('Has marcado que este producto tiene variantes. Añade al menos una variante o desmarca la casilla.');
+        return;
+      }
+      for (let i = 0; i < currentProduct.variants.length; i++) {
+        const v = currentProduct.variants[i];
+        if (!v.name || v.name.trim() === '') {
+          alert(`La variante #${i + 1} debe tener un nombre (ej. Pequeño, Vainilla).`);
+          return;
+        }
+        if (v.price === '' || isNaN(Number(v.price)) || Number(v.price) < 0) {
+          alert(`La variante "${v.name}" debe tener un precio válido mayor o igual a cero.`);
+          return;
+        }
+      }
+
+      // Automatically sync base price, cost, and stock
+      if (currentProduct.price === '' || isNaN(Number(currentProduct.price))) {
+        currentProduct.price = currentProduct.variants[0].price;
+      }
+      if (currentProduct.cost === '' || isNaN(Number(currentProduct.cost))) {
+        currentProduct.cost = currentProduct.variants[0].cost || 0;
+      }
+      currentProduct.stock = currentProduct.variants.reduce((acc: number, v: any) => acc + (Number(v.stock) || 0), 0);
+    } else {
+      if (currentProduct.price === '' || currentProduct.cost === '') {
+        alert('Por favor completa los campos de precio y costo requeridos.');
+        return;
+      }
     }
 
     try {
       const isEdit = modalMode === 'edit';
+      const payload = {
+        ...currentProduct,
+        variants: currentProduct.hasVariants ? currentProduct.variants : [],
+      };
+
       if (isEdit) {
-        await updateProduct(currentProduct.id, currentProduct);
+        await updateProduct(currentProduct.id, payload);
       } else {
-        await createProduct(currentProduct);
+        await createProduct(payload);
       }
       showProductModal = false;
       triggerRefresh();
@@ -482,6 +582,132 @@
             <span>¿Es materia prima / insumo interno? (Se usa para traslados y recetas en café)</span>
           </label>
         </div>
+
+        <!-- Product Variants Section -->
+        <div class="variants-config-card">
+          <div class="variants-toggle-header">
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={currentProduct.hasVariants} />
+              <strong class="toggle-title">¿Este producto tiene variantes? (ej. tamaños, sabores)</strong>
+            </label>
+            <span class="variants-help-hint">Crea opciones con diferentes tamaños (8oz, 12oz, 16oz), sabores o presentaciones con precios y stock propios.</span>
+          </div>
+
+          {#if currentProduct.hasVariants}
+            <div class="variants-workspace animate-fade-in">
+              <div class="presets-toolbar">
+                <span class="presets-label">Plantillas rápidas:</span>
+                <button type="button" class="btn-preset" onclick={() => applyPreset('sizes')}>☕ Tamaños</button>
+                <button type="button" class="btn-preset" onclick={() => applyPreset('flavors')}>🍓 Sabores</button>
+                <button type="button" class="btn-preset" onclick={() => applyPreset('milks')}>🥛 Tipos de Leche</button>
+              </div>
+
+              {#if currentProduct.variants && currentProduct.variants.length > 0}
+                <div class="variants-table-wrapper">
+                  <table class="variants-edit-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre de Variante *</th>
+                        <th>Código / SKU</th>
+                        <th>Precio Venta ($) *</th>
+                        <th>Costo Compra ($)</th>
+                        <th>Stock</th>
+                        <th class="text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each currentProduct.variants as variant, idx}
+                        <tr>
+                          <td>
+                            <input
+                              type="text"
+                              bind:value={variant.name}
+                              placeholder="Ej: Pequeño, Vainilla..."
+                              required
+                              class="var-input-name"
+                            />
+                          </td>
+                          <td>
+                            <div class="var-sku-field">
+                              <input
+                                type="text"
+                                bind:value={variant.sku}
+                                placeholder="Autogenerado o escanear"
+                                class="var-input-sku"
+                              />
+                              <button
+                                type="button"
+                                class="btn-var-scan"
+                                onclick={() => {
+                                  activeVariantSkuIndex = idx;
+                                  showVariantSkuScanner = true;
+                                }}
+                                title="Escanear código de barras para esta variante"
+                              >
+                                📷
+                              </button>
+                            </div>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              bind:value={variant.price}
+                              placeholder="0"
+                              min="0"
+                              step="any"
+                              required
+                              class="var-input-num"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              bind:value={variant.cost}
+                              placeholder="0"
+                              min="0"
+                              step="any"
+                              class="var-input-num"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              bind:value={variant.stock}
+                              placeholder="0"
+                              min="0"
+                              class="var-input-num"
+                            />
+                          </td>
+                          <td class="text-center">
+                            <button
+                              type="button"
+                              class="btn-var-remove"
+                              onclick={() => removeVariantRow(idx)}
+                              title="Eliminar variante"
+                              aria-label="Eliminar variante"
+                            >
+                              🗑️
+                            </button>
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              {:else}
+                <div class="no-variants-prompt flex-center">
+                  <span>No has añadido variantes aún. Usa una plantilla arriba o haz clic en "Agregar Variante".</span>
+                </div>
+              {/if}
+
+              <div class="variants-actions-bar">
+                <button type="button" class="btn btn-secondary btn-sm" onclick={() => addVariantRow()}>
+                  ➕ Agregar Variante
+                </button>
+              </div>
+            </div>
+          {/if}
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -551,6 +777,26 @@
   />
 {/if}
 
+<!-- Scanner Modal for Variant SKU -->
+{#if showVariantSkuScanner && activeVariantSkuIndex !== null && currentProduct.variants?.[activeVariantSkuIndex]}
+  <BarcodeScannerModal
+    title={`Escanear Código para ${currentProduct.variants[activeVariantSkuIndex].name || 'Variante'}`}
+    mode="single"
+    onscan={(code) => {
+      if (activeVariantSkuIndex !== null && currentProduct.variants?.[activeVariantSkuIndex]) {
+        currentProduct.variants[activeVariantSkuIndex].sku = code;
+      }
+      playScanSuccess();
+      showVariantSkuScanner = false;
+      activeVariantSkuIndex = null;
+    }}
+    onclose={() => {
+      showVariantSkuScanner = false;
+      activeVariantSkuIndex = null;
+    }}
+  />
+{/if}
+
 <style>
   .flex-column {
     display: flex;
@@ -559,10 +805,13 @@
     width: 100%;
     gap: 16px;
     padding: 6px;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .flex-1 {
     flex: 1;
+    min-height: 0;
   }
 
   .inventory-header {
@@ -570,6 +819,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
   }
 
   .header-left h2 {
@@ -588,6 +838,7 @@
     display: flex;
     gap: 14px;
     align-items: center;
+    flex-shrink: 0;
   }
 
   .filter-search-box {
@@ -650,10 +901,26 @@
 
   .table-card {
     border-radius: var(--radius-sm);
-    overflow: hidden;
+    overflow: auto;
+    min-height: 0;
+    flex: 1;
   }
 
+  .table-card table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
 
+  .table-card :global(.pos-table thead th) {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-glass);
+  }
 
   .text-right {
     text-align: right;
@@ -661,8 +928,6 @@
   .text-center {
     text-align: center;
   }
-
-
 
   /* Modal forms */
   .modal-overlay {
@@ -678,12 +943,13 @@
 
   .modal-container {
     width: 100%;
-    max-width: 580px;
+    max-width: 680px;
     max-height: 90vh;
     padding: 24px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
+    overflow: hidden;
   }
 
   .modal-header {
@@ -712,6 +978,8 @@
     gap: 16px;
     overflow-y: auto;
     padding-right: 4px;
+    flex: 1;
+    min-height: 0;
   }
 
   .form-row {
@@ -878,5 +1146,167 @@
     color: var(--color-danger);
     font-size: 0.8rem;
     margin-top: 8px;
+  }
+
+  /* Variants Configuration Section */
+  .variants-config-card {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .variants-toggle-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .toggle-title {
+    font-size: 0.92rem;
+    color: var(--text-primary);
+  }
+
+  .variants-help-hint {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    padding-left: 28px;
+  }
+
+  .variants-workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-glass);
+  }
+
+  .presets-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .presets-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .btn-preset {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--border-glass);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+  }
+
+  .btn-preset:hover {
+    background: #ffffff;
+    border-color: var(--color-general);
+    transform: translateY(-1px);
+  }
+
+  .variants-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.4);
+  }
+
+  .variants-edit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .variants-edit-table th {
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--text-secondary);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border-glass);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .variants-edit-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.08);
+  }
+
+  .variants-edit-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .var-input-name {
+    min-width: 130px;
+  }
+
+  .var-sku-field {
+    display: flex;
+    align-items: center;
+    position: relative;
+    min-width: 120px;
+  }
+
+  .var-input-sku {
+    padding-right: 28px !important;
+  }
+
+  .btn-var-scan {
+    position: absolute;
+    right: 4px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    padding: 2px;
+  }
+
+  .btn-var-scan:hover {
+    color: var(--text-primary);
+  }
+
+  .var-input-num {
+    width: 85px !important;
+    min-width: 85px;
+    text-align: right;
+  }
+
+  .btn-var-remove {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    border-radius: 4px;
+    transition: var(--transition-fast);
+  }
+
+  .btn-var-remove:hover {
+    background: rgba(244, 63, 94, 0.15);
+  }
+
+  .no-variants-prompt {
+    padding: 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: center;
+  }
+
+  .variants-actions-bar {
+    display: flex;
+    justify-content: flex-start;
   }
 </style>

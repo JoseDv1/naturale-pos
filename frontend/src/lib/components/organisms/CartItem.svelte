@@ -1,29 +1,40 @@
 <script lang="ts">
+  import type { CartItem as CartItemType } from '../../store';
+
   interface Props {
-    item: { product: any; quantity: number };
-    onupdateqty: (productId: string, delta: number) => void;
-    onremove: (productId: string) => void;
+    item: CartItemType;
+    onupdateqty: (productId: string, variantId: string | null, delta: number) => void;
+    onremove: (productId: string, variantId: string | null) => void;
   }
 
   let { item, onupdateqty, onremove }: Props = $props();
+
+  let unitPrice = $derived(item.variant ? Number(item.variant.price) : Number(item.product.price));
+  let subtotal = $derived(unitPrice * item.quantity);
+  let variantId = $derived(item.variant?.id || null);
 </script>
 
 <div class="cart-item animate-fade-in">
   <div class="item-details">
-    <span class="item-name">{item.product.name}</span>
-    <span class="item-price">${item.product.price.toLocaleString()} c/u</span>
+    <div class="item-title-col">
+      <span class="item-name">{item.product.name}</span>
+      {#if item.variant}
+        <span class="variant-chip">✨ {item.variant.name}</span>
+      {/if}
+    </div>
+    <span class="item-price">${unitPrice.toLocaleString()} c/u</span>
   </div>
 
   <div class="item-actions">
     <div class="qty-controls">
-      <button class="qty-btn" onclick={() => onupdateqty(item.product.id, -1)}>-</button>
+      <button class="qty-btn" onclick={() => onupdateqty(item.product.id, variantId, -1)} aria-label="Disminuir cantidad">-</button>
       <span class="qty-val">{item.quantity}</span>
-      <button class="qty-btn" onclick={() => onupdateqty(item.product.id, 1)}>+</button>
+      <button class="qty-btn" onclick={() => onupdateqty(item.product.id, variantId, 1)} aria-label="Aumentar cantidad">+</button>
     </div>
     
-    <span class="item-subtotal">${(item.product.price * item.quantity).toLocaleString()}</span>
+    <span class="item-subtotal">${subtotal.toLocaleString()}</span>
     
-    <button class="remove-btn" onclick={() => onremove(item.product.id)}>
+    <button class="remove-btn" onclick={() => onremove(item.product.id, variantId)} aria-label="Eliminar producto del carrito">
       ❌
     </button>
   </div>
@@ -45,9 +56,26 @@
     justify-content: space-between;
   }
 
+  .item-title-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
   .item-name {
     font-weight: 500;
     font-size: 0.92rem;
+  }
+
+  .variant-chip {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-general);
+    background: var(--color-general-glow);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
   }
 
   .item-price {

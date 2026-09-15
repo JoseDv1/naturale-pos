@@ -16,7 +16,13 @@
   <td>
     <div class="exp-items-cell">
       {#each sale.items as item}
-        <span>• {item.product.name} (x{item.quantity}) @ ${item.price.toLocaleString()}</span>
+        <span>
+          • {item.product.name}
+          {#if item.variant}
+            <span class="variant-sale-tag">({item.variant.name})</span>
+          {/if}
+          (x{item.quantity}) @ ${Number(item.price).toLocaleString()}
+        </span>
       {/each}
     </div>
   </td>
@@ -62,6 +68,11 @@
     gap: 4px;
     font-size: 0.82rem;
     text-align: left;
+  }
+
+  .variant-sale-tag {
+    color: var(--color-general);
+    font-weight: 600;
   }
 
   .btn-cancel-sale {

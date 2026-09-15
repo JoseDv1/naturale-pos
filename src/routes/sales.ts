@@ -10,7 +10,10 @@ sales.get('/', async (c) => {
     include: {
       user: { select: { name: true } },
       items: {
-        include: { product: { select: { name: true, sku: true, department: true } } },
+        include: {
+          product: { select: { name: true, sku: true, department: true } },
+          variant: { select: { name: true, sku: true } },
+        },
       },
       payments: true,
     },
@@ -26,6 +29,7 @@ const saleSchema = z.object({
     .refine((num) => !isNaN(num) && num > 0, { message: 'El total debe ser mayor a cero' }),
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de producto inválido'),
+    variantId: z.string().nullable().optional(),
     quantity: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseInt(val) : val)
       .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
@@ -82,19 +86,40 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
         const prod = await tx.product.findUnique({ where: { id: item.productId } });
         if (!prod) throw new ApiError(`Producto no encontrado: ID ${item.productId}`, 404);
         
+        let variant = null;
+        if (item.variantId) {
+          variant = await tx.productVariant.findUnique({ where: { id: item.variantId } });
+          if (!variant) throw new ApiError(`Variante no encontrada: ID ${item.variantId}`, 404);
+          if (variant.productId !== item.productId) {
+            throw new ApiError('La variante no pertenece al producto seleccionado', 400);
+          }
+          if (!variant.active) {
+            throw new ApiError(`La variante "${variant.name}" no está disponible`, 400);
+          }
+        }
+
         // Skip stock check for Cafe products with infinite/on-demand code (e.g. prepared drinks, stock coded as 999)
-        if (prod.department === 'CAFE' && prod.stock >= 900) {
-          continue;
-        }
+        const isCafeInfinite = prod.department === 'CAFE' && prod.stock >= 900;
+        if (!isCafeInfinite) {
+          if (variant) {
+            if (variant.stock < item.quantity) {
+              throw new ApiError(`Stock insuficiente para "${prod.name} (${variant.name})". Disponible: ${variant.stock}, Solicitado: ${item.quantity}`, 400);
+            }
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { decrement: item.quantity } },
+            });
+          } else {
+            if (prod.stock < item.quantity) {
+              throw new ApiError(`Stock insuficiente para "${prod.name}". Disponible: ${prod.stock}, Solicitado: ${item.quantity}`, 400);
+            }
+          }
 
-        if (prod.stock < item.quantity) {
-          throw new ApiError(`Stock insuficiente para "${prod.name}". Disponible: ${prod.stock}, Solicitado: ${item.quantity}`, 400);
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } },
+          });
         }
-
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
-        });
       }
 
       // 2. Create the Sale
@@ -106,6 +131,7 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
           items: {
             create: items.map((item: any) => ({
               productId: item.productId,
+              variantId: item.variantId || null,
               quantity: item.quantity,
               price: item.price,
             })),
@@ -118,7 +144,12 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
           },
         },
         include: {
-          items: true,
+          items: {
+            include: {
+              product: true,
+              variant: true,
+            },
+          },
           payments: true,
         },
       });
@@ -152,6 +183,12 @@ sales.post('/:id/cancel', async (c) => {
       for (const item of sale.items) {
         const prod = await tx.product.findUnique({ where: { id: item.productId } });
         if (prod && !(prod.department === 'CAFE' && prod.stock >= 900)) {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantity } },
+            }).catch(() => {});
+          }
           await tx.product.update({
             where: { id: item.productId },
             data: { stock: { increment: item.quantity } },

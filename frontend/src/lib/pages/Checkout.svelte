@@ -55,6 +55,10 @@
   let toastTimeout: any = null;
   let soundOn = $state(isSoundEnabled());
 
+  // Variant Selection Modal State
+  let showVariantModal = $state(false);
+  let selectedProductForVariant = $state<any | null>(null);
+
   let initPromise = $state<Promise<any>>(
     Promise.all([getProducts(), getCategories()]).then(([prods, cats]) => {
       products.set(prods);
@@ -86,40 +90,41 @@
 
   // Handle scanned barcode (from hardware scanner, camera, or search input Enter)
   function handleBarcodeScanned(code: string) {
-    const cleanCode = code.trim();
+    const cleanCode = code.trim().toLowerCase();
     if (!cleanCode) return;
 
-    // Search exact SKU in product catalog
-    const product = $products.find((p) => p.sku.toLowerCase() === cleanCode.toLowerCase());
+    // 1. Search for matching variant SKU across all products
+    for (const prod of $products) {
+      if (prod.variants && prod.variants.length > 0) {
+        const matchingVar = prod.variants.find(
+          (v: any) => v.active !== false && v.sku && v.sku.toLowerCase() === cleanCode
+        );
+        if (matchingVar) {
+          addToCart(prod, matchingVar);
+          return;
+        }
+      }
+    }
+
+    // 2. Search exact product SKU
+    const product = $products.find((p) => p.sku.toLowerCase() === cleanCode);
 
     if (!product) {
       playScanError();
-      showToast('Código no encontrado', 'warning', `SKU: ${cleanCode}`);
+      showToast('Código no encontrado', 'warning', `SKU: ${code.trim()}`);
       return;
     }
 
-    const isCafeInfinite = product.department === 'CAFE' && product.stock >= 900;
-    if (product.stock <= 0 && !isCafeInfinite) {
-      playScanError();
-      showToast('¡Producto sin stock!', 'error', product.name);
+    // If product has variants, open variant selector modal
+    if (product.variants && product.variants.length > 0) {
+      selectedProductForVariant = product;
+      showVariantModal = true;
+      playScanSuccess();
+      showToast('Selecciona variante', 'success', product.name);
       return;
     }
 
-    const existing = $cart.find((item) => item.product.id === product.id);
-    if (existing) {
-      if (!isCafeInfinite && existing.quantity >= product.stock) {
-        playScanError();
-        showToast('Stock máximo alcanzado', 'warning', `${product.name} (Stock: ${product.stock})`);
-        return;
-      }
-      existing.quantity += 1;
-      cart.set([...$cart]);
-    } else {
-      cart.set([...$cart, { product, quantity: 1 }]);
-    }
-
-    playScanSuccess();
-    showToast(`+1 ${product.name}`, 'success', `$${product.price.toLocaleString()} • SKU: ${product.sku}`);
+    addToCart(product, null);
   }
 
   function handleSearchKeyDown(e: KeyboardEvent) {
@@ -128,17 +133,43 @@
       if (!query) return;
 
       e.preventDefault();
-      // Try exact SKU match first
+
+      // Check variant SKU first
+      for (const prod of $products) {
+        if (prod.variants && prod.variants.length > 0) {
+          const matchingVar = prod.variants.find(
+            (v: any) => v.active !== false && v.sku && v.sku.toLowerCase() === query.toLowerCase()
+          );
+          if (matchingVar) {
+            addToCart(prod, matchingVar);
+            searchQuery = '';
+            return;
+          }
+        }
+      }
+
+      // Try exact product SKU
       const exact = $products.find((p) => p.sku.toLowerCase() === query.toLowerCase());
       if (exact) {
-        handleBarcodeScanned(exact.sku);
+        if (exact.variants && exact.variants.length > 0) {
+          selectedProductForVariant = exact;
+          showVariantModal = true;
+        } else {
+          addToCart(exact, null);
+        }
         searchQuery = '';
         return;
       }
 
       // If single search result match
       if (filteredProducts.length === 1) {
-        handleBarcodeScanned(filteredProducts[0].sku);
+        const single = filteredProducts[0];
+        if (single.variants && single.variants.length > 0) {
+          selectedProductForVariant = single;
+          showVariantModal = true;
+        } else {
+          addToCart(single, null);
+        }
         searchQuery = '';
         return;
       }
@@ -164,38 +195,87 @@
 
   // Filter products based on search, department, and category
   let filteredProducts = $derived($products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          p.sku.includes(searchQuery);
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.sku.toLowerCase().includes(q) ||
+      (p.variants && p.variants.some((v: any) =>
+        (v.active !== false) && (
+          v.name.toLowerCase().includes(q) ||
+          (v.sku && v.sku.toLowerCase().includes(q))
+        )
+      ));
     const matchesDept = p.department === activeDept;
     const matchesCategory = selectedCategory ? p.categoryId === selectedCategory : true;
     return matchesSearch && matchesDept && matchesCategory;
   }));
 
-  // Cart operations
-  function addToCart(product: any) {
-    if (product.stock <= 0 && !(product.department === 'CAFE' && product.stock >= 900)) {
-      alert('¡Producto sin stock!');
-      return;
-    }
-    const existing = $cart.find((item) => item.product.id === product.id);
-    if (existing) {
-      existing.quantity += 1;
-      cart.set([...$cart]);
+  // Handle clicking a product card in catalog
+  function handleProductCardClick(product: any) {
+    if (product.variants && product.variants.length > 0) {
+      selectedProductForVariant = product;
+      showVariantModal = true;
     } else {
-      cart.set([...$cart, { product, quantity: 1 }]);
+      addToCart(product, null);
     }
   }
 
-  function updateQuantity(productId: string, delta: number) {
-    const item = $cart.find((i) => i.product.id === productId);
+  // Cart operations
+  function addToCart(product: any, variant: any = null) {
+    const isCafeInfinite = product.department === 'CAFE' && (
+      product.stock >= 900 || (variant && (variant.stock ?? 0) >= 900)
+    );
+    const availableStock = variant ? Number(variant.stock || 0) : Number(product.stock || 0);
+
+    if (availableStock <= 0 && !isCafeInfinite) {
+      playScanError();
+      showToast('¡Producto sin stock!', 'error', variant ? `${product.name} (${variant.name})` : product.name);
+      return;
+    }
+
+    const existing = $cart.find(
+      (item) => item.product.id === product.id && (item.variant?.id || null) === (variant?.id || null)
+    );
+
+    if (existing) {
+      if (!isCafeInfinite && existing.quantity >= availableStock) {
+        playScanError();
+        showToast('Stock máximo alcanzado', 'warning', `${product.name}${variant ? ` (${variant.name})` : ''} (Stock: ${availableStock})`);
+        return;
+      }
+      existing.quantity += 1;
+      cart.set([...$cart]);
+    } else {
+      cart.set([...$cart, { product, variant: variant || null, quantity: 1 }]);
+    }
+
+    const price = variant ? Number(variant.price) : Number(product.price);
+    const sku = variant?.sku || product.sku;
+    playScanSuccess();
+    showToast(
+      `+1 ${product.name}${variant ? ` (${variant.name})` : ''}`,
+      'success',
+      `$${price.toLocaleString()} • SKU: ${sku}`
+    );
+  }
+
+  function updateQuantity(productId: string, variantId: string | null, delta: number) {
+    const item = $cart.find(
+      (i) => i.product.id === productId && (i.variant?.id || null) === (variantId || null)
+    );
     if (!item) return;
     const newQty = item.quantity + delta;
     if (newQty <= 0) {
-      cart.set($cart.filter((i) => i.product.id !== productId));
+      removeFromCart(productId, variantId);
       return;
     }
-    const isCafeInfinite = item.product.department === 'CAFE' && item.product.stock >= 900;
-    if (!isCafeInfinite && newQty > item.product.stock) {
+
+    const isCafeInfinite = item.product.department === 'CAFE' && (
+      item.product.stock >= 900 || (item.variant && (item.variant.stock ?? 0) >= 900)
+    );
+    const availableStock = item.variant ? Number(item.variant.stock || 0) : Number(item.product.stock || 0);
+
+    if (!isCafeInfinite && newQty > availableStock) {
       alert('No puedes superar el stock disponible.');
       return;
     }
@@ -203,8 +283,12 @@
     cart.set([...$cart]);
   }
 
-  function removeFromCart(productId: string) {
-    cart.set($cart.filter((item) => item.product.id !== productId));
+  function removeFromCart(productId: string, variantId: string | null) {
+    cart.set(
+      $cart.filter(
+        (item) => !(item.product.id === productId && (item.variant?.id || null) === (variantId || null))
+      )
+    );
   }
 
   function clearCart() {
@@ -277,8 +361,9 @@
           total: $cartTotal,
           items: $cart.map((item) => ({
             productId: item.product.id,
+            variantId: item.variant?.id || null,
             quantity: item.quantity,
-            price: item.product.price,
+            price: item.variant ? Number(item.variant.price) : Number(item.product.price),
           })),
           payments: payments,
         };
@@ -311,8 +396,9 @@
     try {
       const itemsPayload = $cart.map((item) => ({
         productId: item.product.id,
+        variantId: item.variant?.id || null,
         quantity: item.quantity,
-        price: item.product.price,
+        price: item.variant ? Number(item.variant.price) : Number(item.product.price),
       }));
       await apiSaveTableOrder($selectedTable.id, itemsPayload);
       selectedTable.set(null);
@@ -345,8 +431,9 @@
       if ($cart.length > 0) {
         const itemsPayload = $cart.map(item => ({
           productId: item.product.id,
+          variantId: item.variant?.id || null,
           quantity: item.quantity,
-          price: item.product.price,
+          price: item.variant ? Number(item.variant.price) : Number(item.product.price),
         }));
         await apiSaveTableOrder($selectedTable.id, itemsPayload);
       }
@@ -369,8 +456,9 @@
       if ($cart.length > 0) {
         const itemsPayload = $cart.map(item => ({
           productId: item.product.id,
+          variantId: item.variant?.id || null,
           quantity: item.quantity,
-          price: item.product.price,
+          price: item.variant ? Number(item.variant.price) : Number(item.product.price),
         }));
         await apiSaveTableOrder($selectedTable.id, itemsPayload);
       }
@@ -402,6 +490,7 @@
     if (res.source && res.source.status === 'OCCUPIED' && res.source.currentSale) {
       const remainingItems = res.source.currentSale.items.map((i: any) => ({
         product: i.product,
+        variant: i.variant || null,
         quantity: i.quantity,
       }));
       cart.set(remainingItems);
@@ -426,6 +515,7 @@
     if (res.table && res.table.status === 'OCCUPIED' && res.table.currentSale) {
       const remainingItems = res.table.currentSale.items.map((i: any) => ({
         product: i.product,
+        variant: i.variant || null,
         quantity: i.quantity,
       }));
       cart.set(remainingItems);
@@ -538,7 +628,7 @@
       <!-- Products Grid -->
       <div class="products-grid scroll-y">
         {#each filteredProducts as p}
-          <ProductCard product={p} onclick={() => addToCart(p)} />
+          <ProductCard product={p} onclick={() => handleProductCardClick(p)} />
         {:else}
           <div class="no-results flex-center glass-panel animate-fade-in">
             <p>No se encontraron productos en esta sección.</p>
@@ -579,7 +669,7 @@
     </div>
 
     <div class="cart-items scroll-y">
-      {#each $cart as item}
+      {#each $cart as item (item.product.id + (item.variant?.id || ''))}
         <CartItem {item} onupdateqty={updateQuantity} onremove={removeFromCart} />
       {:else}
         <div class="empty-cart flex-center">
@@ -763,7 +853,78 @@
   {/if}
 {/snippet}
 
+{#snippet variantModal()}
+  {#if showVariantModal && selectedProductForVariant}
+    <div
+      class="modal-overlay flex-center animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="variant-modal-title"
+      tabindex="-1"
+      onkeydown={(e) => { if (e.key === 'Escape') { showVariantModal = false; selectedProductForVariant = null; } }}
+    >
+      <div class="modal-container glass-panel variant-modal animate-scale-up">
+        <div class="modal-header">
+          <div>
+            <h2 id="variant-modal-title">Seleccionar Variante</h2>
+            <p class="variant-modal-sub">{selectedProductForVariant.name}</p>
+          </div>
+          <button type="button" class="close-modal-btn" onclick={() => { showVariantModal = false; selectedProductForVariant = null; }} aria-label="Cerrar selección de variante">✕</button>
+        </div>
+
+        <div class="variant-options-grid scroll-y">
+          {#each (selectedProductForVariant.variants || []).filter((v: any) => v.active !== false) as v}
+            {@const isInfinite = selectedProductForVariant.department === 'CAFE' && ((selectedProductForVariant.stock >= 900) || (v.stock >= 900))}
+            {@const isOutOfStock = !isInfinite && Number(v.stock || 0) <= 0}
+            <button
+              type="button"
+              class="variant-option-card"
+              class:out-of-stock={isOutOfStock}
+              disabled={isOutOfStock}
+              onclick={() => {
+                addToCart(selectedProductForVariant, v);
+                showVariantModal = false;
+                selectedProductForVariant = null;
+              }}
+            >
+              <div class="v-card-top">
+                <span class="v-name">{v.name}</span>
+                {#if v.sku}
+                  <span class="v-sku">{v.sku}</span>
+                {/if}
+              </div>
+              <div class="v-card-bottom">
+                <span class="v-price">${Number(v.price).toLocaleString()}</span>
+                <span class="v-stock" class:out={isOutOfStock}>
+                  {#if isInfinite}
+                    Ilimitado
+                  {:else if isOutOfStock}
+                    Agotado
+                  {:else}
+                    Stock: {v.stock}
+                  {/if}
+                </span>
+              </div>
+            </button>
+          {/each}
+        </div>
+
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick={() => { showVariantModal = false; selectedProductForVariant = null; }}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
 {@render paymentModal()}
+{@render variantModal()}
 
 <!-- Visual scan notification toast -->
 <ScanToast toast={currentToast} />
@@ -1306,5 +1467,97 @@
   .btn-table-tool:hover {
     background: rgba(180, 83, 9, 0.22);
     border-color: rgba(180, 83, 9, 0.5);
+  }
+
+  /* Variant Selector Modal */
+  .variant-modal {
+    max-width: 560px;
+    max-height: 85vh;
+  }
+
+  .variant-modal-sub {
+    margin: 4px 0 0 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .variant-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    max-height: 50vh;
+    padding: 4px;
+  }
+
+  .variant-option-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md, 10px);
+    cursor: pointer;
+    text-align: left;
+    transition: var(--transition-fast);
+    min-height: 85px;
+  }
+
+  .variant-option-card:hover:not(:disabled) {
+    border-color: var(--color-general);
+    background: rgba(4, 120, 87, 0.08);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .variant-option-card.out-of-stock {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .v-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .v-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+  }
+
+  .v-sku {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 2px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .v-card-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .v-price {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--color-general);
+  }
+
+  .v-stock {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+  .v-stock.out {
+    color: var(--color-danger);
+    font-weight: 600;
   }
 </style>

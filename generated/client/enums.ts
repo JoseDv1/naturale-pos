@@ -26,16 +26,6 @@ export const Department = {
 export type Department = (typeof Department)[keyof typeof Department]
 
 
-export const ExpenseCategory = {
-  rent: 'rent',
-  utilities: 'utilities',
-  supplies: 'supplies',
-  INTERNAL_TRANSFER: 'INTERNAL_TRANSFER'
-} as const
-
-export type ExpenseCategory = (typeof ExpenseCategory)[keyof typeof ExpenseCategory]
-
-
 export const SaleStatus = {
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',

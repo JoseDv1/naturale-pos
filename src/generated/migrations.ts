@@ -28,5 +28,9 @@ export const EMBEDDED_MIGRATIONS: Migration[] = [
   {
     "name": "20260915114800_add_product_variants",
     "sql": "-- CreateTable\nCREATE TABLE IF NOT EXISTS \"ProductVariant\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"productId\" TEXT NOT NULL,\n    \"name\" TEXT NOT NULL,\n    \"sku\" TEXT,\n    \"price\" DECIMAL NOT NULL,\n    \"cost\" DECIMAL NOT NULL DEFAULT 0,\n    \"stock\" INTEGER NOT NULL DEFAULT 0,\n    \"active\" BOOLEAN NOT NULL DEFAULT true,\n    \"createdAt\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    \"updatedAt\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    CONSTRAINT \"ProductVariant_productId_fkey\" FOREIGN KEY (\"productId\") REFERENCES \"Product\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateIndex\nCREATE UNIQUE INDEX IF NOT EXISTS \"ProductVariant_sku_key\" ON \"ProductVariant\"(\"sku\");\nCREATE INDEX IF NOT EXISTS \"ProductVariant_productId_idx\" ON \"ProductVariant\"(\"productId\");\nCREATE INDEX IF NOT EXISTS \"ProductVariant_active_idx\" ON \"ProductVariant\"(\"active\");\nCREATE INDEX IF NOT EXISTS \"ProductVariant_sku_active_idx\" ON \"ProductVariant\"(\"sku\", \"active\");\n\n-- AlterTable\nALTER TABLE \"SaleItem\" ADD COLUMN \"variantId\" TEXT REFERENCES \"ProductVariant\"(\"id\") ON DELETE SET NULL ON UPDATE CASCADE;\n\n-- CreateIndex\nCREATE INDEX IF NOT EXISTS \"SaleItem_variantId_idx\" ON \"SaleItem\"(\"variantId\");\n"
+  },
+  {
+    "name": "20260915151500_add_expense_categories",
+    "sql": "-- CreateTable\nCREATE TABLE IF NOT EXISTS \"ExpenseCategory\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"name\" TEXT NOT NULL,\n    \"description\" TEXT,\n    \"createdAt\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    \"updatedAt\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP\n);\n\n-- CreateIndex\nCREATE UNIQUE INDEX IF NOT EXISTS \"ExpenseCategory_name_key\" ON \"ExpenseCategory\"(\"name\");\n"
   }
 ];

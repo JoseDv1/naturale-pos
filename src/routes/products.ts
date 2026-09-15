@@ -6,6 +6,12 @@ import { adminMiddleware } from '../middleware/auth';
 
 const products = new Hono();
 
+const integerStock = z.union([z.number(), z.string()])
+  .transform((val) => typeof val === 'string' ? (Number.isInteger(Number(val)) ? parseInt(val, 10) : NaN) : val)
+  .refine((num) => typeof num === 'number' && !isNaN(num) && num >= 0 && Number.isInteger(num), {
+    message: 'El stock debe ser un entero no negativo',
+  });
+
 const variantSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'El nombre de la variante es obligatorio'),
@@ -17,10 +23,7 @@ const variantSchema = z.object({
     .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
     .refine((num) => !isNaN(num) && num >= 0, { message: 'El costo de la variante debe ser mayor o igual a cero' })
     .optional().default(0),
-  stock: z.union([z.number(), z.string()])
-    .transform((val) => typeof val === 'string' ? parseInt(val) : val)
-    .refine((int) => !isNaN(int) && int >= 0, { message: 'El stock de la variante debe ser un entero no negativo' })
-    .optional().default(0),
+  stock: integerStock.optional().default(0),
 });
 
 const productCreateSchema = z.object({
@@ -34,10 +37,7 @@ const productCreateSchema = z.object({
   cost: z.union([z.number(), z.string()])
     .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
     .refine((num) => !isNaN(num) && num >= 0, { message: 'El costo debe ser un número válido mayor o igual a cero' }),
-  stock: z.union([z.number(), z.string()])
-    .transform((val) => typeof val === 'string' ? parseInt(val) : val)
-    .refine((int) => !isNaN(int) && int >= 0, { message: 'El stock debe ser un entero no negativo' })
-    .optional().default(0),
+  stock: integerStock.optional().default(0),
   categoryId: z.string().min(1, 'La categoría es obligatoria'),
   department: z.enum(['MARKET', 'CAFE', 'GENERAL'], {
     message: 'Departamento inválido (debe ser MARKET, CAFE o GENERAL)'
@@ -58,16 +58,23 @@ const productUpdateSchema = z.object({
     .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
     .refine((num) => !isNaN(num) && num >= 0, { message: 'El costo debe ser un número válido mayor o igual a cero' })
     .optional(),
-  stock: z.union([z.number(), z.string()])
-    .transform((val) => typeof val === 'string' ? parseInt(val) : val)
-    .refine((int) => !isNaN(int) && int >= 0, { message: 'El stock debe ser un entero no negativo' })
-    .optional(),
+  stock: integerStock.optional(),
   categoryId: z.string().min(1, 'La categoría es obligatoria').optional(),
   department: z.enum(['MARKET', 'CAFE', 'GENERAL'], {
     message: 'Departamento inválido (debe ser MARKET, CAFE o GENERAL)'
   }).optional(),
   isRawMaterial: z.boolean().optional(),
   variants: z.array(variantSchema).optional(),
+});
+
+const productStockUpdateSchema = z.object({
+  stock: integerStock.optional(),
+  variants: z.array(z.object({
+    id: z.string().min(1, 'ID de variante requerido'),
+    stock: integerStock,
+  })).optional(),
+}).refine((data) => data.stock !== undefined || (data.variants && data.variants.length > 0), {
+  message: 'Debe proporcionar al menos el stock del producto o de sus variantes',
 });
 
 products.get('/', async (c) => {
@@ -298,8 +305,12 @@ products.put('/:id', adminMiddleware, zValidator('json', productUpdateSchema, (r
 
       // If variants are present, sync base product stock from variants
       let finalStock = stock;
-      if (Array.isArray(variants) && variants.length > 0) {
-        finalStock = variants.reduce((sum: number, v: any) => sum + (v.stock ?? 0), 0);
+      if (Array.isArray(variants)) {
+        if (variants.length > 0) {
+          finalStock = variants.reduce((sum: number, v: any) => sum + (v.stock ?? 0), 0);
+        }
+      } else if (existing.variants.some((v: any) => v.active)) {
+        finalStock = existing.variants.filter((v: any) => v.active).reduce((sum: number, v: any) => sum + (v.stock ?? 0), 0);
       }
 
       const updated = await tx.product.update({
@@ -330,6 +341,76 @@ products.put('/:id', adminMiddleware, zValidator('json', productUpdateSchema, (r
     return c.json(product);
   } catch (error: any) {
     return c.json({ error: error.message || 'Error al actualizar el producto' }, 500);
+  }
+});
+
+products.patch('/:id/stock', adminMiddleware, zValidator('json', productStockUpdateSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
+  try {
+    const id = c.req.param('id');
+    const existing = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        variants: { where: { active: true } }
+      }
+    });
+    if (!existing) {
+      return c.json({ error: 'Producto no encontrado' }, 404);
+    }
+
+    const { stock, variants } = c.req.valid('json');
+
+    // If product has active variants, stock cannot be modified directly; must use variants
+    if (existing.variants.length > 0 && (!variants || variants.length === 0)) {
+      return c.json({
+        error: 'El producto cuenta con variantes activas. La cantidad en stock debe actualizarse a través de sus variantes.',
+      }, 400);
+    }
+
+    if (variants && variants.length > 0) {
+      const activeVariantIds = new Set(existing.variants.map(v => v.id));
+      for (const v of variants) {
+        if (!activeVariantIds.has(v.id)) {
+          return c.json({ error: `La variante con ID "${v.id}" no pertenece al producto o está inactiva` }, 400);
+        }
+      }
+    }
+
+    const product = await prisma.$transaction(async (tx) => {
+      let finalStock = stock !== undefined ? stock : existing.stock;
+
+      if (variants && variants.length > 0) {
+        for (const v of variants) {
+          await tx.productVariant.update({
+            where: { id: v.id },
+            data: { stock: v.stock },
+          });
+        }
+        const allActiveVariants = await tx.productVariant.findMany({
+          where: { productId: id, active: true },
+        });
+        finalStock = allActiveVariants.reduce((sum, v) => sum + v.stock, 0);
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: { stock: finalStock },
+        include: {
+          category: true,
+          variants: {
+            where: { active: true },
+            orderBy: { price: 'asc' },
+          },
+        },
+      });
+    });
+
+    return c.json({ success: true, message: 'Stock actualizado exitosamente', product });
+  } catch (error: any) {
+    return c.json({ error: error.message || 'Error al actualizar el stock' }, 500);
   }
 });
 

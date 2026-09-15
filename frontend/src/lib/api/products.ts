@@ -116,3 +116,18 @@ export async function deleteProductImage(url: string): Promise<{ success: boolea
   return res.json();
 }
 
+export async function updateProductStock(id: string, data: { stock?: number; variants?: Array<{ id: string; stock: number }> }) {
+  const res = await fetch(`/api/products/${id}/stock`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al actualizar el stock');
+  }
+
+  return res.json();
+}
+

@@ -207,23 +207,6 @@ export type EnumDepartmentWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumDepartmentFilter<$PrismaModel>
 }
 
-export type EnumExpenseCategoryFilter<$PrismaModel = never> = {
-  equals?: $Enums.ExpenseCategory | Prisma.EnumExpenseCategoryFieldRefInput<$PrismaModel>
-  in?: $Enums.ExpenseCategory[]
-  notIn?: $Enums.ExpenseCategory[]
-  not?: Prisma.NestedEnumExpenseCategoryFilter<$PrismaModel> | $Enums.ExpenseCategory
-}
-
-export type EnumExpenseCategoryWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.ExpenseCategory | Prisma.EnumExpenseCategoryFieldRefInput<$PrismaModel>
-  in?: $Enums.ExpenseCategory[]
-  notIn?: $Enums.ExpenseCategory[]
-  not?: Prisma.NestedEnumExpenseCategoryWithAggregatesFilter<$PrismaModel> | $Enums.ExpenseCategory
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumExpenseCategoryFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumExpenseCategoryFilter<$PrismaModel>
-}
-
 export type EnumSaleStatusFilter<$PrismaModel = never> = {
   equals?: $Enums.SaleStatus | Prisma.EnumSaleStatusFieldRefInput<$PrismaModel>
   in?: $Enums.SaleStatus[]
@@ -510,23 +493,6 @@ export type NestedEnumDepartmentWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumDepartmentFilter<$PrismaModel>
   _max?: Prisma.NestedEnumDepartmentFilter<$PrismaModel>
-}
-
-export type NestedEnumExpenseCategoryFilter<$PrismaModel = never> = {
-  equals?: $Enums.ExpenseCategory | Prisma.EnumExpenseCategoryFieldRefInput<$PrismaModel>
-  in?: $Enums.ExpenseCategory[]
-  notIn?: $Enums.ExpenseCategory[]
-  not?: Prisma.NestedEnumExpenseCategoryFilter<$PrismaModel> | $Enums.ExpenseCategory
-}
-
-export type NestedEnumExpenseCategoryWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.ExpenseCategory | Prisma.EnumExpenseCategoryFieldRefInput<$PrismaModel>
-  in?: $Enums.ExpenseCategory[]
-  notIn?: $Enums.ExpenseCategory[]
-  not?: Prisma.NestedEnumExpenseCategoryWithAggregatesFilter<$PrismaModel> | $Enums.ExpenseCategory
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumExpenseCategoryFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumExpenseCategoryFilter<$PrismaModel>
 }
 
 export type NestedEnumSaleStatusFilter<$PrismaModel = never> = {

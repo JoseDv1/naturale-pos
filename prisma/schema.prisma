@@ -22,12 +22,6 @@ enum Department {
   GENERAL
 }
 
-enum ExpenseCategory {
-  rent
-  utilities
-  supplies
-  INTERNAL_TRANSFER
-}
 
 enum SaleStatus {
   COMPLETED
@@ -123,11 +117,19 @@ model ProductVariant {
   @@index([sku, active])
 }
 
+model ExpenseCategory {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model Expense {
   id          String          @id @default(uuid())
   description String
   amount      Decimal         // Cambiado de Float a Decimal
-  category    ExpenseCategory @default(supplies)
+  category    String          @default("supplies")
   department  Department      @default(GENERAL)
   userId      String?
   user        User?           @relation(fields: [userId], references: [id])

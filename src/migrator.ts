@@ -75,6 +75,14 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
           productVariantTableExists = true;
         }
 
+        let expenseCategoryTableExists = false;
+        const expCatTable = db.query(`
+          SELECT name FROM sqlite_master WHERE type='table' AND name='ExpenseCategory'
+        `).get();
+        if (expCatTable) {
+          expenseCategoryTableExists = true;
+        }
+
         const baselineMigrations: string[] = ['20260703201908_init'];
         if (cafeTableExists) {
           baselineMigrations.push('20260703205317_add_tables_feature');
@@ -88,6 +96,9 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
         }
         if (productVariantTableExists) {
           baselineMigrations.push('20260915114800_add_product_variants');
+        }
+        if (expenseCategoryTableExists) {
+          baselineMigrations.push('20260915151500_add_expense_categories');
         }
 
         const insertBaseline = db.prepare(`

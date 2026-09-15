@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { products, categories, refreshTrigger, triggerRefresh } from '../store';
-  import { getProducts, getCategories, createProduct, updateProduct, deleteProduct as apiDeleteProduct, createCategory, updateCategory, deleteCategory as apiDeleteCategory, uploadProductImage } from '../api/products';
+  import { user, products, categories, refreshTrigger, triggerRefresh } from '../store';
+  import { getProducts, getCategories, createProduct, updateProduct, deleteProduct as apiDeleteProduct, createCategory, updateCategory, deleteCategory as apiDeleteCategory, uploadProductImage, updateProductStock } from '../api/products';
   import ProductRow from '../components/organisms/ProductRow.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
   import BarcodeScannerModal from '../components/molecules/BarcodeScannerModal.svelte';
@@ -22,6 +22,13 @@
   let showProductSkuScanner = $state(false);
   let activeVariantSkuIndex = $state<number | null>(null);
   let showVariantSkuScanner = $state(false);
+
+  // Quick Stock Modal State
+  let showQuickStockModal = $state(false);
+  let quickStockProduct = $state<any>(null);
+  let quickStockValue = $state<number>(0);
+  let quickStockVariants = $state<Array<{ id: string; name: string; sku?: string; stock: number }>>([]);
+  let isSavingQuickStock = $state(false);
 
   // Image Upload State
   let isUploadingImage = $state(false);
@@ -217,6 +224,7 @@
         alert('Por favor completa los campos de precio y costo requeridos.');
         return;
       }
+      currentProduct.stock = Math.max(0, parseInt(currentProduct.stock) || 0);
     }
 
     try {
@@ -235,6 +243,46 @@
       triggerRefresh();
     } catch (e: any) {
       alert(e.message || 'Error al guardar el producto');
+    }
+  }
+
+  function openQuickStockModal(product: any) {
+    quickStockProduct = product;
+    const activeVariants = (product.variants || []).filter((v: any) => v.active !== false);
+    if (activeVariants.length > 0) {
+      quickStockVariants = activeVariants.map((v: any) => ({
+        id: v.id,
+        name: v.name,
+        sku: v.sku || '',
+        stock: Number(v.stock ?? 0),
+      }));
+      quickStockValue = quickStockVariants.reduce((sum, v) => sum + v.stock, 0);
+    } else {
+      quickStockVariants = [];
+      quickStockValue = Number(product.stock ?? 0);
+    }
+    showQuickStockModal = true;
+  }
+
+  async function saveQuickStock() {
+    if (!quickStockProduct) return;
+    isSavingQuickStock = true;
+    try {
+      if (quickStockVariants.length > 0) {
+        await updateProductStock(quickStockProduct.id, {
+          variants: quickStockVariants.map(v => ({ id: v.id, stock: Math.max(0, parseInt(String(v.stock), 10) || 0) }))
+        });
+      } else {
+        await updateProductStock(quickStockProduct.id, {
+          stock: Math.max(0, parseInt(String(quickStockValue), 10) || 0)
+        });
+      }
+      showQuickStockModal = false;
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al actualizar el stock');
+    } finally {
+      isSavingQuickStock = false;
     }
   }
 
@@ -315,13 +363,17 @@
 
     <div class="header-actions">
       {#if currentSubTab === 'products'}
-        <button class="btn btn-general" onclick={openAddProduct}>
-          ➕ Registrar Producto
-        </button>
+        {#if $user?.role === 'ADMIN'}
+          <button class="btn btn-general" onclick={openAddProduct}>
+            ➕ Registrar Producto
+          </button>
+        {/if}
       {:else}
-        <button class="btn btn-general" onclick={openAddCategory}>
-          ➕ Registrar Categoría
-        </button>
+        {#if $user?.role === 'ADMIN'}
+          <button class="btn btn-general" onclick={openAddCategory}>
+            ➕ Registrar Categoría
+          </button>
+        {/if}
       {/if}
       <button class="btn btn-secondary" onclick={loadInventory}>
         🔄 Actualizar
@@ -381,7 +433,12 @@
           </thead>
           <tbody>
             {#each filteredProducts as p}
-              <ProductRow product={p} onedit={openEditProduct} ondelete={deleteProduct} />
+              <ProductRow
+                product={p}
+                onedit={$user?.role === 'ADMIN' ? openEditProduct : undefined}
+                ondelete={$user?.role === 'ADMIN' ? deleteProduct : undefined}
+                onquickstock={$user?.role === 'ADMIN' ? openQuickStockModal : undefined}
+              />
             {:else}
               <tr>
                 <td colspan="9" class="text-center text-muted italic">No hay productos que coincidan con la búsqueda.</td>
@@ -553,8 +610,20 @@
             <input type="number" id="p-cost" bind:value={currentProduct.cost} placeholder="Ej: 60000" min="0" step="any" />
           </div>
           <div class="form-group flex-1">
-            <label for="p-stock">Stock Inicial</label>
-            <input type="number" id="p-stock" bind:value={currentProduct.stock} placeholder="0" min="0" disabled={modalMode === 'edit'} />
+            <label for="p-stock">
+              {currentProduct.hasVariants ? 'Stock Total (Variantes)' : (modalMode === 'edit' ? 'Cantidad en Stock *' : 'Stock Inicial *')}
+            </label>
+            <input
+              type="number"
+              id="p-stock"
+              bind:value={currentProduct.stock}
+              placeholder="0"
+              min="0"
+              disabled={currentProduct.hasVariants}
+            />
+            {#if currentProduct.hasVariants}
+              <span class="stock-helper-text">Calculado sumando las variantes abajo</span>
+            {/if}
           </div>
         </div>
 
@@ -717,6 +786,83 @@
     </div>
   </div>
 {/if}
+
+<!-- ==========================================
+     QUICK STOCK ADJUSTMENT MODAL
+     ========================================== -->
+{#if showQuickStockModal && quickStockProduct}
+  <div class="modal-overlay flex-center animate-fade-in">
+    <div class="modal-container glass-panel animate-scale-up" style="max-width: 480px;">
+      <div class="modal-header">
+        <div>
+          <h2>Ajustar Stock de Producto 📦</h2>
+          <p class="quick-stock-subtitle">{quickStockProduct.name} &bull; <code>{quickStockProduct.sku}</code></p>
+        </div>
+        <button class="close-modal-btn" onclick={() => showQuickStockModal = false} aria-label="Cerrar modal">✕</button>
+      </div>
+
+      <div class="product-form-body">
+        {#if quickStockVariants.length > 0}
+          <div class="quick-stock-variants-box">
+            <p class="quick-stock-info-note">
+              Este producto tiene <strong>{quickStockVariants.length} variantes</strong>. Edita el stock para cada una y el total se sincronizará automáticamente:
+            </p>
+            <div class="quick-stock-variants-list">
+              {#each quickStockVariants as v}
+                <div class="quick-variant-item">
+                  <div class="quick-variant-info">
+                    <strong class="quick-variant-name">{v.name}</strong>
+                    {#if v.sku}<span class="quick-variant-sku"><code>{v.sku}</code></span>{/if}
+                  </div>
+                  <div class="quick-stepper">
+                    <button type="button" class="btn-step" onclick={() => { v.stock = Math.max(0, (Number(v.stock) || 0) - 1); }} aria-label="Disminuir stock">-</button>
+                    <input type="number" class="step-input" bind:value={v.stock} min="0" aria-label="Stock de variante {v.name}" />
+                    <button type="button" class="btn-step" onclick={() => { v.stock = (Number(v.stock) || 0) + 1; }} aria-label="Aumentar stock">+</button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+            <div class="quick-variants-total-bar">
+              <span>Stock total sumado:</span>
+              <strong>{quickStockVariants.reduce((s, v) => s + (Number(v.stock) || 0), 0)} unidades</strong>
+            </div>
+          </div>
+        {:else}
+          <div class="quick-stock-simple-box">
+            <label for="quick-stock-input" class="quick-stock-label">Cantidad actual en inventario:</label>
+            <div class="quick-stock-input-row">
+              <div class="quick-stepper large">
+                <button type="button" class="btn-step large" onclick={() => { quickStockValue = Math.max(0, (Number(quickStockValue) || 0) - 1); }} aria-label="Disminuir en 1">-1</button>
+                <input id="quick-stock-input" type="number" class="step-input large" bind:value={quickStockValue} min="0" />
+                <button type="button" class="btn-step large" onclick={() => { quickStockValue = (Number(quickStockValue) || 0) + 1; }} aria-label="Aumentar en 1">+1</button>
+              </div>
+            </div>
+            <div class="quick-add-chips">
+              <span class="chips-label">Ajuste rápido:</span>
+              <button type="button" class="btn-chip" onclick={() => { quickStockValue = (Number(quickStockValue) || 0) + 5; }}>+5</button>
+              <button type="button" class="btn-chip" onclick={() => { quickStockValue = (Number(quickStockValue) || 0) + 10; }}>+10</button>
+              <button type="button" class="btn-chip" onclick={() => { quickStockValue = (Number(quickStockValue) || 0) + 25; }}>+25</button>
+              <button type="button" class="btn-chip" onclick={() => { quickStockValue = Math.max(0, (Number(quickStockValue) || 0) - 5); }}>-5</button>
+              <button type="button" class="btn-chip chip-zero" onclick={() => { quickStockValue = 0; }}>0</button>
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick={() => showQuickStockModal = false} disabled={isSavingQuickStock}>Cancelar</button>
+        <button class="btn btn-general" onclick={saveQuickStock} disabled={isSavingQuickStock}>
+          {#if isSavingQuickStock}
+            <Spinner size="18px" /> Guardando...
+          {:else}
+            💾 Actualizar Stock
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 
 <!-- ==========================================
      CATEGORY ADD/EDIT MODAL
@@ -1308,5 +1454,188 @@
   .variants-actions-bar {
     display: flex;
     justify-content: flex-start;
+  }
+
+  /* Quick Stock Modal Styles */
+  .quick-stock-subtitle {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: block;
+  }
+
+  .quick-stock-info-note {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .quick-stock-variants-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .quick-variant-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm, 6px);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    gap: 12px;
+  }
+
+  .quick-variant-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .quick-variant-name {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+  }
+
+  .quick-variant-sku {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .quick-variants-total-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    margin-top: 10px;
+    border-radius: var(--radius-sm, 6px);
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    font-size: 0.9rem;
+    color: var(--color-general);
+  }
+
+  .quick-stock-simple-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 8px;
+    gap: 16px;
+  }
+
+  .quick-stock-label {
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .quick-stock-input-row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .quick-stepper {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm, 6px);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .quick-stepper.large {
+    border-radius: var(--radius-md, 8px);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-step {
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    color: var(--text-primary);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 1.05rem;
+    font-weight: 700;
+    transition: var(--transition-fast);
+    outline: none;
+  }
+
+  .btn-step.large {
+    padding: 10px 18px;
+    font-size: 1.15rem;
+  }
+
+  .btn-step:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .step-input {
+    width: 65px;
+    border: none;
+    background: transparent;
+    text-align: center;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 6px 4px;
+    outline: none;
+  }
+
+  .step-input.large {
+    width: 90px;
+    font-size: 1.3rem;
+    padding: 10px 4px;
+    font-weight: 700;
+    color: var(--color-general);
+  }
+
+  .quick-add-chips {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .chips-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .btn-chip {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    border-radius: 16px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+  }
+
+  .btn-chip:hover {
+    background: var(--color-general-glow);
+    border-color: var(--color-general);
+    color: var(--color-general);
+  }
+
+  .btn-chip.chip-zero:hover {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+  }
+
+  .stock-helper-text {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 3px;
   }
 </style>

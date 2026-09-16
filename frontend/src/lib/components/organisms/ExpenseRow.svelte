@@ -1,11 +1,13 @@
 <script lang="ts">
   import Badge from '../atoms/Badge.svelte';
+  import { user } from '../../store';
 
   interface Props {
     expense: any;
+    onedit?: (expense: any) => void;
   }
 
-  let { expense: exp }: Props = $props();
+  let { expense: exp, onedit }: Props = $props();
 
   const categoryLabels: Record<string, { label: string; icon?: string }> = {
     utilities: { label: 'Servicios Públicos', icon: '💡' },
@@ -62,6 +64,21 @@
     <strong class="text-danger">${Number(exp.amount || 0).toLocaleString()}</strong>
   </td>
   <td>{exp.user?.name || 'Sistema'}</td>
+  <td class="text-center actions-cell">
+    {#if $user?.role === 'ADMIN'}
+      <button
+        type="button"
+        class="btn-edit-expense"
+        onclick={() => onedit?.(exp)}
+        title="Editar Egreso"
+        aria-label={`Editar egreso ${exp.description}`}
+      >
+        ✏️ Editar
+      </button>
+    {:else}
+      <span class="text-muted italic" style="font-size: 0.8rem;">—</span>
+    {/if}
+  </td>
 </tr>
 
 <style>
@@ -92,5 +109,27 @@
 
   .text-danger {
     color: var(--color-danger);
+  }
+
+  .actions-cell {
+    width: 100px;
+  }
+
+  .btn-edit-expense {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 5px 10px;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .btn-edit-expense:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--color-general);
+    transform: translateY(-1px);
   }
 </style>

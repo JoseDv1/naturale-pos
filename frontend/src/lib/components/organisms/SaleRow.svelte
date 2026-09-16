@@ -4,12 +4,22 @@
   interface Props {
     sale: any;
     oncancel: (id: string) => void;
+    onview?: (sale: any) => void;
   }
 
-  let { sale, oncancel }: Props = $props();
+  let { sale, oncancel, onview }: Props = $props();
 </script>
 
-<tr class="animate-fade-in" class:cancelled-row={sale.status === 'CANCELLED'}>
+<tr
+  class="animate-fade-in clickable-sale-row"
+  class:cancelled-row={sale.status === 'CANCELLED'}
+  onclick={(e) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.btn-cancel-sale')) {
+      onview?.(sale);
+    }
+  }}
+>
   <td><code>{sale.id.slice(0, 8).toUpperCase()}</code></td>
   <td>{new Date(sale.createdAt).toLocaleString()}</td>
   <td>{sale.user.name}</td>
@@ -51,17 +61,43 @@
     {/if}
   </td>
   <td class="text-center">
-    {#if sale.status !== 'CANCELLED'}
-      <button class="btn-cancel-sale" onclick={() => oncancel(sale.id)} title="Anular venta">
-        Anular ✕
+    <div class="row-actions flex-center" style="gap: 6px;">
+      <button
+        type="button"
+        class="btn-detail-sale"
+        onclick={(e) => { e.stopPropagation(); onview?.(sale); }}
+        title="Ver comprobante de venta"
+        aria-label="Ver comprobante de venta"
+      >
+        🧾 Ver
       </button>
-    {:else}
-      <span class="text-muted italic">Anulado</span>
-    {/if}
+      {#if sale.status !== 'CANCELLED'}
+        <button
+          type="button"
+          class="btn-cancel-sale"
+          onclick={(e) => { e.stopPropagation(); oncancel(sale.id); }}
+          title="Anular venta"
+          aria-label="Anular venta"
+        >
+          Anular ✕
+        </button>
+      {:else}
+        <span class="text-muted italic" style="font-size: 0.75rem;">Anulado</span>
+      {/if}
+    </div>
   </td>
 </tr>
 
 <style>
+  .clickable-sale-row {
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .clickable-sale-row:hover td {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
   .exp-items-cell {
     display: flex;
     flex-direction: column;
@@ -73,6 +109,23 @@
   .variant-sale-tag {
     color: var(--color-general);
     font-weight: 600;
+  }
+
+  .btn-detail-sale {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    outline: none;
+  }
+
+  .btn-detail-sale:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--color-general);
   }
 
   .btn-cancel-sale {

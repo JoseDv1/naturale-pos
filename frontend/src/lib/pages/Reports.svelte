@@ -7,13 +7,23 @@
   import PayMethodBar from '../components/molecules/PayMethodBar.svelte';
   import AlertItem from '../components/molecules/AlertItem.svelte';
   import SaleRow from '../components/organisms/SaleRow.svelte';
-
+  import SaleDetailModal from '../components/organisms/SaleDetailModal.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
 
   // Filters
   let startDate = $state('');
   let endDate = $state('');
   let activeTab = $state('CONSOLIDATED'); // 'CONSOLIDATED' | 'MARKET' | 'CAFE'
+
+  // Sales History Interactive Filters
+  let searchQuery = $state('');
+  let selectedStatus = $state('ALL'); // 'ALL' | 'COMPLETED' | 'CANCELLED' | 'TRANSFER_OUT'
+  let selectedPayment = $state('ALL'); // 'ALL' | 'CASH' | 'CARD' | 'TRANSFER' | 'INTERNAL'
+  let salesList = $state<any[]>([]);
+
+  // Modal State for Sale Ticket Details
+  let showDetailModal = $state(false);
+  let selectedSale = $state<any | null>(null);
 
   let reportsPromise = $state<Promise<any>>(getDashboardData());
   let lowStockPromise = $state<Promise<any[]>>(getInventoryAlerts());
@@ -35,8 +45,70 @@
     lowStockPromise = getInventoryAlerts();
   }
 
-  function loadSalesHistory() {
-    salesPromise = getSales();
+  function loadSalesHistory(): Promise<any[]> {
+    const p: Promise<any[]> = getSales({
+      q: searchQuery.trim() || undefined,
+      status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
+      paymentMethod: selectedPayment !== 'ALL' ? selectedPayment : undefined,
+      start: startDate ? new Date(startDate).toISOString() : undefined,
+      end: endDate ? new Date(endDate + 'T23:59:59.999Z').toISOString() : undefined,
+    }).then((data) => {
+      salesList = data;
+      return data;
+    });
+    salesPromise = p;
+    return p;
+  }
+
+  function handleDateChange() {
+    loadReports();
+    loadSalesHistory();
+  }
+
+  function resetDateFilters() {
+    startDate = '';
+    endDate = '';
+    searchQuery = '';
+    selectedStatus = 'ALL';
+    selectedPayment = 'ALL';
+    loadReports();
+    loadSalesHistory();
+  }
+
+  // Real-time client filter on sales list for instantaneous feedback
+  let filteredSales = $derived.by(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return salesList.filter((s) => {
+      if (selectedStatus !== 'ALL' && s.status !== selectedStatus) {
+        return false;
+      }
+      if (selectedPayment !== 'ALL') {
+        const hasMethod = s.payments && s.payments.some((p: any) => p.method === selectedPayment);
+        if (!hasMethod) return false;
+      }
+      if (q) {
+        const ticketMatch = (s.id || '').toLowerCase().includes(q);
+        const cashierMatch =
+          (s.user?.name || '').toLowerCase().includes(q) ||
+          (s.user?.username || '').toLowerCase().includes(q);
+        const productMatch =
+          s.items &&
+          s.items.some(
+            (it: any) =>
+              (it.product?.name || '').toLowerCase().includes(q) ||
+              (it.variant?.name || '').toLowerCase().includes(q)
+          );
+        if (!ticketMatch && !cashierMatch && !productMatch) {
+          return false;
+        }
+      }
+      return true;
+    });
+  });
+
+  function openSaleDetail(sale: any) {
+    selectedSale = sale;
+    showDetailModal = true;
   }
 
   async function cancelSale(saleId: string) {
@@ -55,19 +127,19 @@
   <!-- Top Filter Bar -->
   <div class="reports-header glass-panel">
     <div class="header-left">
-      <h2>Estadísticas y Reportes Financieros</h2>
+      <h2>Estadísticas y Reportes Financieros 📊</h2>
     </div>
 
     <div class="date-filters">
       <div class="date-input-group">
         <label for="start-d">Desde</label>
-        <input type="date" id="start-d" bind:value={startDate} onchange={loadReports} />
+        <input type="date" id="start-d" bind:value={startDate} onchange={handleDateChange} />
       </div>
       <div class="date-input-group">
         <label for="end-d">Hasta</label>
-        <input type="date" id="end-d" bind:value={endDate} onchange={loadReports} />
+        <input type="date" id="end-d" bind:value={endDate} onchange={handleDateChange} />
       </div>
-      <button class="btn btn-secondary" onclick={() => { startDate = ''; endDate = ''; loadReports(); }} title="Limpiar Fechas">
+      <button class="btn btn-secondary" onclick={resetDateFilters} title="Limpiar Filtros">
         🔄 Restablecer
       </button>
     </div>
@@ -81,13 +153,13 @@
   {:then [data, alerts]}
     <!-- Tab Selector (Consolidated, Market, Cafe) -->
     <div class="tab-navigator glass-panel">
-      <button class="tab-link" class:active={activeTab === 'CONSOLIDATED'} onclick={() => activeTab = 'CONSOLIDATED'}>
+      <button class="tab-link" class:active={activeTab === 'CONSOLIDATED'} onclick={() => (activeTab = 'CONSOLIDATED')}>
         🏛️ Consolidado General
       </button>
-      <button class="tab-link" class:active={activeTab === 'MARKET'} onclick={() => activeTab = 'MARKET'}>
+      <button class="tab-link" class:active={activeTab === 'MARKET'} onclick={() => (activeTab = 'MARKET')}>
         🍏 Mercado Saludable
       </button>
-      <button class="tab-link" class:active={activeTab === 'CAFE'} onclick={() => activeTab = 'CAFE'}>
+      <button class="tab-link" class:active={activeTab === 'CAFE'} onclick={() => (activeTab = 'CAFE')}>
         ☕ Café
       </button>
     </div>
@@ -151,17 +223,78 @@
     </div>
   {/await}
 
-  <!-- Sales History Log -->
+  <!-- ==========================================
+       SALES HISTORY & MULTI-FACET FILTERS
+       ========================================== -->
   <div class="sales-history-panel glass-panel flex-1 flex-column animate-scale-up">
-    <h3>Historial de Ventas</h3>
+    <div class="panel-top-row">
+      <div class="title-with-count">
+        <h3>Historial de Ventas</h3>
+        <span class="count-pill">
+          {filteredSales.length} {filteredSales.length === 1 ? 'venta' : 'ventas'}
+        </span>
+      </div>
+    </div>
+
+    <!-- Real-Time Interactive Filter Toolbar -->
+    <div class="sales-filter-toolbar">
+      <!-- Search Input -->
+      <div class="search-field">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          placeholder="Buscar por # ticket, cajero o producto..."
+          bind:value={searchQuery}
+          class="sales-search-input"
+          aria-label="Buscar ventas"
+        />
+        {#if searchQuery}
+          <button type="button" class="btn-clear-search" onclick={() => (searchQuery = '')}>✕</button>
+        {/if}
+      </div>
+
+      <!-- Status Filter -->
+      <div class="filter-select-group">
+        <label for="status-filter">Estado:</label>
+        <select id="status-filter" bind:value={selectedStatus} class="filter-select">
+          <option value="ALL">Todos los Estados</option>
+          <option value="COMPLETED">✅ Completadas</option>
+          <option value="CANCELLED">❌ Anuladas</option>
+          <option value="TRANSFER_OUT">🔄 Traslados</option>
+        </select>
+      </div>
+
+      <!-- Payment Method Filter -->
+      <div class="filter-select-group">
+        <label for="payment-filter">Método de Pago:</label>
+        <select id="payment-filter" bind:value={selectedPayment} class="filter-select">
+          <option value="ALL">Todos los Métodos</option>
+          <option value="CASH">💵 Efectivo</option>
+          <option value="CARD">💳 Tarjeta</option>
+          <option value="TRANSFER">📲 Transferencia</option>
+          <option value="INTERNAL">🔄 Interno</option>
+        </select>
+      </div>
+
+      {#if searchQuery || selectedStatus !== 'ALL' || selectedPayment !== 'ALL'}
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          onclick={() => { searchQuery = ''; selectedStatus = 'ALL'; selectedPayment = 'ALL'; }}
+        >
+          Limpiar Filtros
+        </button>
+      {/if}
+    </div>
+
     <div class="table-container scroll-y flex-1">
       {#await salesPromise}
         <div class="loading-state flex-center" style="padding: 40px 0;">
           <Spinner size="40px" />
           <p style="margin-top: 12px; color: var(--text-secondary);">Cargando historial...</p>
         </div>
-      {:then resolvedSales}
-        <table class="pos-table">
+      {:then}
+        <table class="pos-table" aria-label="Historial de Ventas">
           <thead>
             <tr>
               <th>ID Ticket</th>
@@ -175,11 +308,13 @@
             </tr>
           </thead>
           <tbody>
-            {#each resolvedSales as sale}
-              <SaleRow {sale} oncancel={cancelSale} />
+            {#each filteredSales as sale (sale.id)}
+              <SaleRow {sale} oncancel={cancelSale} onview={openSaleDetail} />
             {:else}
               <tr>
-                <td colspan="8" class="text-center text-muted italic">No se han registrado transacciones aún.</td>
+                <td colspan="8" class="text-center text-muted italic" style="padding: 30px;">
+                  No se encontraron ventas que coincidan con los filtros aplicados.
+                </td>
               </tr>
             {/each}
           </tbody>
@@ -193,14 +328,23 @@
   </div>
 </div>
 
+<!-- Modal: Detalle de Venta & Recibo Térmico -->
+{#if showDetailModal && selectedSale}
+  <SaleDetailModal
+    sale={selectedSale}
+    onclose={() => { showDetailModal = false; selectedSale = null; }}
+  />
+{/if}
+
 <style>
   .reports-container {
-    height: 100%;
+    min-height: 100%;
     width: 100%;
     gap: 16px;
     padding: 6px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
   }
 
   .flex-column {
@@ -217,17 +361,22 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-radius: var(--radius-md);
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
   .header-left h2 {
     font-size: 1.25rem;
     font-weight: 600;
+    margin: 0;
   }
 
   .date-filters {
     display: flex;
     align-items: flex-end;
     gap: 12px;
+    flex-wrap: wrap;
   }
 
   .date-input-group {
@@ -245,6 +394,10 @@
   .date-input-group input {
     padding: 8px 12px;
     font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
   }
 
   .error-banner {
@@ -261,6 +414,7 @@
     display: flex;
     padding: 4px;
     background: rgba(255, 255, 255, 0.01);
+    border-radius: var(--radius-md);
   }
 
   .tab-link {
@@ -295,12 +449,11 @@
     gap: 16px;
   }
 
-
-
   /* Secondary Row */
   .secondary-dashboard-row {
     display: flex;
     gap: 16px;
+    flex-wrap: wrap;
   }
 
   .visual-panel {
@@ -309,12 +462,15 @@
     flex-direction: column;
     gap: 12px;
     max-height: 240px;
+    border-radius: var(--radius-md);
+    min-width: 280px;
   }
 
   .visual-panel h3 {
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-primary);
+    margin: 0;
   }
 
   .payment-methods-grid {
@@ -323,16 +479,12 @@
     gap: 10px;
   }
 
-
-
   .alerts-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
     overflow-y: auto;
   }
-
-
 
   .no-alerts {
     text-align: center;
@@ -341,16 +493,115 @@
     padding: 10px;
   }
 
-  /* Sales History */
+  /* Sales History Panel */
   .sales-history-panel {
     padding: 18px;
-    min-height: 260px;
+    min-height: 280px;
+    border-radius: var(--radius-md);
   }
 
-  .sales-history-panel h3 {
-    font-size: 0.95rem;
-    font-weight: 600;
+  .panel-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 12px;
+  }
+
+  .title-with-count {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .title-with-count h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .count-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+  .sales-filter-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 240px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .sales-search-input {
+    width: 100%;
+    padding: 8px 32px 8px 30px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+  }
+
+  .sales-search-input:focus {
+    outline: none;
+    border-color: var(--color-general);
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .btn-clear-search {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+
+  .filter-select-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .filter-select-group label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .filter-select {
+    padding: 7px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+  }
+
+  .filter-select:focus {
+    outline: none;
+    border-color: var(--color-general);
   }
 
   .table-container {
@@ -359,11 +610,10 @@
     overflow-y: auto;
   }
 
-
-
   .text-right {
     text-align: right;
   }
+
   .text-center {
     text-align: center;
   }

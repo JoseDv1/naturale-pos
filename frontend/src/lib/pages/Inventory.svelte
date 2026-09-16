@@ -459,6 +459,7 @@
             <tr>
               <th>Nombre de la Categoría</th>
               <th>Descripción</th>
+              <th class="text-center">Productos Asociados</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
@@ -467,6 +468,11 @@
               <tr>
                 <td><strong>{cat.name}</strong></td>
                 <td>{cat.description || '—'}</td>
+                <td class="text-center">
+                  <span class="badge" style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px;">
+                    📦 {cat._count?.products || 0}
+                  </span>
+                </td>
                 <td class="text-center" style="width: 120px;">
                   <div class="row-actions flex-center" style="gap: 8px;">
                     {#if cat.name !== 'Sin categoría'}
@@ -947,12 +953,11 @@
   .flex-column {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    min-height: 100%;
     width: 100%;
     gap: 16px;
     padding: 6px;
-    min-height: 0;
-    overflow: hidden;
+    overflow-y: auto;
   }
 
   .flex-1 {

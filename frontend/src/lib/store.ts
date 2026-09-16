@@ -68,3 +68,40 @@ export interface SelectedTable {
   currentSaleId: string | null;
 }
 export const selectedTable = writable<SelectedTable | null>(null);
+
+// Shift / Cash Drawer session store
+export interface ShiftTotals {
+  initialCash: number;
+  cashSales: number;
+  cardSales: number;
+  transferSales: number;
+  internalSales: number;
+  expenses: number;
+  expectedCash: number;
+}
+
+export interface Shift {
+  id: string;
+  userId: string;
+  openedAt: string;
+  closedAt?: string | null;
+  initialCash: number;
+  expectedCash?: number | null;
+  actualCash?: number | null;
+  difference?: number | null;
+  status: 'OPEN' | 'CLOSED';
+  notes?: string | null;
+  user?: {
+    id: string;
+    name: string;
+    username: string;
+  };
+}
+
+export interface CurrentShiftState {
+  shift: Shift | null;
+  realTimeTotals: ShiftTotals | null;
+}
+
+export const currentShift = writable<CurrentShiftState | null>(null);
+

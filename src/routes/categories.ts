@@ -7,12 +7,17 @@ import { adminMiddleware } from '../middleware/auth';
 const categories = new Hono();
 
 const categorySchema = z.object({
-  name: z.string().min(1, 'Nombre es requerido'),
+  name: z.string().trim().min(1, 'Nombre es requerido'),
   description: z.string().nullable().optional(),
 });
 
 categories.get('/', async (c) => {
   const list = await prisma.category.findMany({
+    include: {
+      _count: {
+        select: { products: true },
+      },
+    },
     orderBy: { name: 'asc' },
   });
   return c.json(list);
@@ -38,7 +43,7 @@ categories.post('/', adminMiddleware, zValidator('json', categorySchema, (result
   }
 });
 
-categories.put('/:id', zValidator('json', categorySchema, (result, c) => {
+categories.put('/:id', adminMiddleware, zValidator('json', categorySchema, (result, c) => {
   if (!result.success) {
     return c.json({ error: result.error.issues[0].message }, 400);
   }
@@ -67,6 +72,11 @@ categories.put('/:id', zValidator('json', categorySchema, (result, c) => {
     const category = await prisma.category.update({
       where: { id },
       data: { name, description },
+      include: {
+        _count: {
+          select: { products: true },
+        },
+      },
     });
     return c.json(category);
   } catch (error) {
@@ -74,7 +84,7 @@ categories.put('/:id', zValidator('json', categorySchema, (result, c) => {
   }
 });
 
-categories.delete('/:id', async (c) => {
+categories.delete('/:id', adminMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
 

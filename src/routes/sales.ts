@@ -6,20 +6,120 @@ import { prisma } from '../db';
 const sales = new Hono();
 
 sales.get('/', async (c) => {
-  const list = await prisma.sale.findMany({
-    include: {
-      user: { select: { name: true } },
-      items: {
-        include: {
-          product: { select: { name: true, sku: true, department: true } },
-          variant: { select: { name: true, sku: true } },
+  try {
+    const q = c.req.query('q')?.trim();
+    const status = c.req.query('status')?.trim();
+    const paymentMethod = c.req.query('paymentMethod')?.trim();
+    const start = c.req.query('start')?.trim();
+    const end = c.req.query('end')?.trim();
+
+    const where: any = {};
+
+    // 1. Status filter
+    if (status && status !== 'ALL') {
+      const validStatuses = ['COMPLETED', 'CANCELLED', 'TRANSFER_OUT', 'OPEN'];
+      if (validStatuses.includes(status.toUpperCase())) {
+        where.status = status.toUpperCase();
+      }
+    }
+
+    // 2. Payment method filter
+    if (paymentMethod && paymentMethod !== 'ALL') {
+      const validMethods = ['CASH', 'CARD', 'TRANSFER', 'INTERNAL'];
+      if (validMethods.includes(paymentMethod.toUpperCase())) {
+        where.payments = {
+          some: {
+            method: paymentMethod.toUpperCase(),
+          },
+        };
+      }
+    }
+
+    // 3. Date range bounds
+    const dateFilter: any = {};
+    if (start) {
+      const startDate = new Date(start);
+      if (!isNaN(startDate.getTime())) {
+        dateFilter.gte = startDate;
+      }
+    }
+    if (end) {
+      let endDate = new Date(end);
+      if (end.length === 10 && !isNaN(endDate.getTime())) {
+        endDate = new Date(`${end}T23:59:59.999Z`);
+      }
+      if (!isNaN(endDate.getTime())) {
+        dateFilter.lte = endDate;
+      }
+    }
+    if (Object.keys(dateFilter).length > 0) {
+      where.createdAt = dateFilter;
+    }
+
+    // 4. Multi-field text search (Ticket ID, Cashier Name, Product Name)
+    if (q) {
+      where.OR = [
+        { id: { contains: q } },
+        { user: { name: { contains: q } } },
+        {
+          items: {
+            some: {
+              product: {
+                name: { contains: q },
+              },
+            },
+          },
         },
+      ];
+    }
+
+    const list = await prisma.sale.findMany({
+      where,
+      include: {
+        user: { select: { id: true, name: true, username: true } },
+        items: {
+          include: {
+            product: { select: { id: true, name: true, sku: true, department: true } },
+            variant: { select: { id: true, name: true, sku: true } },
+          },
+        },
+        payments: true,
       },
-      payments: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-  return c.json(list);
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return c.json(list);
+  } catch (error: any) {
+    return c.json({ error: error.message || 'Error al obtener historial de ventas' }, 500);
+  }
+});
+
+sales.get('/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const sale = await prisma.sale.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, name: true, username: true, role: true } },
+        items: {
+          include: {
+            product: { select: { id: true, name: true, sku: true, department: true, price: true, cost: true } },
+            variant: { select: { id: true, name: true, sku: true, price: true } },
+          },
+        },
+        payments: true,
+        table: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!sale) {
+      return c.json({ error: 'Venta no encontrada' }, 404);
+    }
+
+    return c.json(sale);
+  } catch (error: any) {
+    return c.json({ error: error.message || 'Error al obtener detalle de venta' }, 500);
+  }
 });
 
 const saleSchema = z.object({
@@ -79,6 +179,14 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
   try {
     const { userId, total, items, payments } = c.req.valid('json');
 
+    // 0. Active Shift Gatekeeper
+    const activeShift = await prisma.shift.findFirst({
+      where: { status: 'OPEN' },
+    });
+    if (!activeShift) {
+      return c.json({ error: 'No hay un turno de caja abierto. Debe abrir caja antes de realizar ventas o registrar gastos.' }, 400);
+    }
+
     // Execute in a transaction to enforce inventory consistency
     const result = await prisma.$transaction(async (tx) => {
       // 1. Stock check and decrement
@@ -128,6 +236,7 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
           userId,
           total,
           status: 'COMPLETED',
+          shiftId: activeShift.id,
           items: {
             create: items.map((item: any) => ({
               productId: item.productId,

@@ -17,6 +17,19 @@ export async function createExpense(expenseData: any) {
   return res.json();
 }
 
+export async function updateExpense(id: string, expenseData: any) {
+  const res = await fetch(`/api/expenses/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(expenseData)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to update expense');
+  }
+  return res.json();
+}
+
 export async function getExpenseCategories() {
   const res = await fetch('/api/expenses/categories');
   if (!res.ok) throw new Error('Failed to fetch expense categories');

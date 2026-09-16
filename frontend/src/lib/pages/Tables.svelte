@@ -787,8 +787,8 @@
     display: flex;
     flex: 1;
     gap: 16px;
-    height: calc(100vh - 120px);
-    overflow: hidden;
+    min-height: calc(100vh - 120px);
+    overflow-y: auto;
   }
 
   .map-view-column {

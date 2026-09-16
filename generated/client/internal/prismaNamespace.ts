@@ -394,6 +394,7 @@ export const ModelName = {
   Sale: 'Sale',
   SaleItem: 'SaleItem',
   SalePayment: 'SalePayment',
+  Shift: 'Shift',
   ProductTransfer: 'ProductTransfer',
   CafeTable: 'CafeTable'
 } as const
@@ -411,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "category" | "product" | "productVariant" | "expenseCategory" | "expense" | "expenseItem" | "sale" | "saleItem" | "salePayment" | "productTransfer" | "cafeTable"
+    modelProps: "user" | "category" | "product" | "productVariant" | "expenseCategory" | "expense" | "expenseItem" | "sale" | "saleItem" | "salePayment" | "shift" | "productTransfer" | "cafeTable"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1155,6 +1156,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Shift: {
+      payload: Prisma.$ShiftPayload<ExtArgs>
+      fields: Prisma.ShiftFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ShiftFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ShiftFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>
+        }
+        findFirst: {
+          args: Prisma.ShiftFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ShiftFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>
+        }
+        findMany: {
+          args: Prisma.ShiftFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>[]
+        }
+        create: {
+          args: Prisma.ShiftCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>
+        }
+        createMany: {
+          args: Prisma.ShiftCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ShiftCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>[]
+        }
+        delete: {
+          args: Prisma.ShiftDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>
+        }
+        update: {
+          args: Prisma.ShiftUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>
+        }
+        deleteMany: {
+          args: Prisma.ShiftDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ShiftUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ShiftUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>[]
+        }
+        upsert: {
+          args: Prisma.ShiftUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShiftPayload>
+        }
+        aggregate: {
+          args: Prisma.ShiftAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateShift>
+        }
+        groupBy: {
+          args: Prisma.ShiftGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShiftGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ShiftCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShiftCountAggregateOutputType> | number
+        }
+      }
+    }
     ProductTransfer: {
       payload: Prisma.$ProductTransferPayload<ExtArgs>
       fields: Prisma.ProductTransferFieldRefs
@@ -1420,7 +1495,8 @@ export const ExpenseScalarFieldEnum = {
   userId: 'userId',
   date: 'date',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  shiftId: 'shiftId'
 } as const
 
 export type ExpenseScalarFieldEnum = (typeof ExpenseScalarFieldEnum)[keyof typeof ExpenseScalarFieldEnum]
@@ -1444,7 +1520,8 @@ export const SaleScalarFieldEnum = {
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  tableId: 'tableId'
+  tableId: 'tableId',
+  shiftId: 'shiftId'
 } as const
 
 export type SaleScalarFieldEnum = (typeof SaleScalarFieldEnum)[keyof typeof SaleScalarFieldEnum]
@@ -1471,6 +1548,28 @@ export const SalePaymentScalarFieldEnum = {
 } as const
 
 export type SalePaymentScalarFieldEnum = (typeof SalePaymentScalarFieldEnum)[keyof typeof SalePaymentScalarFieldEnum]
+
+
+export const ShiftScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  status: 'status',
+  initialCash: 'initialCash',
+  openedAt: 'openedAt',
+  closedAt: 'closedAt',
+  closedByUserId: 'closedByUserId',
+  expectedCash: 'expectedCash',
+  actualCash: 'actualCash',
+  difference: 'difference',
+  totalSales: 'totalSales',
+  totalCard: 'totalCard',
+  totalTransfer: 'totalTransfer',
+  totalInternal: 'totalInternal',
+  totalExpenses: 'totalExpenses',
+  notes: 'notes'
+} as const
+
+export type ShiftScalarFieldEnum = (typeof ShiftScalarFieldEnum)[keyof typeof ShiftScalarFieldEnum]
 
 
 export const ProductTransferScalarFieldEnum = {
@@ -1585,6 +1684,13 @@ export type EnumSaleStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Prism
  * Reference to a field of type 'PaymentMethod'
  */
 export type EnumPaymentMethodFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PaymentMethod'>
+    
+
+
+/**
+ * Reference to a field of type 'ShiftStatus'
+ */
+export type EnumShiftStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ShiftStatus'>
     
 
 
@@ -1721,6 +1827,7 @@ export type GlobalOmitConfig = {
   sale?: Prisma.SaleOmit
   saleItem?: Prisma.SaleItemOmit
   salePayment?: Prisma.SalePaymentOmit
+  shift?: Prisma.ShiftOmit
   productTransfer?: Prisma.ProductTransferOmit
   cafeTable?: Prisma.CafeTableOmit
 }

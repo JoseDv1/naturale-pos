@@ -209,6 +209,8 @@ export type UserWhereInput = {
   sales?: Prisma.SaleListRelationFilter
   expenses?: Prisma.ExpenseListRelationFilter
   transfers?: Prisma.ProductTransferListRelationFilter
+  shifts?: Prisma.ShiftListRelationFilter
+  closedShifts?: Prisma.ShiftListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -223,6 +225,8 @@ export type UserOrderByWithRelationInput = {
   sales?: Prisma.SaleOrderByRelationAggregateInput
   expenses?: Prisma.ExpenseOrderByRelationAggregateInput
   transfers?: Prisma.ProductTransferOrderByRelationAggregateInput
+  shifts?: Prisma.ShiftOrderByRelationAggregateInput
+  closedShifts?: Prisma.ShiftOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -240,6 +244,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   sales?: Prisma.SaleListRelationFilter
   expenses?: Prisma.ExpenseListRelationFilter
   transfers?: Prisma.ProductTransferListRelationFilter
+  shifts?: Prisma.ShiftListRelationFilter
+  closedShifts?: Prisma.ShiftListRelationFilter
 }, "id" | "username">
 
 export type UserOrderByWithAggregationInput = {
@@ -282,6 +288,8 @@ export type UserCreateInput = {
   sales?: Prisma.SaleCreateNestedManyWithoutUserInput
   expenses?: Prisma.ExpenseCreateNestedManyWithoutUserInput
   transfers?: Prisma.ProductTransferCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftCreateNestedManyWithoutClosedByUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -296,6 +304,8 @@ export type UserUncheckedCreateInput = {
   sales?: Prisma.SaleUncheckedCreateNestedManyWithoutUserInput
   expenses?: Prisma.ExpenseUncheckedCreateNestedManyWithoutUserInput
   transfers?: Prisma.ProductTransferUncheckedCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutClosedByUserInput
 }
 
 export type UserUpdateInput = {
@@ -310,6 +320,8 @@ export type UserUpdateInput = {
   sales?: Prisma.SaleUpdateManyWithoutUserNestedInput
   expenses?: Prisma.ExpenseUpdateManyWithoutUserNestedInput
   transfers?: Prisma.ProductTransferUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUpdateManyWithoutClosedByUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -324,6 +336,8 @@ export type UserUncheckedUpdateInput = {
   sales?: Prisma.SaleUncheckedUpdateManyWithoutUserNestedInput
   expenses?: Prisma.ExpenseUncheckedUpdateManyWithoutUserNestedInput
   transfers?: Prisma.ProductTransferUncheckedUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUncheckedUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUncheckedUpdateManyWithoutClosedByUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -448,6 +462,36 @@ export type UserUpdateOneRequiredWithoutSalesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutSalesInput, Prisma.UserUpdateWithoutSalesInput>, Prisma.UserUncheckedUpdateWithoutSalesInput>
 }
 
+export type UserCreateNestedOneWithoutShiftsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutShiftsInput, Prisma.UserUncheckedCreateWithoutShiftsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutShiftsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserCreateNestedOneWithoutClosedShiftsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutClosedShiftsInput, Prisma.UserUncheckedCreateWithoutClosedShiftsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutClosedShiftsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutShiftsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutShiftsInput, Prisma.UserUncheckedCreateWithoutShiftsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutShiftsInput
+  upsert?: Prisma.UserUpsertWithoutShiftsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutShiftsInput, Prisma.UserUpdateWithoutShiftsInput>, Prisma.UserUncheckedUpdateWithoutShiftsInput>
+}
+
+export type UserUpdateOneWithoutClosedShiftsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutClosedShiftsInput, Prisma.UserUncheckedCreateWithoutClosedShiftsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutClosedShiftsInput
+  upsert?: Prisma.UserUpsertWithoutClosedShiftsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutClosedShiftsInput, Prisma.UserUpdateWithoutClosedShiftsInput>, Prisma.UserUncheckedUpdateWithoutClosedShiftsInput>
+}
+
 export type UserCreateNestedOneWithoutTransfersInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutTransfersInput, Prisma.UserUncheckedCreateWithoutTransfersInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutTransfersInput
@@ -473,6 +517,8 @@ export type UserCreateWithoutExpensesInput = {
   updatedAt?: Date | string
   sales?: Prisma.SaleCreateNestedManyWithoutUserInput
   transfers?: Prisma.ProductTransferCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftCreateNestedManyWithoutClosedByUserInput
 }
 
 export type UserUncheckedCreateWithoutExpensesInput = {
@@ -486,6 +532,8 @@ export type UserUncheckedCreateWithoutExpensesInput = {
   updatedAt?: Date | string
   sales?: Prisma.SaleUncheckedCreateNestedManyWithoutUserInput
   transfers?: Prisma.ProductTransferUncheckedCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutClosedByUserInput
 }
 
 export type UserCreateOrConnectWithoutExpensesInput = {
@@ -515,6 +563,8 @@ export type UserUpdateWithoutExpensesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sales?: Prisma.SaleUpdateManyWithoutUserNestedInput
   transfers?: Prisma.ProductTransferUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUpdateManyWithoutClosedByUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutExpensesInput = {
@@ -528,6 +578,8 @@ export type UserUncheckedUpdateWithoutExpensesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sales?: Prisma.SaleUncheckedUpdateManyWithoutUserNestedInput
   transfers?: Prisma.ProductTransferUncheckedUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUncheckedUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUncheckedUpdateManyWithoutClosedByUserNestedInput
 }
 
 export type UserCreateWithoutSalesInput = {
@@ -541,6 +593,8 @@ export type UserCreateWithoutSalesInput = {
   updatedAt?: Date | string
   expenses?: Prisma.ExpenseCreateNestedManyWithoutUserInput
   transfers?: Prisma.ProductTransferCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftCreateNestedManyWithoutClosedByUserInput
 }
 
 export type UserUncheckedCreateWithoutSalesInput = {
@@ -554,6 +608,8 @@ export type UserUncheckedCreateWithoutSalesInput = {
   updatedAt?: Date | string
   expenses?: Prisma.ExpenseUncheckedCreateNestedManyWithoutUserInput
   transfers?: Prisma.ProductTransferUncheckedCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutClosedByUserInput
 }
 
 export type UserCreateOrConnectWithoutSalesInput = {
@@ -583,6 +639,8 @@ export type UserUpdateWithoutSalesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expenses?: Prisma.ExpenseUpdateManyWithoutUserNestedInput
   transfers?: Prisma.ProductTransferUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUpdateManyWithoutClosedByUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSalesInput = {
@@ -596,6 +654,160 @@ export type UserUncheckedUpdateWithoutSalesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expenses?: Prisma.ExpenseUncheckedUpdateManyWithoutUserNestedInput
   transfers?: Prisma.ProductTransferUncheckedUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUncheckedUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUncheckedUpdateManyWithoutClosedByUserNestedInput
+}
+
+export type UserCreateWithoutShiftsInput = {
+  id?: string
+  username: string
+  passwordHash: string
+  name: string
+  role?: $Enums.UserRole
+  active?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  sales?: Prisma.SaleCreateNestedManyWithoutUserInput
+  expenses?: Prisma.ExpenseCreateNestedManyWithoutUserInput
+  transfers?: Prisma.ProductTransferCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftCreateNestedManyWithoutClosedByUserInput
+}
+
+export type UserUncheckedCreateWithoutShiftsInput = {
+  id?: string
+  username: string
+  passwordHash: string
+  name: string
+  role?: $Enums.UserRole
+  active?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  sales?: Prisma.SaleUncheckedCreateNestedManyWithoutUserInput
+  expenses?: Prisma.ExpenseUncheckedCreateNestedManyWithoutUserInput
+  transfers?: Prisma.ProductTransferUncheckedCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutClosedByUserInput
+}
+
+export type UserCreateOrConnectWithoutShiftsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutShiftsInput, Prisma.UserUncheckedCreateWithoutShiftsInput>
+}
+
+export type UserCreateWithoutClosedShiftsInput = {
+  id?: string
+  username: string
+  passwordHash: string
+  name: string
+  role?: $Enums.UserRole
+  active?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  sales?: Prisma.SaleCreateNestedManyWithoutUserInput
+  expenses?: Prisma.ExpenseCreateNestedManyWithoutUserInput
+  transfers?: Prisma.ProductTransferCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutClosedShiftsInput = {
+  id?: string
+  username: string
+  passwordHash: string
+  name: string
+  role?: $Enums.UserRole
+  active?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  sales?: Prisma.SaleUncheckedCreateNestedManyWithoutUserInput
+  expenses?: Prisma.ExpenseUncheckedCreateNestedManyWithoutUserInput
+  transfers?: Prisma.ProductTransferUncheckedCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutClosedShiftsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutClosedShiftsInput, Prisma.UserUncheckedCreateWithoutClosedShiftsInput>
+}
+
+export type UserUpsertWithoutShiftsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutShiftsInput, Prisma.UserUncheckedUpdateWithoutShiftsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutShiftsInput, Prisma.UserUncheckedCreateWithoutShiftsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutShiftsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutShiftsInput, Prisma.UserUncheckedUpdateWithoutShiftsInput>
+}
+
+export type UserUpdateWithoutShiftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sales?: Prisma.SaleUpdateManyWithoutUserNestedInput
+  expenses?: Prisma.ExpenseUpdateManyWithoutUserNestedInput
+  transfers?: Prisma.ProductTransferUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUpdateManyWithoutClosedByUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutShiftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sales?: Prisma.SaleUncheckedUpdateManyWithoutUserNestedInput
+  expenses?: Prisma.ExpenseUncheckedUpdateManyWithoutUserNestedInput
+  transfers?: Prisma.ProductTransferUncheckedUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUncheckedUpdateManyWithoutClosedByUserNestedInput
+}
+
+export type UserUpsertWithoutClosedShiftsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutClosedShiftsInput, Prisma.UserUncheckedUpdateWithoutClosedShiftsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutClosedShiftsInput, Prisma.UserUncheckedCreateWithoutClosedShiftsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutClosedShiftsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutClosedShiftsInput, Prisma.UserUncheckedUpdateWithoutClosedShiftsInput>
+}
+
+export type UserUpdateWithoutClosedShiftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sales?: Prisma.SaleUpdateManyWithoutUserNestedInput
+  expenses?: Prisma.ExpenseUpdateManyWithoutUserNestedInput
+  transfers?: Prisma.ProductTransferUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutClosedShiftsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sales?: Prisma.SaleUncheckedUpdateManyWithoutUserNestedInput
+  expenses?: Prisma.ExpenseUncheckedUpdateManyWithoutUserNestedInput
+  transfers?: Prisma.ProductTransferUncheckedUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTransfersInput = {
@@ -609,6 +821,8 @@ export type UserCreateWithoutTransfersInput = {
   updatedAt?: Date | string
   sales?: Prisma.SaleCreateNestedManyWithoutUserInput
   expenses?: Prisma.ExpenseCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftCreateNestedManyWithoutClosedByUserInput
 }
 
 export type UserUncheckedCreateWithoutTransfersInput = {
@@ -622,6 +836,8 @@ export type UserUncheckedCreateWithoutTransfersInput = {
   updatedAt?: Date | string
   sales?: Prisma.SaleUncheckedCreateNestedManyWithoutUserInput
   expenses?: Prisma.ExpenseUncheckedCreateNestedManyWithoutUserInput
+  shifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutUserInput
+  closedShifts?: Prisma.ShiftUncheckedCreateNestedManyWithoutClosedByUserInput
 }
 
 export type UserCreateOrConnectWithoutTransfersInput = {
@@ -651,6 +867,8 @@ export type UserUpdateWithoutTransfersInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sales?: Prisma.SaleUpdateManyWithoutUserNestedInput
   expenses?: Prisma.ExpenseUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUpdateManyWithoutClosedByUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTransfersInput = {
@@ -664,6 +882,8 @@ export type UserUncheckedUpdateWithoutTransfersInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sales?: Prisma.SaleUncheckedUpdateManyWithoutUserNestedInput
   expenses?: Prisma.ExpenseUncheckedUpdateManyWithoutUserNestedInput
+  shifts?: Prisma.ShiftUncheckedUpdateManyWithoutUserNestedInput
+  closedShifts?: Prisma.ShiftUncheckedUpdateManyWithoutClosedByUserNestedInput
 }
 
 
@@ -675,12 +895,16 @@ export type UserCountOutputType = {
   sales: number
   expenses: number
   transfers: number
+  shifts: number
+  closedShifts: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   sales?: boolean | UserCountOutputTypeCountSalesArgs
   expenses?: boolean | UserCountOutputTypeCountExpensesArgs
   transfers?: boolean | UserCountOutputTypeCountTransfersArgs
+  shifts?: boolean | UserCountOutputTypeCountShiftsArgs
+  closedShifts?: boolean | UserCountOutputTypeCountClosedShiftsArgs
 }
 
 /**
@@ -714,6 +938,20 @@ export type UserCountOutputTypeCountTransfersArgs<ExtArgs extends runtime.Types.
   where?: Prisma.ProductTransferWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountShiftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ShiftWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountClosedShiftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ShiftWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -727,6 +965,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   sales?: boolean | Prisma.User$salesArgs<ExtArgs>
   expenses?: boolean | Prisma.User$expensesArgs<ExtArgs>
   transfers?: boolean | Prisma.User$transfersArgs<ExtArgs>
+  shifts?: boolean | Prisma.User$shiftsArgs<ExtArgs>
+  closedShifts?: boolean | Prisma.User$closedShiftsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -768,6 +1008,8 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   sales?: boolean | Prisma.User$salesArgs<ExtArgs>
   expenses?: boolean | Prisma.User$expensesArgs<ExtArgs>
   transfers?: boolean | Prisma.User$transfersArgs<ExtArgs>
+  shifts?: boolean | Prisma.User$shiftsArgs<ExtArgs>
+  closedShifts?: boolean | Prisma.User$closedShiftsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -779,6 +1021,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     sales: Prisma.$SalePayload<ExtArgs>[]
     expenses: Prisma.$ExpensePayload<ExtArgs>[]
     transfers: Prisma.$ProductTransferPayload<ExtArgs>[]
+    shifts: Prisma.$ShiftPayload<ExtArgs>[]
+    closedShifts: Prisma.$ShiftPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1186,6 +1430,8 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   sales<T extends Prisma.User$salesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$salesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SalePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   expenses<T extends Prisma.User$expensesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$expensesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ExpensePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   transfers<T extends Prisma.User$transfersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$transfersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductTransferPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  shifts<T extends Prisma.User$shiftsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$shiftsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ShiftPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  closedShifts<T extends Prisma.User$closedShiftsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$closedShiftsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ShiftPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1683,6 +1929,54 @@ export type User$transfersArgs<ExtArgs extends runtime.Types.Extensions.Internal
   take?: number
   skip?: number
   distinct?: Prisma.ProductTransferScalarFieldEnum | Prisma.ProductTransferScalarFieldEnum[]
+}
+
+/**
+ * User.shifts
+ */
+export type User$shiftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Shift
+   */
+  select?: Prisma.ShiftSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Shift
+   */
+  omit?: Prisma.ShiftOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ShiftInclude<ExtArgs> | null
+  where?: Prisma.ShiftWhereInput
+  orderBy?: Prisma.ShiftOrderByWithRelationInput | Prisma.ShiftOrderByWithRelationInput[]
+  cursor?: Prisma.ShiftWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ShiftScalarFieldEnum | Prisma.ShiftScalarFieldEnum[]
+}
+
+/**
+ * User.closedShifts
+ */
+export type User$closedShiftsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Shift
+   */
+  select?: Prisma.ShiftSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Shift
+   */
+  omit?: Prisma.ShiftOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ShiftInclude<ExtArgs> | null
+  where?: Prisma.ShiftWhereInput
+  orderBy?: Prisma.ShiftOrderByWithRelationInput | Prisma.ShiftOrderByWithRelationInput[]
+  cursor?: Prisma.ShiftWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ShiftScalarFieldEnum | Prisma.ShiftScalarFieldEnum[]
 }
 
 /**

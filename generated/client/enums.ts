@@ -52,3 +52,11 @@ export const TableStatus = {
 } as const
 
 export type TableStatus = (typeof TableStatus)[keyof typeof TableStatus]
+
+
+export const ShiftStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED'
+} as const
+
+export type ShiftStatus = (typeof ShiftStatus)[keyof typeof ShiftStatus]

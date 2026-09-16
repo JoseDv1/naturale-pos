@@ -57,7 +57,7 @@
       cameras = devices;
       if (!selectedCameraId) {
         // Prefer back camera if available
-        const backCam = devices.find(d => 
+        const backCam = devices.find((d: any) => 
           d.label.toLowerCase().includes('back') || 
           d.label.toLowerCase().includes('rear') ||
           d.label.toLowerCase().includes('trasera') ||
@@ -89,7 +89,7 @@
       await html5QrCode.start(
         selectedCameraId,
         qrConfig,
-        (decodedText) => {
+        (decodedText: string) => {
           handleDecodedBarcode(decodedText);
         },
         () => {

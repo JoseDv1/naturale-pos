@@ -37,8 +37,9 @@ async function main() {
 
   console.log('Users created:', { admin: admin.username, cashier: cashier.username });
 
-  // 2. Create Categories
+  // 2. Create Categories (guaranteeing "Sin categoría" is seeded)
   const categoriesData = [
+    { name: 'Sin categoría', description: 'Categoría por defecto para productos sin clasificar' },
     { name: 'Suplementos', description: 'Proteínas, creatinas y colágenos' },
     { name: 'Bebidas', description: 'Cafés, tés, jugos y bebidas embotelladas' },
     { name: 'Snacks', description: 'Barras saludables, frutos secos y chocolates' },

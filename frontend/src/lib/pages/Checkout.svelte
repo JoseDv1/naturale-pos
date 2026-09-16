@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { user, cart, cartTotal, products, categories, refreshTrigger, triggerRefresh, selectedTable, activeTab } from '../store';
+  import { user, cart, cartTotal, products, categories, refreshTrigger, triggerRefresh, selectedTable, activeTab, currentShift } from '../store';
   import { getProducts, getCategories } from '../api/products';
   import { 
     saveTableOrder as apiSaveTableOrder, 
@@ -25,9 +25,11 @@
   import ScanToast, { type ToastData } from '../components/atoms/ScanToast.svelte';
   import MergeTableModal from '../components/organisms/MergeTableModal.svelte';
   import SplitTableModal from '../components/organisms/SplitTableModal.svelte';
+  import OpenShiftModal from '../components/organisms/OpenShiftModal.svelte';
 
   // State variables
   let searchQuery = $state('');
+  let showOpenShiftModal = $state(false);
   let selectedCategory = $state('');
   let activeDept = $state('MARKET'); // 'MARKET' | 'CAFE'
   let wasTableSale = $state(false);
@@ -302,6 +304,10 @@
   let remainingToPay = $derived(Math.max(0, total - paidAmount));
 
   function openCheckout() {
+    if (!$currentShift?.shift || $currentShift.shift.status !== 'OPEN') {
+      showOpenShiftModal = true;
+      return;
+    }
     if ($cart.length === 0) {
       alert('El carrito está vacío.');
       return;
@@ -345,6 +351,11 @@
   }
 
   async function processSale() {
+    if (!$currentShift?.shift || $currentShift.shift.status !== 'OPEN') {
+      errorMessage = 'Debes tener un turno de caja abierto para procesar ventas.';
+      showOpenShiftModal = true;
+      return;
+    }
     if (remainingToPay > 0.01) {
       errorMessage = 'Falta completar el pago total';
       return;
@@ -679,6 +690,19 @@
     </div>
 
     <div class="cart-footer">
+      {#if !$currentShift?.shift || $currentShift.shift.status !== 'OPEN'}
+        <div class="shift-gate-prompt animate-fade-in" role="alert">
+          <span class="gate-icon">⚠️</span>
+          <div class="gate-text">
+            <strong>Caja Cerrada</strong>
+            <p>Se requiere un turno abierto con base inicial para cobrar.</p>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick={() => (showOpenShiftModal = true)}>
+            Abrir Caja
+          </button>
+        </div>
+      {/if}
+
       <div class="total-row">
         <span>Total a Pagar</span>
         <span class="total-amount">${$cartTotal.toLocaleString()}</span>
@@ -959,11 +983,20 @@
   />
 {/if}
 
+{#if showOpenShiftModal}
+  <OpenShiftModal
+    onclose={() => (showOpenShiftModal = false)}
+    onsuccess={() => {
+      showOpenShiftModal = false;
+    }}
+  />
+{/if}
+
 
 <style>
   .checkout-layout {
     display: flex;
-    height: 100%;
+    min-height: 100%;
     width: 100%;
     gap: 16px;
     padding: 6px;
@@ -975,8 +1008,8 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
+    overflow-y: auto;
   }
 
   .catalog-header {
@@ -1118,7 +1151,7 @@
     width: 380px;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    min-height: 100%;
   }
 
   .cart-header {
@@ -1177,6 +1210,37 @@
     width: 100%;
     height: 48px;
     font-size: 1rem;
+  }
+
+  .shift-gate-prompt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: rgba(231, 76, 60, 0.12);
+    border: 1px solid rgba(231, 76, 60, 0.35);
+    border-radius: var(--radius-sm);
+  }
+
+  .gate-icon {
+    font-size: 1.2rem;
+  }
+
+  .gate-text {
+    flex: 1;
+    font-size: 0.8rem;
+  }
+
+  .gate-text strong {
+    color: #e74c3c;
+    display: block;
+    font-size: 0.84rem;
+  }
+
+  .gate-text p {
+    margin: 2px 0 0 0;
+    color: var(--text-secondary);
   }
 
   /* Payment Modal styles */

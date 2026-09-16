@@ -68,6 +68,11 @@ export type SaleItem = Prisma.SaleItemModel
  */
 export type SalePayment = Prisma.SalePaymentModel
 /**
+ * Model Shift
+ * 
+ */
+export type Shift = Prisma.ShiftModel
+/**
  * Model ProductTransfer
  * 
  */

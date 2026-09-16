@@ -241,6 +241,14 @@ expenses.post('/', zValidator('json', expenseSchema, (result, c) => {
   try {
     const { description, amount, category, department, userId, items } = c.req.valid('json');
 
+    // Active Shift Gatekeeper
+    const activeShift = await prisma.shift.findFirst({
+      where: { status: 'OPEN' },
+    });
+    if (!activeShift) {
+      return c.json({ error: 'No hay un turno de caja abierto. Debe abrir caja antes de realizar ventas o registrar gastos.' }, 400);
+    }
+
     const trimmedCategory = category.trim();
 
     // Validate category against system and custom categories
@@ -274,6 +282,7 @@ expenses.post('/', zValidator('json', expenseSchema, (result, c) => {
           category: resolvedCategory,
           department,
           userId,
+          shiftId: activeShift.id,
           items: items && items.length ? {
             create: items.map((item: any) => ({
               productId: item.productId,
@@ -306,6 +315,175 @@ expenses.post('/', zValidator('json', expenseSchema, (result, c) => {
     return c.json({ success: true, expense: result });
   } catch (error: any) {
     return c.json({ error: error.message || 'Error al guardar el gasto' }, 500);
+  }
+});
+
+class ExpenseApiError extends Error {
+  constructor(message: string, public status: 400 | 404 = 400) {
+    super(message);
+  }
+}
+
+const expenseItemUpdateSchema = z.object({
+  productId: z.string().min(1, 'ID de producto inválido'),
+  quantity: z.union([z.number(), z.string()])
+    .transform((val) => typeof val === 'string' ? parseInt(val, 10) : val)
+    .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
+  unitCost: z.union([z.number(), z.string()])
+    .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+    .refine((num) => !isNaN(num) && num > 0, { message: 'El costo unitario debe ser mayor a cero' }),
+});
+
+const expenseUpdateSchema = z.object({
+  description: z.string().min(1, 'La descripción del gasto es obligatoria').optional(),
+  amount: z.union([z.number(), z.string()])
+    .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+    .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del gasto debe ser mayor a cero' })
+    .optional(),
+  category: z.string().min(1, 'Categoría de gasto inválida').optional(),
+  department: z.enum(['MARKET', 'CAFE', 'GENERAL'], {
+    message: 'Departamento inválido',
+  }).optional(),
+  date: z.string().optional().refine((val) => {
+    if (!val) return true;
+    return !isNaN(new Date(val).getTime());
+  }, { message: 'Fecha inválida' }),
+  items: z.array(expenseItemUpdateSchema).optional(),
+});
+
+expenses.put('/:id', adminMiddleware, zValidator('json', expenseUpdateSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
+  try {
+    const id = c.req.param('id');
+    const { description, amount, category, department, date, items } = c.req.valid('json');
+
+    // 1. Resolve category if provided
+    let resolvedCategory: string | undefined = undefined;
+    if (category !== undefined) {
+      const trimmedCategory = category.trim();
+      const isDefault = DEFAULT_EXPENSE_CATEGORIES.some(
+        (dc) => dc.id.toLowerCase() === trimmedCategory.toLowerCase() || dc.name.toLowerCase() === trimmedCategory.toLowerCase()
+      );
+
+      if (isDefault) {
+        const matched = DEFAULT_EXPENSE_CATEGORIES.find(
+          (dc) => dc.id.toLowerCase() === trimmedCategory.toLowerCase() || dc.name.toLowerCase() === trimmedCategory.toLowerCase()
+        );
+        resolvedCategory = matched?.id || trimmedCategory;
+      } else {
+        const allCustom = await prisma.expenseCategory.findMany();
+        const custom = allCustom.find(
+          (cc) => cc.id === trimmedCategory || cc.name.toLowerCase() === trimmedCategory.toLowerCase()
+        );
+        if (!custom) {
+          return c.json({ error: 'Categoría de gasto inválida' }, 400);
+        }
+        resolvedCategory = custom.name;
+      }
+    }
+
+    // 2. Perform atomic update & stock reconciliation in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.expense.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+
+      if (!existing) {
+        throw new ExpenseApiError('Gasto no encontrado', 404);
+      }
+
+      // If items are specified, reconcile inventory
+      if (items !== undefined) {
+        const oldQtyMap = new Map<string, number>();
+        for (const item of existing.items) {
+          oldQtyMap.set(item.productId, (oldQtyMap.get(item.productId) || 0) + item.quantity);
+        }
+
+        const newQtyMap = new Map<string, number>();
+        const newCostMap = new Map<string, number>();
+        for (const item of items) {
+          newQtyMap.set(item.productId, (newQtyMap.get(item.productId) || 0) + item.quantity);
+          newCostMap.set(item.productId, item.unitCost);
+        }
+
+        const allProductIds = new Set([...oldQtyMap.keys(), ...newQtyMap.keys()]);
+
+        // Validate that all products exist
+        for (const prodId of allProductIds) {
+          const product = await tx.product.findUnique({ where: { id: prodId } });
+          if (!product) {
+            throw new ExpenseApiError(`Producto no encontrado: ID ${prodId}`, 400);
+          }
+        }
+
+        // Apply net stock adjustment delta and cost updates
+        for (const prodId of allProductIds) {
+          const oldQty = oldQtyMap.get(prodId) || 0;
+          const newQty = newQtyMap.get(prodId) || 0;
+          const delta = newQty - oldQty;
+
+          const updateData: any = {};
+          if (delta !== 0) {
+            updateData.stock = { increment: delta };
+          }
+          if (newCostMap.has(prodId)) {
+            updateData.cost = newCostMap.get(prodId)!;
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            await tx.product.update({
+              where: { id: prodId },
+              data: updateData,
+            });
+          }
+        }
+
+        // Recreate expense items
+        await tx.expenseItem.deleteMany({ where: { expenseId: id } });
+        if (items.length > 0) {
+          await tx.expenseItem.createMany({
+            data: items.map((item) => ({
+              expenseId: id,
+              productId: item.productId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+            })),
+          });
+        }
+      }
+
+      // 3. Update expense scalar fields
+      const updateData: any = {};
+      if (description !== undefined) updateData.description = description;
+      if (amount !== undefined) updateData.amount = amount;
+      if (resolvedCategory !== undefined) updateData.category = resolvedCategory;
+      if (department !== undefined) updateData.department = department;
+      if (date !== undefined) updateData.date = new Date(date);
+
+      const updatedExpense = await tx.expense.update({
+        where: { id },
+        data: updateData,
+        include: {
+          user: { select: { name: true } },
+          items: {
+            include: { product: { select: { name: true, sku: true } } },
+          },
+        },
+      });
+
+      return updatedExpense;
+    });
+
+    return c.json({ success: true, message: 'Gasto actualizado correctamente', expense: result });
+  } catch (error: any) {
+    if (error instanceof ExpenseApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json({ error: error.message || 'Error al actualizar el gasto' }, 500);
   }
 });
 

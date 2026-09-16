@@ -83,6 +83,14 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
           expenseCategoryTableExists = true;
         }
 
+        let shiftTableExists = false;
+        const shiftTable = db.query(`
+          SELECT name FROM sqlite_master WHERE type='table' AND name='Shift'
+        `).get();
+        if (shiftTable) {
+          shiftTableExists = true;
+        }
+
         const baselineMigrations: string[] = ['20260703201908_init'];
         if (cafeTableExists) {
           baselineMigrations.push('20260703205317_add_tables_feature');
@@ -99,6 +107,9 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
         }
         if (expenseCategoryTableExists) {
           baselineMigrations.push('20260915151500_add_expense_categories');
+        }
+        if (shiftTableExists) {
+          baselineMigrations.push('20260916160000_add_shift_model');
         }
 
         const insertBaseline = db.prepare(`
@@ -153,10 +164,37 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
       console.log(`🎉 Se aplicaron ${migrationsAppliedCount} migraciones correctamente.`);
     }
 
-    // 5. Check if fresh database needs default seed data
+    // 5. Ensure "Sin categoría" exists across all databases
+    ensureDefaultCategoryExists(db);
+
+    // 6. Check if fresh database needs default seed data
     await checkAndSeedFreshDatabase(db);
   } finally {
     db.close();
+  }
+}
+
+function ensureDefaultCategoryExists(db: Database) {
+  try {
+    const categoryTableExists = db.query(`
+      SELECT name FROM sqlite_master WHERE type='table' AND name='Category'
+    `).get();
+    if (!categoryTableExists) return;
+
+    const defaultCat = db.query(`
+      SELECT id FROM "Category" WHERE name = 'Sin categoría'
+    `).get();
+
+    if (!defaultCat) {
+      const now = new Date().toISOString();
+      db.prepare(`
+        INSERT INTO "Category" (id, name, description, createdAt, updatedAt)
+        VALUES (?, 'Sin categoría', 'Categoría por defecto para productos sin clasificar', ?, ?)
+      `).run(crypto.randomUUID(), now, now);
+      console.log('📦 Categoría por defecto "Sin categoría" asegurada.');
+    }
+  } catch (err) {
+    console.error('⚠️ Error al verificar/crear "Sin categoría":', err);
   }
 }
 
@@ -184,7 +222,8 @@ async function checkAndSeedFreshDatabase(db: Database) {
                (?, 'cajero', ?, 'Cajero Café', 'CASHIER', 1, ?, ?)
       `).run(adminId, adminPinHash, now, now, cashierId, cashierPinHash, now, now);
 
-      // 2. Default Categories
+      // 2. Default Categories (including "Sin categoría")
+      const catDefId = crypto.randomUUID();
       const catSuppId = crypto.randomUUID();
       const catBebId = crypto.randomUUID();
       const catSnkId = crypto.randomUUID();
@@ -192,11 +231,12 @@ async function checkAndSeedFreshDatabase(db: Database) {
 
       db.prepare(`
         INSERT INTO "Category" (id, name, description, createdAt, updatedAt)
-        VALUES (?, 'Suplementos', 'Proteínas, creatinas y colágenos', ?, ?),
+        VALUES (?, 'Sin categoría', 'Categoría por defecto para productos sin clasificar', ?, ?),
+               (?, 'Suplementos', 'Proteínas, creatinas y colágenos', ?, ?),
                (?, 'Bebidas', 'Cafés, tés, jugos y bebidas embotelladas', ?, ?),
                (?, 'Snacks', 'Barras saludables, frutos secos y chocolates', ?, ?),
                (?, 'Panadería', 'Panes, galletas y repostería saludable', ?, ?)
-      `).run(catSuppId, now, now, catBebId, now, now, catSnkId, now, now, catPanId, now, now);
+      `).run(catDefId, now, now, catSuppId, now, now, catBebId, now, now, catSnkId, now, now, catPanId, now, now);
 
       // 3. Default Products
       const insertProduct = db.prepare(`

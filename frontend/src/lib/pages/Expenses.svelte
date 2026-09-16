@@ -1,22 +1,85 @@
 <script lang="ts">
-  import { user, products, refreshTrigger, triggerRefresh } from '../store';
+  import { user, products, refreshTrigger, triggerRefresh, currentShift } from '../store';
   import {
     getExpenses,
     createExpense,
+    updateExpense,
     getExpenseCategories,
     createExpenseCategory,
     updateExpenseCategory,
     deleteExpenseCategory
   } from '../api/expenses';
   import ExpenseRow from '../components/organisms/ExpenseRow.svelte';
+  import OpenShiftModal from '../components/organisms/OpenShiftModal.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
 
   let currentSubTab = $state('log'); // 'log' | 'register' | 'categories'
   let expenseType = $state('operating'); // 'operating' | 'supplies'
+  let showOpenShiftModal = $state(false);
 
   // Past expenses log
   let expenses = $state<any[]>([]);
   let searchQuery = $state('');
+
+  // Edit Expense State (Admin only)
+  let showEditExpenseModal = $state(false);
+  let editingExpense = $state<any>(null);
+  let editDesc = $state('');
+  let editAmount = $state<number | string>('');
+  let editCategory = $state('');
+  let editDept = $state('GENERAL');
+  let editDate = $state('');
+  let isUpdatingExpense = $state(false);
+  let editExpenseError = $state('');
+
+  function openEditExpenseModal(exp: any) {
+    if ($user?.role !== 'ADMIN') return;
+    editingExpense = exp;
+    editDesc = exp.description || '';
+    editAmount = exp.amount || 0;
+    editCategory = exp.category || 'other';
+    editDept = exp.department || 'GENERAL';
+    const d = exp.date || exp.createdAt ? new Date(exp.date || exp.createdAt) : new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    editDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    editExpenseError = '';
+    showEditExpenseModal = true;
+  }
+
+  async function handleUpdateExpense(e: SubmitEvent) {
+    e.preventDefault();
+    if (!editingExpense || $user?.role !== 'ADMIN') return;
+
+    if (!editDesc.trim()) {
+      editExpenseError = 'La descripción es requerida.';
+      return;
+    }
+    const amt = Number(editAmount);
+    if (isNaN(amt) || amt <= 0) {
+      editExpenseError = 'El monto debe ser un valor positivo mayor a 0.';
+      return;
+    }
+
+    isUpdatingExpense = true;
+    editExpenseError = '';
+    try {
+      await updateExpense(editingExpense.id, {
+        description: editDesc.trim(),
+        amount: amt,
+        category: editCategory,
+        department: editDept,
+        date: editDate ? new Date(editDate).toISOString() : undefined,
+      });
+      showEditExpenseModal = false;
+      editingExpense = null;
+      loadExpenses();
+    } catch (err: any) {
+      console.error('Error updating expense:', err);
+      editExpenseError = err.message || 'Error al actualizar el egreso.';
+    } finally {
+      isUpdatingExpense = false;
+    }
+  }
 
   // Operating Expense Form
   let opDesc = $state('');
@@ -121,6 +184,10 @@
 
   // Submit Operating Expense
   async function submitOperatingExpense() {
+    if (!$currentShift?.shift || $currentShift.shift.status !== 'OPEN') {
+      showOpenShiftModal = true;
+      return;
+    }
     const amt = parseFloat(opAmount);
     if (!opDesc || isNaN(amt) || amt <= 0) {
       alert('Ingresa una descripción y monto válido.');
@@ -147,6 +214,10 @@
 
   // Submit Supplies Expense
   async function submitSuppliesExpense() {
+    if (!$currentShift?.shift || $currentShift.shift.status !== 'OPEN') {
+      showOpenShiftModal = true;
+      return;
+    }
     if (!supDesc) {
       alert('Ingresa una descripción para el gasto.');
       return;
@@ -304,14 +375,15 @@
               <th>Productos Comprados</th>
               <th class="text-right">Monto</th>
               <th>Registrado Por</th>
+              <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {#each filteredExpenses as exp}
-              <ExpenseRow expense={exp} />
+              <ExpenseRow expense={exp} onedit={openEditExpenseModal} />
             {:else}
               <tr>
-                <td colspan="7" class="text-center text-muted italic">No se han registrado egresos o compras de suministros aún.</td>
+                <td colspan="8" class="text-center text-muted italic">No se han registrado egresos o compras de suministros aún.</td>
               </tr>
             {/each}
           </tbody>
@@ -628,14 +700,143 @@
   </div>
 {/if}
 
+<!-- ==========================================
+     ADMIN EDIT EXPENSE MODAL
+     ========================================== -->
+{#if showEditExpenseModal && editingExpense}
+  <div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="edit-expense-title">
+    <div class="modal-container glass-panel animate-scale-up" style="max-width: 520px;">
+      <header class="modal-header">
+        <h2 id="edit-expense-title">✏️ Modificar Registro de Egreso</h2>
+        <button
+          type="button"
+          class="close-modal-btn"
+          onclick={() => { showEditExpenseModal = false; editingExpense = null; }}
+          aria-label="Cerrar modal"
+        >✕</button>
+      </header>
+
+      <form onsubmit={handleUpdateExpense}>
+        <div class="product-form-body">
+          {#if editExpenseError}
+            <div class="error-banner animate-fade-in" style="margin: 0 0 12px 0;">
+              ⚠️ {editExpenseError}
+            </div>
+          {/if}
+
+          <div class="form-group">
+            <label for="edit-exp-desc">Concepto / Descripción <span class="required">*</span></label>
+            <input
+              type="text"
+              id="edit-exp-desc"
+              class="form-control"
+              bind:value={editDesc}
+              placeholder="Descripción del egreso..."
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="edit-exp-amount">Monto Total ($) <span class="required">*</span></label>
+            <input
+              type="number"
+              id="edit-exp-amount"
+              class="form-control"
+              bind:value={editAmount}
+              min="1"
+              step="any"
+              placeholder="Ej: 50000"
+              required
+            />
+          </div>
+
+          <div class="form-row" style="display: flex; gap: 12px;">
+            <div class="form-group flex-1">
+              <label for="edit-exp-cat">Categoría</label>
+              <select id="edit-exp-cat" class="form-control" bind:value={editCategory}>
+                <option value="utilities">💡 Servicios Públicos</option>
+                <option value="rent">🏢 Arriendo / Local</option>
+                <option value="supplies">📦 Papelería / Suministros</option>
+                <option value="payroll">👥 Nómina / Sueldos</option>
+                <option value="maintenance">🧹 Mantenimiento / Aseo</option>
+                <option value="marketing">📢 Publicidad y Marketing</option>
+                <option value="services">📑 Servicios Profesionales</option>
+                <option value="taxes">🏛️ Impuestos y Tasas</option>
+                <option value="transport">🚚 Transporte y Domicilios</option>
+                <option value="equipment">⚙️ Equipamiento y Menaje</option>
+                <option value="waste">🗑️ Mermas y Pérdidas</option>
+                <option value="other">💸 Otros Egresos</option>
+                {#each expenseCategories as ec}
+                  <option value={ec.name}>🏷️ {ec.name}</option>
+                {/each}
+              </select>
+            </div>
+
+            <div class="form-group flex-1">
+              <label for="edit-exp-dept">Departamento</label>
+              <select id="edit-exp-dept" class="form-control" bind:value={editDept}>
+                <option value="GENERAL">General</option>
+                <option value="MARKET">Mercado</option>
+                <option value="CAFE">Café</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-exp-date">Fecha del Egreso</label>
+            <input
+              type="datetime-local"
+              id="edit-exp-date"
+              class="form-control"
+              bind:value={editDate}
+            />
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick={() => { showEditExpenseModal = false; editingExpense = null; }}
+            disabled={isUpdatingExpense}
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="btn btn-general"
+            disabled={isUpdatingExpense}
+          >
+            {#if isUpdatingExpense}
+              <Spinner size="16px" /> Guardando...
+            {:else}
+              Guardar Cambios
+            {/if}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+{/if}
+
+{#if showOpenShiftModal}
+  <OpenShiftModal
+    onclose={() => (showOpenShiftModal = false)}
+    onsuccess={() => {
+      showOpenShiftModal = false;
+    }}
+  />
+{/if}
+
 <style>
   .expenses-container {
-    height: 100%;
+    min-height: 100%;
     width: 100%;
     gap: 16px;
     padding: 6px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
   }
 
   .flex-column {

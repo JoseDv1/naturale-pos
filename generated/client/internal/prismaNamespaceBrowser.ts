@@ -61,6 +61,7 @@ export const ModelName = {
   Sale: 'Sale',
   SaleItem: 'SaleItem',
   SalePayment: 'SalePayment',
+  Shift: 'Shift',
   ProductTransfer: 'ProductTransfer',
   CafeTable: 'CafeTable'
 } as const
@@ -159,7 +160,8 @@ export const ExpenseScalarFieldEnum = {
   userId: 'userId',
   date: 'date',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  shiftId: 'shiftId'
 } as const
 
 export type ExpenseScalarFieldEnum = (typeof ExpenseScalarFieldEnum)[keyof typeof ExpenseScalarFieldEnum]
@@ -183,7 +185,8 @@ export const SaleScalarFieldEnum = {
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  tableId: 'tableId'
+  tableId: 'tableId',
+  shiftId: 'shiftId'
 } as const
 
 export type SaleScalarFieldEnum = (typeof SaleScalarFieldEnum)[keyof typeof SaleScalarFieldEnum]
@@ -210,6 +213,28 @@ export const SalePaymentScalarFieldEnum = {
 } as const
 
 export type SalePaymentScalarFieldEnum = (typeof SalePaymentScalarFieldEnum)[keyof typeof SalePaymentScalarFieldEnum]
+
+
+export const ShiftScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  status: 'status',
+  initialCash: 'initialCash',
+  openedAt: 'openedAt',
+  closedAt: 'closedAt',
+  closedByUserId: 'closedByUserId',
+  expectedCash: 'expectedCash',
+  actualCash: 'actualCash',
+  difference: 'difference',
+  totalSales: 'totalSales',
+  totalCard: 'totalCard',
+  totalTransfer: 'totalTransfer',
+  totalInternal: 'totalInternal',
+  totalExpenses: 'totalExpenses',
+  notes: 'notes'
+} as const
+
+export type ShiftScalarFieldEnum = (typeof ShiftScalarFieldEnum)[keyof typeof ShiftScalarFieldEnum]
 
 
 export const ProductTransferScalarFieldEnum = {

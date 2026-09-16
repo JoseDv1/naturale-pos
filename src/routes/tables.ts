@@ -147,11 +147,13 @@ tables.post('/:id/open', async (c) => {
   }
 });
 
-tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
+const saveOrOrderValidator = zValidator('json', tableItemsSchema, (result, c) => {
   if (!result.success) {
     return c.json({ error: result.error.issues[0].message }, 400);
   }
-}), async (c) => {
+});
+
+const saveOrOrderHandler = async (c: any) => {
   const id = c.req.param('id');
   try {
     const { items } = c.req.valid('json');
@@ -321,7 +323,12 @@ tables.put('/:id/save', zValidator('json', tableItemsSchema, (result, c) => {
     }
     return c.json({ error: error.message || 'Error al guardar la orden de la mesa' }, 500);
   }
-});
+};
+
+tables.put('/:id/save', saveOrOrderValidator, saveOrOrderHandler);
+tables.post('/:id/save', saveOrOrderValidator, saveOrOrderHandler);
+tables.post('/:id/order', saveOrOrderValidator, saveOrOrderHandler);
+tables.put('/:id/order', saveOrOrderValidator, saveOrOrderHandler);
 
 tables.post('/:id/checkout', zValidator('json', tableCheckoutSchema, (result, c) => {
   if (!result.success) {
@@ -331,6 +338,14 @@ tables.post('/:id/checkout', zValidator('json', tableCheckoutSchema, (result, c)
   const id = c.req.param('id');
   try {
     const { payments } = c.req.valid('json');
+
+    // Active Shift Gatekeeper
+    const activeShift = await prisma.shift.findFirst({
+      where: { status: 'OPEN' },
+    });
+    if (!activeShift) {
+      return c.json({ error: 'No hay un turno de caja abierto. Debe abrir caja antes de realizar ventas o registrar gastos.' }, 400);
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const table = await tx.cafeTable.findUnique({
@@ -368,7 +383,10 @@ tables.post('/:id/checkout', zValidator('json', tableCheckoutSchema, (result, c)
       // Update sale status to COMPLETED
       const sale = await tx.sale.update({
         where: { id: saleId },
-        data: { status: 'COMPLETED' },
+        data: {
+          status: 'COMPLETED',
+          shiftId: activeShift.id,
+        },
         include: {
           items: {
             include: { product: true, variant: true }
@@ -912,6 +930,14 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
     return c.json({ error: 'La suma de pagos no coincide con el total de los productos a facturar' }, 400);
   }
 
+  // Active Shift Gatekeeper
+  const activeShift = await prisma.shift.findFirst({
+    where: { status: 'OPEN' },
+  });
+  if (!activeShift) {
+    return c.json({ error: 'No hay un turno de caja abierto. Debe abrir caja antes de realizar ventas o registrar gastos.' }, 400);
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       const table = await tx.cafeTable.findUnique({
@@ -945,6 +971,7 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
           userId,
           total: itemsTotal,
           status: 'COMPLETED',
+          shiftId: activeShift.id,
           tableId
         }
       });

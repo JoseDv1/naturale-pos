@@ -44,6 +44,7 @@ export type ExpenseMinAggregateOutputType = {
   date: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  shiftId: string | null
 }
 
 export type ExpenseMaxAggregateOutputType = {
@@ -56,6 +57,7 @@ export type ExpenseMaxAggregateOutputType = {
   date: Date | null
   createdAt: Date | null
   updatedAt: Date | null
+  shiftId: string | null
 }
 
 export type ExpenseCountAggregateOutputType = {
@@ -68,6 +70,7 @@ export type ExpenseCountAggregateOutputType = {
   date: number
   createdAt: number
   updatedAt: number
+  shiftId: number
   _all: number
 }
 
@@ -90,6 +93,7 @@ export type ExpenseMinAggregateInputType = {
   date?: true
   createdAt?: true
   updatedAt?: true
+  shiftId?: true
 }
 
 export type ExpenseMaxAggregateInputType = {
@@ -102,6 +106,7 @@ export type ExpenseMaxAggregateInputType = {
   date?: true
   createdAt?: true
   updatedAt?: true
+  shiftId?: true
 }
 
 export type ExpenseCountAggregateInputType = {
@@ -114,6 +119,7 @@ export type ExpenseCountAggregateInputType = {
   date?: true
   createdAt?: true
   updatedAt?: true
+  shiftId?: true
   _all?: true
 }
 
@@ -213,6 +219,7 @@ export type ExpenseGroupByOutputType = {
   date: Date
   createdAt: Date
   updatedAt: Date
+  shiftId: string | null
   _count: ExpenseCountAggregateOutputType | null
   _avg: ExpenseAvgAggregateOutputType | null
   _sum: ExpenseSumAggregateOutputType | null
@@ -248,8 +255,10 @@ export type ExpenseWhereInput = {
   date?: Prisma.DateTimeFilter<"Expense"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"Expense"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Expense"> | Date | string
+  shiftId?: Prisma.StringNullableFilter<"Expense"> | string | null
   user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   items?: Prisma.ExpenseItemListRelationFilter
+  shift?: Prisma.XOR<Prisma.ShiftNullableScalarRelationFilter, Prisma.ShiftWhereInput> | null
 }
 
 export type ExpenseOrderByWithRelationInput = {
@@ -262,8 +271,10 @@ export type ExpenseOrderByWithRelationInput = {
   date?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  shiftId?: Prisma.SortOrderInput | Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   items?: Prisma.ExpenseItemOrderByRelationAggregateInput
+  shift?: Prisma.ShiftOrderByWithRelationInput
 }
 
 export type ExpenseWhereUniqueInput = Prisma.AtLeast<{
@@ -279,8 +290,10 @@ export type ExpenseWhereUniqueInput = Prisma.AtLeast<{
   date?: Prisma.DateTimeFilter<"Expense"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"Expense"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Expense"> | Date | string
+  shiftId?: Prisma.StringNullableFilter<"Expense"> | string | null
   user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   items?: Prisma.ExpenseItemListRelationFilter
+  shift?: Prisma.XOR<Prisma.ShiftNullableScalarRelationFilter, Prisma.ShiftWhereInput> | null
 }, "id">
 
 export type ExpenseOrderByWithAggregationInput = {
@@ -293,6 +306,7 @@ export type ExpenseOrderByWithAggregationInput = {
   date?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  shiftId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ExpenseCountOrderByAggregateInput
   _avg?: Prisma.ExpenseAvgOrderByAggregateInput
   _max?: Prisma.ExpenseMaxOrderByAggregateInput
@@ -313,6 +327,7 @@ export type ExpenseScalarWhereWithAggregatesInput = {
   date?: Prisma.DateTimeWithAggregatesFilter<"Expense"> | Date | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Expense"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Expense"> | Date | string
+  shiftId?: Prisma.StringNullableWithAggregatesFilter<"Expense"> | string | null
 }
 
 export type ExpenseCreateInput = {
@@ -326,6 +341,7 @@ export type ExpenseCreateInput = {
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutExpensesInput
   items?: Prisma.ExpenseItemCreateNestedManyWithoutExpenseInput
+  shift?: Prisma.ShiftCreateNestedOneWithoutExpensesInput
 }
 
 export type ExpenseUncheckedCreateInput = {
@@ -338,6 +354,7 @@ export type ExpenseUncheckedCreateInput = {
   date?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
+  shiftId?: string | null
   items?: Prisma.ExpenseItemUncheckedCreateNestedManyWithoutExpenseInput
 }
 
@@ -352,6 +369,7 @@ export type ExpenseUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutExpensesNestedInput
   items?: Prisma.ExpenseItemUpdateManyWithoutExpenseNestedInput
+  shift?: Prisma.ShiftUpdateOneWithoutExpensesNestedInput
 }
 
 export type ExpenseUncheckedUpdateInput = {
@@ -364,6 +382,7 @@ export type ExpenseUncheckedUpdateInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  shiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.ExpenseItemUncheckedUpdateManyWithoutExpenseNestedInput
 }
 
@@ -377,6 +396,7 @@ export type ExpenseCreateManyInput = {
   date?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
+  shiftId?: string | null
 }
 
 export type ExpenseUpdateManyMutationInput = {
@@ -400,6 +420,7 @@ export type ExpenseUncheckedUpdateManyInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  shiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ExpenseListRelationFilter = {
@@ -422,6 +443,7 @@ export type ExpenseCountOrderByAggregateInput = {
   date?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  shiftId?: Prisma.SortOrder
 }
 
 export type ExpenseAvgOrderByAggregateInput = {
@@ -438,6 +460,7 @@ export type ExpenseMaxOrderByAggregateInput = {
   date?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  shiftId?: Prisma.SortOrder
 }
 
 export type ExpenseMinOrderByAggregateInput = {
@@ -450,6 +473,7 @@ export type ExpenseMinOrderByAggregateInput = {
   date?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  shiftId?: Prisma.SortOrder
 }
 
 export type ExpenseSumOrderByAggregateInput = {
@@ -517,6 +541,48 @@ export type ExpenseUpdateOneRequiredWithoutItemsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ExpenseUpdateToOneWithWhereWithoutItemsInput, Prisma.ExpenseUpdateWithoutItemsInput>, Prisma.ExpenseUncheckedUpdateWithoutItemsInput>
 }
 
+export type ExpenseCreateNestedManyWithoutShiftInput = {
+  create?: Prisma.XOR<Prisma.ExpenseCreateWithoutShiftInput, Prisma.ExpenseUncheckedCreateWithoutShiftInput> | Prisma.ExpenseCreateWithoutShiftInput[] | Prisma.ExpenseUncheckedCreateWithoutShiftInput[]
+  connectOrCreate?: Prisma.ExpenseCreateOrConnectWithoutShiftInput | Prisma.ExpenseCreateOrConnectWithoutShiftInput[]
+  createMany?: Prisma.ExpenseCreateManyShiftInputEnvelope
+  connect?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+}
+
+export type ExpenseUncheckedCreateNestedManyWithoutShiftInput = {
+  create?: Prisma.XOR<Prisma.ExpenseCreateWithoutShiftInput, Prisma.ExpenseUncheckedCreateWithoutShiftInput> | Prisma.ExpenseCreateWithoutShiftInput[] | Prisma.ExpenseUncheckedCreateWithoutShiftInput[]
+  connectOrCreate?: Prisma.ExpenseCreateOrConnectWithoutShiftInput | Prisma.ExpenseCreateOrConnectWithoutShiftInput[]
+  createMany?: Prisma.ExpenseCreateManyShiftInputEnvelope
+  connect?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+}
+
+export type ExpenseUpdateManyWithoutShiftNestedInput = {
+  create?: Prisma.XOR<Prisma.ExpenseCreateWithoutShiftInput, Prisma.ExpenseUncheckedCreateWithoutShiftInput> | Prisma.ExpenseCreateWithoutShiftInput[] | Prisma.ExpenseUncheckedCreateWithoutShiftInput[]
+  connectOrCreate?: Prisma.ExpenseCreateOrConnectWithoutShiftInput | Prisma.ExpenseCreateOrConnectWithoutShiftInput[]
+  upsert?: Prisma.ExpenseUpsertWithWhereUniqueWithoutShiftInput | Prisma.ExpenseUpsertWithWhereUniqueWithoutShiftInput[]
+  createMany?: Prisma.ExpenseCreateManyShiftInputEnvelope
+  set?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+  disconnect?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+  delete?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+  connect?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+  update?: Prisma.ExpenseUpdateWithWhereUniqueWithoutShiftInput | Prisma.ExpenseUpdateWithWhereUniqueWithoutShiftInput[]
+  updateMany?: Prisma.ExpenseUpdateManyWithWhereWithoutShiftInput | Prisma.ExpenseUpdateManyWithWhereWithoutShiftInput[]
+  deleteMany?: Prisma.ExpenseScalarWhereInput | Prisma.ExpenseScalarWhereInput[]
+}
+
+export type ExpenseUncheckedUpdateManyWithoutShiftNestedInput = {
+  create?: Prisma.XOR<Prisma.ExpenseCreateWithoutShiftInput, Prisma.ExpenseUncheckedCreateWithoutShiftInput> | Prisma.ExpenseCreateWithoutShiftInput[] | Prisma.ExpenseUncheckedCreateWithoutShiftInput[]
+  connectOrCreate?: Prisma.ExpenseCreateOrConnectWithoutShiftInput | Prisma.ExpenseCreateOrConnectWithoutShiftInput[]
+  upsert?: Prisma.ExpenseUpsertWithWhereUniqueWithoutShiftInput | Prisma.ExpenseUpsertWithWhereUniqueWithoutShiftInput[]
+  createMany?: Prisma.ExpenseCreateManyShiftInputEnvelope
+  set?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+  disconnect?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+  delete?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+  connect?: Prisma.ExpenseWhereUniqueInput | Prisma.ExpenseWhereUniqueInput[]
+  update?: Prisma.ExpenseUpdateWithWhereUniqueWithoutShiftInput | Prisma.ExpenseUpdateWithWhereUniqueWithoutShiftInput[]
+  updateMany?: Prisma.ExpenseUpdateManyWithWhereWithoutShiftInput | Prisma.ExpenseUpdateManyWithWhereWithoutShiftInput[]
+  deleteMany?: Prisma.ExpenseScalarWhereInput | Prisma.ExpenseScalarWhereInput[]
+}
+
 export type ExpenseCreateWithoutUserInput = {
   id?: string
   description: string
@@ -527,6 +593,7 @@ export type ExpenseCreateWithoutUserInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.ExpenseItemCreateNestedManyWithoutExpenseInput
+  shift?: Prisma.ShiftCreateNestedOneWithoutExpensesInput
 }
 
 export type ExpenseUncheckedCreateWithoutUserInput = {
@@ -538,6 +605,7 @@ export type ExpenseUncheckedCreateWithoutUserInput = {
   date?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
+  shiftId?: string | null
   items?: Prisma.ExpenseItemUncheckedCreateNestedManyWithoutExpenseInput
 }
 
@@ -579,6 +647,7 @@ export type ExpenseScalarWhereInput = {
   date?: Prisma.DateTimeFilter<"Expense"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"Expense"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Expense"> | Date | string
+  shiftId?: Prisma.StringNullableFilter<"Expense"> | string | null
 }
 
 export type ExpenseCreateWithoutItemsInput = {
@@ -591,6 +660,7 @@ export type ExpenseCreateWithoutItemsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutExpensesInput
+  shift?: Prisma.ShiftCreateNestedOneWithoutExpensesInput
 }
 
 export type ExpenseUncheckedCreateWithoutItemsInput = {
@@ -603,6 +673,7 @@ export type ExpenseUncheckedCreateWithoutItemsInput = {
   date?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
+  shiftId?: string | null
 }
 
 export type ExpenseCreateOrConnectWithoutItemsInput = {
@@ -631,6 +702,7 @@ export type ExpenseUpdateWithoutItemsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutExpensesNestedInput
+  shift?: Prisma.ShiftUpdateOneWithoutExpensesNestedInput
 }
 
 export type ExpenseUncheckedUpdateWithoutItemsInput = {
@@ -643,6 +715,58 @@ export type ExpenseUncheckedUpdateWithoutItemsInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  shiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ExpenseCreateWithoutShiftInput = {
+  id?: string
+  description: string
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  category?: string
+  department?: $Enums.Department
+  date?: Date | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user?: Prisma.UserCreateNestedOneWithoutExpensesInput
+  items?: Prisma.ExpenseItemCreateNestedManyWithoutExpenseInput
+}
+
+export type ExpenseUncheckedCreateWithoutShiftInput = {
+  id?: string
+  description: string
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  category?: string
+  department?: $Enums.Department
+  userId?: string | null
+  date?: Date | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.ExpenseItemUncheckedCreateNestedManyWithoutExpenseInput
+}
+
+export type ExpenseCreateOrConnectWithoutShiftInput = {
+  where: Prisma.ExpenseWhereUniqueInput
+  create: Prisma.XOR<Prisma.ExpenseCreateWithoutShiftInput, Prisma.ExpenseUncheckedCreateWithoutShiftInput>
+}
+
+export type ExpenseCreateManyShiftInputEnvelope = {
+  data: Prisma.ExpenseCreateManyShiftInput | Prisma.ExpenseCreateManyShiftInput[]
+}
+
+export type ExpenseUpsertWithWhereUniqueWithoutShiftInput = {
+  where: Prisma.ExpenseWhereUniqueInput
+  update: Prisma.XOR<Prisma.ExpenseUpdateWithoutShiftInput, Prisma.ExpenseUncheckedUpdateWithoutShiftInput>
+  create: Prisma.XOR<Prisma.ExpenseCreateWithoutShiftInput, Prisma.ExpenseUncheckedCreateWithoutShiftInput>
+}
+
+export type ExpenseUpdateWithWhereUniqueWithoutShiftInput = {
+  where: Prisma.ExpenseWhereUniqueInput
+  data: Prisma.XOR<Prisma.ExpenseUpdateWithoutShiftInput, Prisma.ExpenseUncheckedUpdateWithoutShiftInput>
+}
+
+export type ExpenseUpdateManyWithWhereWithoutShiftInput = {
+  where: Prisma.ExpenseScalarWhereInput
+  data: Prisma.XOR<Prisma.ExpenseUpdateManyMutationInput, Prisma.ExpenseUncheckedUpdateManyWithoutShiftInput>
 }
 
 export type ExpenseCreateManyUserInput = {
@@ -654,6 +778,7 @@ export type ExpenseCreateManyUserInput = {
   date?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
+  shiftId?: string | null
 }
 
 export type ExpenseUpdateWithoutUserInput = {
@@ -666,6 +791,7 @@ export type ExpenseUpdateWithoutUserInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ExpenseItemUpdateManyWithoutExpenseNestedInput
+  shift?: Prisma.ShiftUpdateOneWithoutExpensesNestedInput
 }
 
 export type ExpenseUncheckedUpdateWithoutUserInput = {
@@ -677,6 +803,7 @@ export type ExpenseUncheckedUpdateWithoutUserInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  shiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   items?: Prisma.ExpenseItemUncheckedUpdateManyWithoutExpenseNestedInput
 }
 
@@ -686,6 +813,57 @@ export type ExpenseUncheckedUpdateManyWithoutUserInput = {
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   category?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  shiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ExpenseCreateManyShiftInput = {
+  id?: string
+  description: string
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  category?: string
+  department?: $Enums.Department
+  userId?: string | null
+  date?: Date | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type ExpenseUpdateWithoutShiftInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneWithoutExpensesNestedInput
+  items?: Prisma.ExpenseItemUpdateManyWithoutExpenseNestedInput
+}
+
+export type ExpenseUncheckedUpdateWithoutShiftInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.ExpenseItemUncheckedUpdateManyWithoutExpenseNestedInput
+}
+
+export type ExpenseUncheckedUpdateManyWithoutShiftInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.EnumDepartmentFieldUpdateOperationsInput | $Enums.Department
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -732,8 +910,10 @@ export type ExpenseSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   date?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  shiftId?: boolean
   user?: boolean | Prisma.Expense$userArgs<ExtArgs>
   items?: boolean | Prisma.Expense$itemsArgs<ExtArgs>
+  shift?: boolean | Prisma.Expense$shiftArgs<ExtArgs>
   _count?: boolean | Prisma.ExpenseCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["expense"]>
 
@@ -747,7 +927,9 @@ export type ExpenseSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   date?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  shiftId?: boolean
   user?: boolean | Prisma.Expense$userArgs<ExtArgs>
+  shift?: boolean | Prisma.Expense$shiftArgs<ExtArgs>
 }, ExtArgs["result"]["expense"]>
 
 export type ExpenseSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -760,7 +942,9 @@ export type ExpenseSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   date?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  shiftId?: boolean
   user?: boolean | Prisma.Expense$userArgs<ExtArgs>
+  shift?: boolean | Prisma.Expense$shiftArgs<ExtArgs>
 }, ExtArgs["result"]["expense"]>
 
 export type ExpenseSelectScalar = {
@@ -773,19 +957,23 @@ export type ExpenseSelectScalar = {
   date?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  shiftId?: boolean
 }
 
-export type ExpenseOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "description" | "amount" | "category" | "department" | "userId" | "date" | "createdAt" | "updatedAt", ExtArgs["result"]["expense"]>
+export type ExpenseOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "description" | "amount" | "category" | "department" | "userId" | "date" | "createdAt" | "updatedAt" | "shiftId", ExtArgs["result"]["expense"]>
 export type ExpenseInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.Expense$userArgs<ExtArgs>
   items?: boolean | Prisma.Expense$itemsArgs<ExtArgs>
+  shift?: boolean | Prisma.Expense$shiftArgs<ExtArgs>
   _count?: boolean | Prisma.ExpenseCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ExpenseIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.Expense$userArgs<ExtArgs>
+  shift?: boolean | Prisma.Expense$shiftArgs<ExtArgs>
 }
 export type ExpenseIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.Expense$userArgs<ExtArgs>
+  shift?: boolean | Prisma.Expense$shiftArgs<ExtArgs>
 }
 
 export type $ExpensePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -793,6 +981,7 @@ export type $ExpensePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   objects: {
     user: Prisma.$UserPayload<ExtArgs> | null
     items: Prisma.$ExpenseItemPayload<ExtArgs>[]
+    shift: Prisma.$ShiftPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -804,6 +993,7 @@ export type $ExpensePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     date: Date
     createdAt: Date
     updatedAt: Date
+    shiftId: string | null
   }, ExtArgs["result"]["expense"]>
   composites: {}
 }
@@ -1200,6 +1390,7 @@ export interface Prisma__ExpenseClient<T, Null = never, ExtArgs extends runtime.
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.Expense$userArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Expense$userArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   items<T extends Prisma.Expense$itemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Expense$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ExpenseItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  shift<T extends Prisma.Expense$shiftArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Expense$shiftArgs<ExtArgs>>): Prisma.Prisma__ShiftClient<runtime.Types.Result.GetResult<Prisma.$ShiftPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1238,6 +1429,7 @@ export interface ExpenseFieldRefs {
   readonly date: Prisma.FieldRef<"Expense", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Expense", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Expense", 'DateTime'>
+  readonly shiftId: Prisma.FieldRef<"Expense", 'String'>
 }
     
 
@@ -1677,6 +1869,25 @@ export type Expense$itemsArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   distinct?: Prisma.ExpenseItemScalarFieldEnum | Prisma.ExpenseItemScalarFieldEnum[]
+}
+
+/**
+ * Expense.shift
+ */
+export type Expense$shiftArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Shift
+   */
+  select?: Prisma.ShiftSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Shift
+   */
+  omit?: Prisma.ShiftOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ShiftInclude<ExtArgs> | null
+  where?: Prisma.ShiftWhereInput
 }
 
 /**

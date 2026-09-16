@@ -10,6 +10,7 @@ import transfers from './routes/transfers';
 import reports from './routes/reports';
 import tables from './routes/tables';
 import upload from './routes/upload';
+import shifts from './routes/shifts';
 import { authMiddleware } from './middleware/auth';
 
 const api = new Hono();
@@ -62,6 +63,7 @@ api.route('/transfers', transfers);
 api.route('/reports', reports);
 api.route('/tables', tables);
 api.route('/upload', upload);
+api.route('/shifts', shifts);
 
 export default api;
 export type ApiType = typeof api;

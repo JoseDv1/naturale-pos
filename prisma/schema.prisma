@@ -22,7 +22,6 @@ enum Department {
   GENERAL
 }
 
-
 enum SaleStatus {
   COMPLETED
   CANCELLED
@@ -42,6 +41,11 @@ enum TableStatus {
   OCCUPIED
 }
 
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
 // -----------------------------------------------------------------------------
 // Modelos
 // -----------------------------------------------------------------------------
@@ -58,6 +62,8 @@ model User {
   sales        Sale[]
   expenses     Expense[]
   transfers    ProductTransfer[]
+  shifts       Shift[]           @relation("ShiftOpenedByUser")
+  closedShifts Shift[]           @relation("ShiftClosedByUser")
 
   @@index([active]) // Búsqueda rápida de usuarios activos
 }
@@ -137,9 +143,12 @@ model Expense {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   items       ExpenseItem[]
+  shiftId     String?
+  shift       Shift?          @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
   @@index([userId])               // Índice para auditorías por usuario
   @@index([date])                 // Índice para filtros temporales/reportes mensuales
+  @@index([shiftId])              // Índice para egresos por turno
 }
 
 model ExpenseItem {
@@ -168,10 +177,13 @@ model Sale {
   tableId        String?
   table          CafeTable?    @relation("TableSales", fields: [tableId], references: [id])
   activeForTable CafeTable?    @relation("TableActiveSale")
+  shiftId        String?
+  shift          Shift?        @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
   @@index([userId])             // Índice para reportes de ventas por cajero
   @@index([tableId])            // Índice para mesas
   @@index([createdAt])          // Índice para reportes del día (cierre de caja)
+  @@index([shiftId])            // Índice para ventas por turno
 }
 
 model SaleItem {
@@ -200,6 +212,33 @@ model SalePayment {
 
   @@index([saleId])
   @@index([createdAt])          // Reportes de flujo de caja por método
+}
+
+model Shift {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation("ShiftOpenedByUser", fields: [userId], references: [id])
+  status         ShiftStatus   @default(OPEN)
+  initialCash    Decimal
+  openedAt       DateTime      @default(now())
+  closedAt       DateTime?
+  closedByUserId String?
+  closedByUser   User?         @relation("ShiftClosedByUser", fields: [closedByUserId], references: [id], onDelete: SetNull)
+  expectedCash   Decimal?
+  actualCash     Decimal?
+  difference     Decimal?
+  totalSales     Decimal?      @default(0)
+  totalCard      Decimal?      @default(0)
+  totalTransfer  Decimal?      @default(0)
+  totalInternal  Decimal?      @default(0)
+  totalExpenses  Decimal?      @default(0)
+  notes          String?
+  sales          Sale[]
+  expenses       Expense[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([openedAt])
 }
 
 model ProductTransfer {

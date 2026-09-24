@@ -30,6 +30,17 @@ export async function updateExpense(id: string, expenseData: any) {
   return res.json();
 }
 
+export async function deleteExpense(id: string) {
+  const res = await fetch(`/api/expenses/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al eliminar el gasto');
+  }
+  return res.json();
+}
+
 export async function getExpenseCategories() {
   const res = await fetch('/api/expenses/categories');
   if (!res.ok) throw new Error('Failed to fetch expense categories');

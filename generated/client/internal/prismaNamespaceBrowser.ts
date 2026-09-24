@@ -55,6 +55,7 @@ export const ModelName = {
   Category: 'Category',
   Product: 'Product',
   ProductVariant: 'ProductVariant',
+  ProductModifier: 'ProductModifier',
   ExpenseCategory: 'ExpenseCategory',
   Expense: 'Expense',
   ExpenseItem: 'ExpenseItem',
@@ -140,6 +141,21 @@ export const ProductVariantScalarFieldEnum = {
 export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnum)[keyof typeof ProductVariantScalarFieldEnum]
 
 
+export const ProductModifierScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  name: 'name',
+  price: 'price',
+  cost: 'cost',
+  isDefault: 'isDefault',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductModifierScalarFieldEnum = (typeof ProductModifierScalarFieldEnum)[keyof typeof ProductModifierScalarFieldEnum]
+
+
 export const ExpenseCategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -198,7 +214,8 @@ export const SaleItemScalarFieldEnum = {
   productId: 'productId',
   variantId: 'variantId',
   quantity: 'quantity',
-  price: 'price'
+  price: 'price',
+  notes: 'notes'
 } as const
 
 export type SaleItemScalarFieldEnum = (typeof SaleItemScalarFieldEnum)[keyof typeof SaleItemScalarFieldEnum]

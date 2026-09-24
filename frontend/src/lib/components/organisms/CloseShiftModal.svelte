@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { closeShift, getCurrentShift } from '../../api/shifts';
   import { currentShift, triggerRefresh, user } from '../../store';
   import Spinner from '../atoms/Spinner.svelte';
@@ -22,35 +23,32 @@
   let errorMessage = $state('');
   let closedReport = $state<any>(null);
 
-  // Fetch current live totals if not passed
-  $effect(() => {
-    if (shiftData) {
-      activeShift = shiftData.shift || shiftData;
-      totals = shiftData.realTimeTotals || null;
+  // Fetch current live totals once on mount
+  onMount(() => {
+    if (shiftData?.shift) {
+      activeShift = shiftData.shift;
+      totals = shiftData.realTimeTotals;
       if (totals) {
         isLoadingData = false;
-        if (actualCash === '') {
-          actualCash = totals.expectedCash;
-        }
+        actualCash = totals.expectedCash;
+        return;
       }
     }
 
-    if (!activeShift || !totals) {
-      getCurrentShift()
-        .then((data) => {
-          activeShift = data.shift;
-          totals = data.realTimeTotals;
-          if (totals && actualCash === '') {
-            actualCash = totals.expectedCash;
-          }
-        })
-        .catch((e) => {
-          errorMessage = e.message || 'Error al cargar los datos del turno activo.';
-        })
-        .finally(() => {
-          isLoadingData = false;
-        });
-    }
+    getCurrentShift()
+      .then((data) => {
+        activeShift = data.shift;
+        totals = data.realTimeTotals;
+        if (totals) {
+          actualCash = totals.expectedCash;
+        }
+      })
+      .catch((e) => {
+        errorMessage = e.message || 'Error al cargar los datos del turno activo.';
+      })
+      .finally(() => {
+        isLoadingData = false;
+      });
   });
 
   // Expected Cash: base + cashSales - expenses
@@ -191,7 +189,6 @@
                   bind:value={actualCash}
                   placeholder="0"
                   required
-                  autofocus
                 />
               </div>
             </div>

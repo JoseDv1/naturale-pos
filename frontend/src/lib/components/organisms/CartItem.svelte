@@ -5,11 +5,16 @@
     item: CartItemType;
     onupdateqty: (productId: string, variantId: string | null, delta: number) => void;
     onremove: (productId: string, variantId: string | null) => void;
+    oncustomize?: () => void;
   }
 
-  let { item, onupdateqty, onremove }: Props = $props();
+  let { item, onupdateqty, onremove, oncustomize }: Props = $props();
 
-  let unitPrice = $derived(item.variant ? Number(item.variant.price) : Number(item.product.price));
+  let unitPrice = $derived(
+    item.unitPrice !== undefined
+      ? Number(item.unitPrice)
+      : (item.variant ? Number(item.variant.price) : Number(item.product.price))
+  );
   let subtotal = $derived(unitPrice * item.quantity);
   let variantId = $derived(item.variant?.id || null);
 </script>
@@ -20,6 +25,9 @@
       <span class="item-name">{item.product.name}</span>
       {#if item.variant}
         <span class="variant-chip">✨ {item.variant.name}</span>
+      {/if}
+      {#if item.notes}
+        <span class="notes-chip">🍓 {item.notes}</span>
       {/if}
     </div>
     <span class="item-price">${unitPrice.toLocaleString()} c/u</span>
@@ -33,10 +41,23 @@
     </div>
     
     <span class="item-subtotal">${subtotal.toLocaleString()}</span>
-    
-    <button class="remove-btn" onclick={() => onremove(item.product.id, variantId)} aria-label="Eliminar producto del carrito">
-      ❌
-    </button>
+
+    <div class="action-buttons-group">
+      {#if oncustomize}
+        <button
+          type="button"
+          class="customize-btn"
+          onclick={oncustomize}
+          title="Personalizar adiciones y receta"
+          aria-label="Personalizar adiciones"
+        >
+          🍓
+        </button>
+      {/if}
+      <button class="remove-btn" onclick={() => onremove(item.product.id, variantId)} aria-label="Eliminar producto del carrito">
+        ❌
+      </button>
+    </div>
   </div>
 </div>
 
@@ -135,5 +156,39 @@
   }
   .remove-btn:hover {
     background: rgba(244, 63, 94, 0.1);
+  }
+
+  .notes-chip {
+    font-size: 0.72rem;
+    color: #f472b6;
+    background: rgba(236, 72, 153, 0.12);
+    border: 1px solid rgba(236, 72, 153, 0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+    line-height: 1.3;
+    word-break: break-word;
+  }
+
+  .action-buttons-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .customize-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+  }
+
+  .customize-btn:hover {
+    background: rgba(236, 72, 153, 0.2);
+    border-color: #f472b6;
   }
 </style>

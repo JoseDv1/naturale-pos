@@ -98,11 +98,20 @@
 
   // Payment helpers
   function addPayment() {
-    const val = parseFloat(currentAmountInput);
+    const val = Math.round((parseFloat(currentAmountInput) + Number.EPSILON) * 100) / 100;
     if (isNaN(val) || val <= 0) return;
 
-    payments = [...payments, { method: currentMethod, amount: val }];
+    const remaining = Math.round((remainingToPay + Number.EPSILON) * 100) / 100;
+    if (currentMethod === 'CASH' && val > remaining) {
+      payments = [...payments, { method: 'CASH', amount: remaining }];
+    } else if (val > remaining) {
+      errorMsg = 'El monto de tarjeta/transferencia no puede exceder el restante';
+      return;
+    } else {
+      payments = [...payments, { method: currentMethod, amount: val }];
+    }
     currentAmountInput = '';
+    errorMsg = '';
   }
 
   function removePayment(index: number) {

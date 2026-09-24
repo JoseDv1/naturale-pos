@@ -6,6 +6,7 @@
   import Logo from './atoms/Logo.svelte';
   import OpenShiftModal from './organisms/OpenShiftModal.svelte';
   import CloseShiftModal from './organisms/CloseShiftModal.svelte';
+  import ReceiptSettingsModal from './organisms/ReceiptSettingsModal.svelte';
 
   async function logout() {
     try {
@@ -31,6 +32,7 @@
 
   let showOpenShiftModal = $state(false);
   let showCloseShiftModal = $state(false);
+  let showReceiptSettingsModal = $state(false);
 
   async function loadCurrentShift() {
     try {
@@ -101,6 +103,18 @@
     {/if}
   </div>
 
+  <!-- Printer 80mm Settings Quick Access -->
+  <button
+    type="button"
+    class="btn-printer-settings"
+    onclick={() => (showReceiptSettingsModal = true)}
+    title="Configuración de Factura e Impresora 80mm"
+  >
+    <span class="printer-icon">🖨️</span>
+    <span class="printer-label">Impresora 80mm</span>
+    <span class="printer-gear">⚙️</span>
+  </button>
+
   <div class="user-profile">
     {#if $user}
       <div class="user-avatar">
@@ -139,6 +153,12 @@
       showCloseShiftModal = false;
       showOpenShiftModal = true;
     }}
+  />
+{/if}
+
+{#if showReceiptSettingsModal}
+  <ReceiptSettingsModal
+    onclose={() => (showReceiptSettingsModal = false)}
   />
 {/if}
 
@@ -352,5 +372,42 @@
   .logout-btn:hover {
     background: var(--color-danger-glow);
     transform: scale(1.05);
+  }
+
+  .btn-printer-settings {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+  }
+
+  .btn-printer-settings:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: var(--border-glass-hover);
+    color: var(--text-primary);
+  }
+
+  .printer-icon {
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .printer-label {
+    flex: 1;
+  }
+
+  .printer-gear {
+    font-size: 0.85rem;
+    opacity: 0.7;
   }
 </style>

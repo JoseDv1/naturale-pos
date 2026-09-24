@@ -62,6 +62,11 @@ export type Product = Prisma.ProductModel
  */
 export type ProductVariant = Prisma.ProductVariantModel
 /**
+ * Model ProductModifier
+ * 
+ */
+export type ProductModifier = Prisma.ProductModifierModel
+/**
  * Model ExpenseCategory
  * 
  */

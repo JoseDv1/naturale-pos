@@ -15,6 +15,7 @@ const tableItemsSchema = z.object({
     price: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
       .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio no puede ser negativo' }),
+    notes: z.string().nullable().optional(),
   }))
 });
 
@@ -38,7 +39,8 @@ const tableTransferItemsSchema = z.object({
     variantId: z.string().nullable().optional(),
     quantity: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseInt(val) : val)
-      .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' })
+      .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
+    notes: z.string().nullable().optional(),
   })).min(1, 'Debe incluir al menos un producto a transferir')
 });
 
@@ -52,7 +54,8 @@ const tablePartialCheckoutSchema = z.object({
       .refine((int) => !isNaN(int) && int > 0, { message: 'La cantidad debe ser mayor a cero' }),
     price: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
-      .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio no puede ser negativo' })
+      .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio no puede ser negativo' }),
+    notes: z.string().nullable().optional(),
   })).min(1, 'Debe incluir al menos un producto para cobrar'),
   payments: z.array(z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
@@ -295,7 +298,8 @@ const saveOrOrderHandler = async (c: any) => {
             productId: item.productId,
             variantId: item.variantId || null,
             quantity: item.quantity,
-            price: parseFloat(item.price)
+            price: parseFloat(item.price),
+            notes: item.notes || null,
           }))
         });
       }
@@ -673,7 +677,11 @@ tables.post('/:id/merge', zValidator('json', tableMergeSchema, (result, c) => {
         const sourceItems = source.currentSale.items;
 
         for (const sItem of sourceItems) {
-          const existingTItem = targetItems.find(ti => ti.productId === sItem.productId && (sItem.variantId ? ti.variantId === sItem.variantId : !ti.variantId));
+          const existingTItem = targetItems.find(ti => 
+            ti.productId === sItem.productId && 
+            (sItem.variantId ? ti.variantId === sItem.variantId : !ti.variantId) &&
+            (ti.notes || null) === (sItem.notes || null)
+          );
           if (existingTItem) {
             await tx.saleItem.update({
               where: { id: existingTItem.id },
@@ -687,7 +695,8 @@ tables.post('/:id/merge', zValidator('json', tableMergeSchema, (result, c) => {
                 productId: sItem.productId,
                 variantId: sItem.variantId || null,
                 quantity: sItem.quantity,
-                price: Number(sItem.price)
+                price: Number(sItem.price),
+                notes: sItem.notes || null,
               }
             });
             targetItems.push(newItem as any);
@@ -840,7 +849,12 @@ tables.post('/:id/transfer-items', zValidator('json', tableTransferItemsSchema, 
         }
 
         // 2. Agregar a destino
-        const existingTItem = targetItems.find(it => it.productId === reqItem.productId && (reqItem.variantId ? it.variantId === reqItem.variantId : !it.variantId));
+        const reqNotes = reqItem.notes || srcItem.notes || null;
+        const existingTItem = targetItems.find(it => 
+          it.productId === reqItem.productId && 
+          (reqItem.variantId ? it.variantId === reqItem.variantId : !it.variantId) &&
+          (it.notes || null) === reqNotes
+        );
         if (existingTItem) {
           await tx.saleItem.update({
             where: { id: existingTItem.id },
@@ -854,7 +868,8 @@ tables.post('/:id/transfer-items', zValidator('json', tableTransferItemsSchema, 
               productId: reqItem.productId,
               variantId: reqItem.variantId || null,
               quantity: reqItem.quantity,
-              price: itemPrice
+              price: itemPrice,
+              notes: reqNotes,
             }
           });
           targetItems.push(createdItem as any);
@@ -983,7 +998,8 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
           productId: it.productId,
           variantId: it.variantId || null,
           quantity: it.quantity,
-          price: it.price
+          price: it.price,
+          notes: it.notes || null,
         }))
       });
 

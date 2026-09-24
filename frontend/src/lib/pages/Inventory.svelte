@@ -99,6 +99,8 @@
       isRawMaterial: false,
       hasVariants: false,
       variants: [],
+      hasModifiers: false,
+      modifiers: [],
     };
     showProductModal = true;
   }
@@ -118,6 +120,14 @@
         price: Number(v.price),
         cost: Number(v.cost ?? 0),
         stock: Number(v.stock ?? 0),
+      })),
+      hasModifiers: Boolean(product.modifiers && product.modifiers.length > 0),
+      modifiers: (product.modifiers || []).map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        price: Number(m.price || 0),
+        cost: Number(m.cost || 0),
+        isDefault: Boolean(m.isDefault),
       })),
     };
     showProductModal = true;
@@ -163,6 +173,51 @@
       addVariantRow('Leche Deslactosada', basePrice, baseCost, 10);
       addVariantRow('Leche de Almendras', basePrice + 1500, baseCost + 700, 10);
       addVariantRow('Leche de Avena', basePrice + 1500, baseCost + 700, 10);
+    }
+  }
+
+  function addModifierRow(name = '', price: any = 0, cost: any = 0, isDefault = false) {
+    if (!currentProduct.modifiers) {
+      currentProduct.modifiers = [];
+    }
+    currentProduct.modifiers.push({
+      id: undefined,
+      name,
+      price: price !== '' ? price : 0,
+      cost: cost !== '' ? cost : 0,
+      isDefault,
+    });
+  }
+
+  function removeModifierRow(index: number) {
+    if (currentProduct.modifiers) {
+      currentProduct.modifiers.splice(index, 1);
+    }
+  }
+
+  function applyRecipePreset(presetType: 'parfait' | 'beverages' | 'sandwiches') {
+    currentProduct.hasModifiers = true;
+    if (!currentProduct.modifiers) currentProduct.modifiers = [];
+
+    if (presetType === 'parfait') {
+      addModifierRow('Mermelada de Frutos Rojos', 2000, 600, false);
+      addModifierRow('Fruta Extra (Fresas frescas)', 1500, 500, false);
+      addModifierRow('Banano en rodajas', 1000, 300, false);
+      addModifierRow('Granola Artesanal Extra', 1500, 400, false);
+      addModifierRow('Mantequilla de Maní 100% natural', 2000, 700, false);
+      addModifierRow('Miel de Abejas pura', 1000, 300, false);
+      addModifierRow('Semillas de Chía', 1000, 200, false);
+    } else if (presetType === 'beverages') {
+      addModifierRow('Shot de Café Espresso Extra', 2000, 400, false);
+      addModifierRow('Cambio a Leche de Almendras', 1500, 600, false);
+      addModifierRow('Cambio a Leche de Avena', 1500, 600, false);
+      addModifierRow('Jarabe de Vainilla sin azúcar', 1000, 300, false);
+      addModifierRow('Crema Batida Artesanal', 1500, 500, false);
+    } else if (presetType === 'sandwiches') {
+      addModifierRow('Queso Mozzarella Extra', 2500, 1000, false);
+      addModifierRow('Aguacate fresco', 2000, 800, false);
+      addModifierRow('Huevo extra', 1500, 500, false);
+      addModifierRow('Tocineta crujiente', 3000, 1200, false);
     }
   }
 
@@ -229,9 +284,39 @@
 
     try {
       const isEdit = modalMode === 'edit';
+      const cleanedVariants = currentProduct.hasVariants
+        ? (currentProduct.variants || []).map((v: any) => ({
+            id: v.id || undefined,
+            name: v.name.trim(),
+            sku: v.sku && v.sku.trim() !== '' ? v.sku.trim() : null,
+            price: Number(v.price) || 0,
+            cost: v.cost !== '' && !isNaN(Number(v.cost)) ? Number(v.cost) : 0,
+            stock: Math.max(0, parseInt(String(v.stock), 10) || 0),
+          }))
+        : [];
+
+      const cleanedModifiers = currentProduct.hasModifiers
+        ? (currentProduct.modifiers || [])
+            .map((m: any) => ({
+              id: m.id || undefined,
+              name: (m.name || '').trim(),
+              price: m.price !== '' && !isNaN(Number(m.price)) ? Number(m.price) : 0,
+              cost: m.cost !== '' && !isNaN(Number(m.cost)) ? Number(m.cost) : 0,
+              isDefault: Boolean(m.isDefault),
+            }))
+            .filter((m: any) => m.name.length > 0)
+        : [];
+
       const payload = {
         ...currentProduct,
-        variants: currentProduct.hasVariants ? currentProduct.variants : [],
+        categoryId: currentProduct.categoryId || $categories[0]?.id || '',
+        price: Number(currentProduct.price) || 0,
+        cost: Number(currentProduct.cost) || 0,
+        stock: currentProduct.hasVariants
+          ? currentProduct.stock
+          : Math.max(0, parseInt(String(currentProduct.stock), 10) || 0),
+        variants: cleanedVariants,
+        modifiers: cleanedModifiers,
       };
 
       if (isEdit) {
@@ -778,6 +863,101 @@
               <div class="variants-actions-bar">
                 <button type="button" class="btn btn-secondary btn-sm" onclick={() => addVariantRow()}>
                   ➕ Agregar Variante
+                </button>
+              </div>
+            </div>
+          {/if}
+
+          <!-- ==========================================
+               RECIPE & MODIFIERS / ADDITIONS SECTION
+               ========================================== -->
+          <div class="variants-toggle-header" style="margin-top: 16px;">
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={currentProduct.hasModifiers} />
+              <strong class="toggle-title">🍓 ¿Este producto tiene receta o adiciones? (ej. Parfait, bowls, cafés)</strong>
+            </label>
+            <span class="variants-help-hint">
+              Permite a los cajeros y meseros añadir frutas, mermeladas, toppings o ingredientes extras al producto durante la venta.
+            </span>
+          </div>
+
+          {#if currentProduct.hasModifiers}
+            <div class="variants-workspace animate-fade-in">
+              <div class="presets-toolbar">
+                <span class="presets-label">Plantillas de receta:</span>
+                <button type="button" class="btn-preset" onclick={() => applyRecipePreset('parfait')}>🍓 Parfait / Bowls</button>
+                <button type="button" class="btn-preset" onclick={() => applyRecipePreset('beverages')}>☕ Cafetería / Bebidas</button>
+                <button type="button" class="btn-preset" onclick={() => applyRecipePreset('sandwiches')}>🥪 Sandwiches / Toast</button>
+              </div>
+
+              {#if currentProduct.modifiers && currentProduct.modifiers.length > 0}
+                <div class="variants-table-wrapper">
+                  <table class="variants-edit-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre de Adición / Ingrediente *</th>
+                        <th>Precio Extra Venta ($)</th>
+                        <th>Costo Estimado ($)</th>
+                        <th class="text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each currentProduct.modifiers as mod, idx}
+                        <tr>
+                          <td>
+                            <input
+                              type="text"
+                              bind:value={mod.name}
+                              placeholder="Ej: Mermelada de frutos rojos, Fresa..."
+                              required
+                              class="var-input-name"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              bind:value={mod.price}
+                              placeholder="0 (Gratis si es 0)"
+                              min="0"
+                              step="100"
+                              class="var-input-num"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              bind:value={mod.cost}
+                              placeholder="0"
+                              min="0"
+                              step="any"
+                              class="var-input-num"
+                            />
+                          </td>
+                          <td class="text-center">
+                            <button
+                              type="button"
+                              class="btn-var-remove"
+                              onclick={() => removeModifierRow(idx)}
+                              title="Eliminar adición"
+                              aria-label="Eliminar adición"
+                            >
+                              🗑️
+                            </button>
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              {:else}
+                <div class="no-variants-prompt flex-center">
+                  <span>No has añadido adiciones aún. Usa una plantilla arriba o haz clic en "Añadir Adición / Ingrediente".</span>
+                </div>
+              {/if}
+
+              <div class="variants-actions-bar">
+                <button type="button" class="btn btn-secondary btn-sm" onclick={() => addModifierRow()}>
+                  ➕ Añadir Adición / Ingrediente
                 </button>
               </div>
             </div>

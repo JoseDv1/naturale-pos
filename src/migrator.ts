@@ -91,6 +91,14 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
           shiftTableExists = true;
         }
 
+        let productModifierTableExists = false;
+        const modifierTable = db.query(`
+          SELECT name FROM sqlite_master WHERE type='table' AND name='ProductModifier'
+        `).get();
+        if (modifierTable) {
+          productModifierTableExists = true;
+        }
+
         const baselineMigrations: string[] = ['20260703201908_init'];
         if (cafeTableExists) {
           baselineMigrations.push('20260703205317_add_tables_feature');
@@ -110,6 +118,9 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
         }
         if (shiftTableExists) {
           baselineMigrations.push('20260916160000_add_shift_model');
+        }
+        if (productModifierTableExists) {
+          baselineMigrations.push('20260923180000_add_product_modifiers_and_recipe');
         }
 
         const insertBaseline = db.prepare(`

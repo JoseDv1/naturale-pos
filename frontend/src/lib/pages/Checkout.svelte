@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
-  import { user, cart, cartTotal, products, categories, refreshTrigger, triggerRefresh, selectedTable, activeTab, currentShift } from '../store';
+  import { user, cart, cartTotal, products, categories, refreshTrigger, triggerRefresh, selectedTable, activeTab, currentShift, receiptSettings } from '../store';
   import { getProducts, getCategories } from '../api/products';
   import { 
     saveTableOrder as apiSaveTableOrder, 
@@ -18,21 +17,32 @@
   import CartItem from '../components/organisms/CartItem.svelte';
   import MathCard from '../components/molecules/MathCard.svelte';
   import MethodBtn from '../components/molecules/MethodBtn.svelte';
-  import ReceiptItem from '../components/molecules/ReceiptItem.svelte';
-  import ReceiptPaymentRow from '../components/molecules/ReceiptPaymentRow.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
   import BarcodeScannerModal from '../components/molecules/BarcodeScannerModal.svelte';
   import ScanToast, { type ToastData } from '../components/atoms/ScanToast.svelte';
   import MergeTableModal from '../components/organisms/MergeTableModal.svelte';
   import SplitTableModal from '../components/organisms/SplitTableModal.svelte';
   import OpenShiftModal from '../components/organisms/OpenShiftModal.svelte';
+  import ThermalReceipt80mm from '../components/molecules/ThermalReceipt80mm.svelte';
+  import ReceiptSettingsModal from '../components/organisms/ReceiptSettingsModal.svelte';
+  import CustomizeRecipeModal from '../components/organisms/CustomizeRecipeModal.svelte';
 
   // State variables
   let searchQuery = $state('');
   let showOpenShiftModal = $state(false);
+  let showReceiptSettingsModal = $state(false);
   let selectedCategory = $state('');
   let activeDept = $state('MARKET'); // 'MARKET' | 'CAFE'
   let wasTableSale = $state(false);
+
+  // Recipe customization modal state
+  let showCustomizeModal = $state(false);
+  let productToCustomize = $state<any>(null);
+  let variantToCustomize = $state<any>(null);
+  let initialModifiersForModal = $state<any[]>([]);
+  let initialNotesForModal = $state<string>('');
+  let initialQuantityForModal = $state<number>(1);
+  let editingCartIndex = $state<number | null>(null);
 
   // Table merge & split modal state
   let showCheckoutMergeModal = $state(false);
@@ -212,9 +222,61 @@
     return matchesSearch && matchesDept && matchesCategory;
   }));
 
+  function openCustomizeModal(product: any, variant: any = null, cartIndex: number | null = null) {
+    productToCustomize = product;
+    variantToCustomize = variant;
+    editingCartIndex = cartIndex;
+    if (cartIndex !== null && $cart[cartIndex]) {
+      const it = $cart[cartIndex];
+      initialModifiersForModal = it.selectedModifiers || [];
+      initialNotesForModal = it.notes || '';
+      initialQuantityForModal = it.quantity || 1;
+    } else {
+      initialModifiersForModal = [];
+      initialNotesForModal = '';
+      initialQuantityForModal = 1;
+    }
+    showCustomizeModal = true;
+  }
+
+  function handleConfirmCustomization(result: {
+    variant: any;
+    selectedModifiers: any[];
+    notes: string;
+    unitPrice: number;
+    quantity: number;
+  }) {
+    if (editingCartIndex !== null && $cart[editingCartIndex]) {
+      $cart[editingCartIndex].variant = result.variant;
+      $cart[editingCartIndex].selectedModifiers = result.selectedModifiers;
+      $cart[editingCartIndex].notes = result.notes;
+      $cart[editingCartIndex].unitPrice = result.unitPrice;
+      $cart[editingCartIndex].quantity = result.quantity;
+      cart.set([...$cart]);
+    } else {
+      cart.set([
+        ...$cart,
+        {
+          product: productToCustomize,
+          variant: result.variant,
+          selectedModifiers: result.selectedModifiers,
+          notes: result.notes,
+          unitPrice: result.unitPrice,
+          quantity: result.quantity,
+        },
+      ]);
+    }
+    showCustomizeModal = false;
+    productToCustomize = null;
+    variantToCustomize = null;
+    editingCartIndex = null;
+  }
+
   // Handle clicking a product card in catalog
   function handleProductCardClick(product: any) {
-    if (product.variants && product.variants.length > 0) {
+    if (product.modifiers && product.modifiers.length > 0) {
+      openCustomizeModal(product);
+    } else if (product.variants && product.variants.length > 0) {
       selectedProductForVariant = product;
       showVariantModal = true;
     } else {
@@ -321,19 +383,22 @@
     wasTableSale = !!$selectedTable;
   }
 
+  const round2 = (num: number): number => Math.round((num + Number.EPSILON) * 100) / 100;
+
   function addPayment() {
     errorMessage = '';
-    const amt = parseFloat(currentAmountInput);
+    const amt = round2(parseFloat(currentAmountInput));
     if (isNaN(amt) || amt <= 0) {
       errorMessage = 'Monto inválido';
       return;
     }
 
-    if (currentMethod === 'CASH' && amt > remainingToPay) {
+    const rem = round2(remainingToPay);
+    if (currentMethod === 'CASH' && amt > rem) {
       // Cash payment exceeds remaining -> calculate change
-      cashChange = amt - remainingToPay;
-      payments = [...payments, { method: 'CASH', amount: remainingToPay }];
-    } else if (amt > remainingToPay) {
+      cashChange = round2(amt - rem);
+      payments = [...payments, { method: 'CASH', amount: rem }];
+    } else if (amt > rem) {
       errorMessage = 'El monto de tarjeta/transferencia no puede exceder el restante';
       return;
     } else {
@@ -341,13 +406,13 @@
       cashChange = 0;
     }
 
-    currentAmountInput = remainingToPay.toString();
+    currentAmountInput = round2(remainingToPay).toString();
   }
 
   function removePayment(index: number) {
     payments = payments.filter((_, i) => i !== index);
     cashChange = 0;
-    currentAmountInput = remainingToPay.toString();
+    currentAmountInput = round2(remainingToPay).toString();
   }
 
   async function processSale() {
@@ -356,7 +421,7 @@
       showOpenShiftModal = true;
       return;
     }
-    if (remainingToPay > 0.01) {
+    if (round2(remainingToPay) > 0.01) {
       errorMessage = 'Falta completar el pago total';
       return;
     }
@@ -365,6 +430,15 @@
     try {
       let data;
       if ($selectedTable) {
+        // Sync table order items to table before checking out so database total matches exactly
+        const itemsPayload = $cart.map((item) => ({
+          productId: item.product.id,
+          variantId: item.variant?.id || null,
+          quantity: item.quantity,
+          price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
+          notes: item.notes || null,
+        }));
+        await apiSaveTableOrder($selectedTable.id, itemsPayload);
         data = await apiCheckoutTable($selectedTable.id, payments);
       } else {
         const bodyPayload = {
@@ -374,12 +448,15 @@
             productId: item.product.id,
             variantId: item.variant?.id || null,
             quantity: item.quantity,
-            price: item.variant ? Number(item.variant.price) : Number(item.product.price),
+            price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
+            notes: item.notes || null,
           })),
           payments: payments,
         };
         data = await createSale(bodyPayload);
       }
+
+      const soldTable = $selectedTable ? { name: $selectedTable.name } : null;
 
       successReceipt = {
         id: data.sale.id,
@@ -388,6 +465,7 @@
         items: [...$cart],
         payments: [...payments],
         change: cashChange,
+        table: soldTable,
       };
       clearCart();
       
@@ -397,6 +475,12 @@
       }
       
       triggerRefresh();
+
+      if ($receiptSettings.autoPrint) {
+        setTimeout(() => {
+          window.print();
+        }, 350);
+      }
     } catch (e: any) {
       errorMessage = e.message || 'Error al procesar la venta';
     }
@@ -409,7 +493,8 @@
         productId: item.product.id,
         variantId: item.variant?.id || null,
         quantity: item.quantity,
-        price: item.variant ? Number(item.variant.price) : Number(item.product.price),
+        price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
+        notes: item.notes || null,
       }));
       await apiSaveTableOrder($selectedTable.id, itemsPayload);
       selectedTable.set(null);
@@ -444,7 +529,8 @@
           productId: item.product.id,
           variantId: item.variant?.id || null,
           quantity: item.quantity,
-          price: item.variant ? Number(item.variant.price) : Number(item.product.price),
+          price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
+          notes: item.notes || null,
         }));
         await apiSaveTableOrder($selectedTable.id, itemsPayload);
       }
@@ -469,7 +555,8 @@
           productId: item.product.id,
           variantId: item.variant?.id || null,
           quantity: item.quantity,
-          price: item.variant ? Number(item.variant.price) : Number(item.product.price),
+          price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
+          notes: item.notes || null,
         }));
         await apiSaveTableOrder($selectedTable.id, itemsPayload);
       }
@@ -548,6 +635,11 @@
     successReceipt = res.sale;
     wasTableSale = true;
     showPaymentModal = true;
+    if ($receiptSettings.autoPrint) {
+      setTimeout(() => {
+        window.print();
+      }, 350);
+    }
     return res;
   }
 
@@ -680,8 +772,13 @@
     </div>
 
     <div class="cart-items scroll-y">
-      {#each $cart as item (item.product.id + (item.variant?.id || ''))}
-        <CartItem {item} onupdateqty={updateQuantity} onremove={removeFromCart} />
+      {#each $cart as item, index (item.product.id + (item.variant?.id || '') + (item.notes || '') + index)}
+        <CartItem
+          {item}
+          onupdateqty={updateQuantity}
+          onremove={removeFromCart}
+          oncustomize={() => openCustomizeModal(item.product, item.variant, index)}
+        />
       {:else}
         <div class="empty-cart flex-center">
           🛒 Carrito Vacío
@@ -778,44 +875,61 @@
 
 {#snippet successReceiptView()}
   <div class="receipt-container animate-scale-up">
-    <div class="receipt-header">
-      <span class="success-icon">🎉</span>
-      <h2>¡Venta Registrada!</h2>
-      <p>Ticket: {successReceipt.id.slice(0,8).toUpperCase()}</p>
-      <span class="date">{new Date(successReceipt.createdAt).toLocaleString()}</span>
+    <!-- Quick Action Bar (Screen only, hidden on print) -->
+    <div class="receipt-actions-panel no-print">
+      <div class="receipt-header-status">
+        <span class="success-icon">🎉</span>
+        <div>
+          <h2 class="success-title">¡Venta Registrada!</h2>
+          <p class="ticket-sub">Ticket: #{successReceipt.id.slice(0, 8).toUpperCase()}</p>
+        </div>
+      </div>
+
+      <div class="receipt-settings-bar">
+        <label class="auto-print-label" title="Imprimir automáticamente ticket al completar cobro">
+          <input
+            type="checkbox"
+            checked={$receiptSettings.autoPrint}
+            onchange={(e) => receiptSettings.update(s => ({ ...s, autoPrint: e.currentTarget.checked }))}
+          />
+          <span>Auto-imprimir al cobrar</span>
+        </label>
+        <button
+          type="button"
+          class="btn-config-receipt"
+          onclick={() => (showReceiptSettingsModal = true)}
+          title="Configurar datos del ticket (Nombre, NIT, dirección, pie de página)"
+        >
+          ⚙️ Ajustes Ticket
+        </button>
+      </div>
+
+      <div class="receipt-main-buttons">
+        <button
+          type="button"
+          class="btn btn-general btn-print-receipt"
+          onclick={() => window.print()}
+        >
+          🖨️ Imprimir Ticket (80mm)
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary btn-close-receipt"
+          onclick={closePaymentModal}
+        >
+          Nueva Venta ➔
+        </button>
+      </div>
     </div>
 
-    <div class="receipt-divider"></div>
-
-          <div class="receipt-items">
-            {#each successReceipt.items as item}
-              <ReceiptItem {item} />
-            {/each}
-          </div>
-
-    <div class="receipt-divider"></div>
-
-    <div class="receipt-total">
-      <span>Total Venta</span>
-      <span>${successReceipt.total.toLocaleString()}</span>
+    <!-- Thermal 80mm Printable & Preview component -->
+    <div class="receipt-paper-wrapper">
+      <ThermalReceipt80mm
+        sale={successReceipt}
+        cashierName={$user?.name}
+        tableName={successReceipt.table?.name || $selectedTable?.name}
+      />
     </div>
-
-          <div class="receipt-payments">
-            <h4>Detalle de Pago:</h4>
-            {#each successReceipt.payments as pay}
-              <ReceiptPaymentRow {pay} />
-            {/each}
-            {#if successReceipt.change > 0}
-              <div class="receipt-payment-row change-row">
-                <span>Cambio Entregado:</span>
-                <span>${successReceipt.change.toLocaleString()}</span>
-              </div>
-            {/if}
-          </div>
-
-    <button class="btn btn-general print-btn" onclick={closePaymentModal}>
-      Cerrar e Ir a Nueva Venta
-    </button>
   </div>
 {/snippet}
 
@@ -906,9 +1020,14 @@
               class:out-of-stock={isOutOfStock}
               disabled={isOutOfStock}
               onclick={() => {
-                addToCart(selectedProductForVariant, v);
+                const prod = selectedProductForVariant;
                 showVariantModal = false;
                 selectedProductForVariant = null;
+                if (prod?.modifiers && prod.modifiers.length > 0) {
+                  openCustomizeModal(prod, v);
+                } else {
+                  addToCart(prod, v);
+                }
               }}
             >
               <div class="v-card-top">
@@ -988,6 +1107,29 @@
     onclose={() => (showOpenShiftModal = false)}
     onsuccess={() => {
       showOpenShiftModal = false;
+    }}
+  />
+{/if}
+
+{#if showReceiptSettingsModal}
+  <ReceiptSettingsModal
+    onclose={() => (showReceiptSettingsModal = false)}
+  />
+{/if}
+
+{#if showCustomizeModal && productToCustomize}
+  <CustomizeRecipeModal
+    product={productToCustomize}
+    selectedVariant={variantToCustomize}
+    initialModifiers={initialModifiersForModal}
+    initialNotes={initialNotesForModal}
+    initialQuantity={initialQuantityForModal}
+    onconfirm={handleConfirmCustomization}
+    onclose={() => {
+      showCustomizeModal = false;
+      productToCustomize = null;
+      variantToCustomize = null;
+      editingCartIndex = null;
     }}
   />
 {/if}
@@ -1386,85 +1528,119 @@
     gap: 10px;
   }
 
-  /* Receipt styles */
+  /* Receipt and Thermal Print styles */
   .receipt-container {
-    text-align: center;
-    padding: 10px 0;
-  }
-
-  .success-icon {
-    font-size: 3rem;
-    display: block;
-    margin-bottom: 10px;
-    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
-  }
-
-  .receipt-container h2 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  .receipt-container p {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-  }
-
-  .receipt-container .date {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-  }
-
-  .receipt-divider {
-    border-top: 1px dashed var(--border-glass);
-    margin: 18px 0;
-  }
-
-  .receipt-items {
-    text-align: left;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    max-height: 180px;
+    gap: 16px;
+    max-height: 82vh;
     overflow-y: auto;
     padding-right: 4px;
   }
 
+  .receipt-actions-panel {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 
+  .receipt-header-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
 
-  .receipt-total {
+  .success-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.35));
+  }
+
+  .success-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-general);
+  }
+
+  .ticket-sub {
+    margin: 2px 0 0 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+  }
+
+  .receipt-settings-bar {
     display: flex;
     justify-content: space-between;
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--text-primary);
+    align-items: center;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
   }
 
-  .receipt-payments {
-    text-align: left;
-    margin-top: 18px;
-  }
-
-  .receipt-payments h4 {
-    font-size: 0.8rem;
+  .auto-print-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
     color: var(--text-secondary);
-    margin-bottom: 6px;
+    cursor: pointer;
+    user-select: none;
   }
 
-
-
-  .change-row {
-    color: var(--color-cafe);
-    font-weight: 600;
-    margin-top: 4px;
-    border-top: 1px solid var(--border-glass);
-    padding-top: 4px;
+  .auto-print-label input[type="checkbox"] {
+    accent-color: var(--color-general);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
   }
 
-  .print-btn {
-    margin-top: 24px;
-    width: 100%;
-    height: 44px;
+  .btn-config-receipt {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-config-receipt:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: var(--border-glass-hover);
+  }
+
+  .receipt-main-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-print-receipt {
+    flex: 1.3;
+    font-weight: 700;
+    height: 42px;
+    font-size: 0.95rem;
+  }
+
+  .btn-close-receipt {
+    flex: 1;
+    height: 42px;
+    font-size: 0.9rem;
+  }
+
+  .receipt-paper-wrapper {
+    display: flex;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: var(--radius-md);
+    padding: 16px 8px;
+    border: 1px solid var(--border-glass);
   }
 
   .table-mode-banner {

@@ -93,7 +93,6 @@
               bind:value={initialCash}
               placeholder="Ej: 50000"
               required
-              autofocus
             />
           </div>
         </div>

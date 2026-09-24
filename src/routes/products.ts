@@ -15,15 +15,52 @@ const integerStock = z.union([z.number(), z.string()])
 const variantSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'El nombre de la variante es obligatorio'),
-  sku: z.string().nullable().optional(),
+  sku: z.union([z.string(), z.null()]).optional()
+    .transform((val) => (val && typeof val === 'string' && val.trim() !== '') ? val.trim() : null),
   price: z.union([z.number(), z.string()])
     .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
     .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio de la variante debe ser mayor o igual a cero' }),
-  cost: z.union([z.number(), z.string()])
-    .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+  cost: z.union([z.number(), z.string(), z.null()]).optional()
+    .transform((val) => {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === 'string') return val.trim() === '' ? 0 : parseFloat(val);
+      return val;
+    })
     .refine((num) => !isNaN(num) && num >= 0, { message: 'El costo de la variante debe ser mayor o igual a cero' })
-    .optional().default(0),
-  stock: integerStock.optional().default(0),
+    .default(0),
+  stock: z.union([z.number(), z.string(), z.null()]).optional()
+    .transform((val) => {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === 'string') return val.trim() === '' ? 0 : parseInt(val, 10);
+      return val;
+    })
+    .refine((num) => typeof num === 'number' && !isNaN(num) && num >= 0 && Number.isInteger(num), {
+      message: 'El stock de la variante debe ser un entero no negativo',
+    })
+    .default(0),
+});
+
+const modifierSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'El nombre de la adición es obligatorio'),
+  price: z.union([z.number(), z.string(), z.null()]).optional()
+    .transform((val) => {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === 'string') return val.trim() === '' ? 0 : parseFloat(val);
+      return val;
+    })
+    .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio de la adición debe ser mayor o igual a cero' })
+    .default(0),
+  cost: z.union([z.number(), z.string(), z.null()]).optional()
+    .transform((val) => {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === 'string') return val.trim() === '' ? 0 : parseFloat(val);
+      return val;
+    })
+    .refine((num) => !isNaN(num) && num >= 0, { message: 'El costo de la adición debe ser mayor o igual a cero' })
+    .default(0),
+  isDefault: z.boolean().optional().default(false),
+  active: z.boolean().optional().default(true),
 });
 
 const productCreateSchema = z.object({
@@ -44,6 +81,7 @@ const productCreateSchema = z.object({
   }),
   isRawMaterial: z.boolean().optional().default(false),
   variants: z.array(variantSchema).optional(),
+  modifiers: z.array(modifierSchema).optional(),
 });
 
 const productUpdateSchema = z.object({
@@ -65,6 +103,7 @@ const productUpdateSchema = z.object({
   }).optional(),
   isRawMaterial: z.boolean().optional(),
   variants: z.array(variantSchema).optional(),
+  modifiers: z.array(modifierSchema).optional(),
 });
 
 const productStockUpdateSchema = z.object({
@@ -93,6 +132,10 @@ products.get('/', async (c) => {
         where: { active: true },
         orderBy: { price: 'asc' },
       },
+      modifiers: {
+        where: { active: true },
+        orderBy: { price: 'asc' },
+      },
     },
     orderBy: { name: 'asc' },
   });
@@ -106,6 +149,10 @@ products.get('/:id', async (c) => {
     include: {
       category: true,
       variants: {
+        where: { active: true },
+        orderBy: { price: 'asc' },
+      },
+      modifiers: {
         where: { active: true },
         orderBy: { price: 'asc' },
       },
@@ -126,7 +173,7 @@ products.post('/', adminMiddleware, zValidator('json', productCreateSchema, (res
   }
 }), async (c) => {
   try {
-    const { sku, name, description, imageUrl, price, cost, stock, categoryId, department, isRawMaterial, variants } = c.req.valid('json');
+    const { sku, name, description, imageUrl, price, cost, stock, categoryId, department, isRawMaterial, variants, modifiers } = c.req.valid('json');
 
     const catExists = await prisma.category.findUnique({ where: { id: categoryId } });
     if (!catExists) {
@@ -187,10 +234,23 @@ products.post('/', adminMiddleware, zValidator('json', productCreateSchema, (res
               active: true,
             })),
           } : undefined,
+          modifiers: (modifiers && modifiers.length > 0) ? {
+            create: modifiers.map(m => ({
+              name: m.name.trim(),
+              price: m.price || 0,
+              cost: m.cost || 0,
+              isDefault: !!m.isDefault,
+              active: m.active !== false,
+            })),
+          } : undefined,
         },
         include: {
           category: true,
           variants: {
+            where: { active: true },
+            orderBy: { price: 'asc' },
+          },
+          modifiers: {
             where: { active: true },
             orderBy: { price: 'asc' },
           },
@@ -214,13 +274,13 @@ products.put('/:id', adminMiddleware, zValidator('json', productUpdateSchema, (r
     const id = c.req.param('id');
     const existing = await prisma.product.findUnique({
       where: { id },
-      include: { variants: true }
+      include: { variants: true, modifiers: true }
     });
     if (!existing) {
       return c.json({ error: 'Producto no encontrado' }, 404);
     }
 
-    const { name, description, imageUrl, price, cost, stock, categoryId, department, isRawMaterial, variants } = c.req.valid('json');
+    const { name, description, imageUrl, price, cost, stock, categoryId, department, isRawMaterial, variants, modifiers } = c.req.valid('json');
 
     if (categoryId) {
       const catExists = await prisma.category.findUnique({ where: { id: categoryId } });
@@ -303,6 +363,49 @@ products.put('/:id', adminMiddleware, zValidator('json', productUpdateSchema, (r
         }
       }
 
+      // Handle modifiers update if passed
+      if (Array.isArray(modifiers)) {
+        const existingModIds = new Set(existing.modifiers.map((em: any) => em.id));
+        const incomingModIds = new Set(modifiers.filter((m: any) => m.id && existingModIds.has(m.id)).map((m: any) => m.id));
+
+        // Deactivate modifiers not present in incoming list
+        for (const em of existing.modifiers) {
+          if (em.active && !incomingModIds.has(em.id)) {
+            await tx.productModifier.update({
+              where: { id: em.id },
+              data: { active: false },
+            });
+          }
+        }
+
+        // Upsert incoming modifiers
+        for (const m of modifiers) {
+          if (m.id && existingModIds.has(m.id)) {
+            await tx.productModifier.update({
+              where: { id: m.id },
+              data: {
+                name: m.name.trim(),
+                price: m.price || 0,
+                cost: m.cost || 0,
+                isDefault: !!m.isDefault,
+                active: m.active !== false,
+              },
+            });
+          } else {
+            await tx.productModifier.create({
+              data: {
+                productId: id,
+                name: m.name.trim(),
+                price: m.price || 0,
+                cost: m.cost || 0,
+                isDefault: !!m.isDefault,
+                active: m.active !== false,
+              },
+            });
+          }
+        }
+      }
+
       // If variants are present, sync base product stock from variants
       let finalStock = stock;
       if (Array.isArray(variants)) {
@@ -329,6 +432,10 @@ products.put('/:id', adminMiddleware, zValidator('json', productUpdateSchema, (r
         include: {
           category: true,
           variants: {
+            where: { active: true },
+            orderBy: { price: 'asc' },
+          },
+          modifiers: {
             where: { active: true },
             orderBy: { price: 'asc' },
           },
@@ -424,6 +531,11 @@ products.delete('/:id', adminMiddleware, async (c) => {
 
     const product = await prisma.$transaction(async (tx) => {
       await tx.productVariant.updateMany({
+        where: { productId: id },
+        data: { active: false },
+      });
+
+      await tx.productModifier.updateMany({
         where: { productId: id },
         data: { active: false },
       });

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { me } from './lib/api/auth';
   import { user, activeTab } from './lib/store';
   import Spinner from './lib/components/atoms/Spinner.svelte';
@@ -17,59 +17,31 @@
   const validTabs = ['dashboard', 'checkout', 'tables', 'inventory', 'categories', 'transfers', 'expenses', 'reports'];
   let isInitializing = $state(true);
 
-  $effect(() => {
-    untrack(async () => {
-      // 1. Check if session cookie exists by calling server auth/me
-      try {
-        const data = await me();
-        if (data.user) {
-          user.set(data.user);
-        }
-      } catch (e) {
-        console.error('Session restore failed:', e);
-      } finally {
-        isInitializing = false;
-      }
-    });
-
-    // 2. Handle URL hash routing
+  onMount(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
-      untrack(() => {
-        if (validTabs.includes(hash)) {
-          if ($activeTab !== hash) {
-            activeTab.set(hash);
-          }
-        } else {
-          // If logged in and hash is empty/invalid, default to dashboard
-          if ($user) {
-            activeTab.set('dashboard');
-            window.location.hash = '#dashboard';
-          }
-        }
-      });
+      if (validTabs.includes(hash)) {
+        activeTab.set(hash);
+      } else if (!hash && $user) {
+        activeTab.set('dashboard');
+        window.location.hash = '#dashboard';
+      }
     };
 
-    // 3. Check if session cookie exists by calling server auth/me
-    async function restoreSession() {
-      try {
-        const meRes = await fetch('/api/auth/me');
-        if (meRes.ok) {
-          const data = await meRes.json();
-          if (data.user) {
-            user.set(data.user);
-          }
+    // Check user session on load
+    me()
+      .then((data) => {
+        if (data.user) {
+          user.set(data.user);
+          handleHashChange();
         }
-      } catch (e) {
+      })
+      .catch((e) => {
         console.error('Session restore failed:', e);
-      } finally {
+      })
+      .finally(() => {
         isInitializing = false;
-        // Initialize hash on load
-        handleHashChange();
-      }
-    }
-
-    restoreSession();
+      });
 
     window.addEventListener('hashchange', handleHashChange);
     return () => {
@@ -77,13 +49,17 @@
     };
   });
 
-  // Sync tab changes back to the URL hash
+  // Sync tab changes back to the URL hash cleanly
   $effect(() => {
-    if (typeof window !== 'undefined' && $user && $activeTab) {
-      const currentHash = window.location.hash.slice(1);
-      if (currentHash !== $activeTab && validTabs.includes($activeTab)) {
-        window.location.hash = '#' + $activeTab;
-      }
+    const tab = $activeTab;
+    const isLogged = !!$user;
+    if (typeof window !== 'undefined' && isLogged && tab && validTabs.includes(tab)) {
+      untrack(() => {
+        const currentHash = window.location.hash.slice(1);
+        if (currentHash !== tab) {
+          window.location.hash = '#' + tab;
+        }
+      });
     }
   });
 </script>

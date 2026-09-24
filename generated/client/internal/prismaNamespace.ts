@@ -388,6 +388,7 @@ export const ModelName = {
   Category: 'Category',
   Product: 'Product',
   ProductVariant: 'ProductVariant',
+  ProductModifier: 'ProductModifier',
   ExpenseCategory: 'ExpenseCategory',
   Expense: 'Expense',
   ExpenseItem: 'ExpenseItem',
@@ -412,7 +413,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "category" | "product" | "productVariant" | "expenseCategory" | "expense" | "expenseItem" | "sale" | "saleItem" | "salePayment" | "shift" | "productTransfer" | "cafeTable"
+    modelProps: "user" | "category" | "product" | "productVariant" | "productModifier" | "expenseCategory" | "expense" | "expenseItem" | "sale" | "saleItem" | "salePayment" | "shift" | "productTransfer" | "cafeTable"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -709,6 +710,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ProductVariantCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ProductVariantCountAggregateOutputType> | number
+        }
+      }
+    }
+    ProductModifier: {
+      payload: Prisma.$ProductModifierPayload<ExtArgs>
+      fields: Prisma.ProductModifierFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProductModifierFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProductModifierFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>
+        }
+        findFirst: {
+          args: Prisma.ProductModifierFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProductModifierFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>
+        }
+        findMany: {
+          args: Prisma.ProductModifierFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>[]
+        }
+        create: {
+          args: Prisma.ProductModifierCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>
+        }
+        createMany: {
+          args: Prisma.ProductModifierCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProductModifierCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>[]
+        }
+        delete: {
+          args: Prisma.ProductModifierDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>
+        }
+        update: {
+          args: Prisma.ProductModifierUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProductModifierDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProductModifierUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProductModifierUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProductModifierUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductModifierPayload>
+        }
+        aggregate: {
+          args: Prisma.ProductModifierAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProductModifier>
+        }
+        groupBy: {
+          args: Prisma.ProductModifierGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductModifierGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProductModifierCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductModifierCountAggregateOutputType> | number
         }
       }
     }
@@ -1475,6 +1550,21 @@ export const ProductVariantScalarFieldEnum = {
 export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnum)[keyof typeof ProductVariantScalarFieldEnum]
 
 
+export const ProductModifierScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  name: 'name',
+  price: 'price',
+  cost: 'cost',
+  isDefault: 'isDefault',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductModifierScalarFieldEnum = (typeof ProductModifierScalarFieldEnum)[keyof typeof ProductModifierScalarFieldEnum]
+
+
 export const ExpenseCategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -1533,7 +1623,8 @@ export const SaleItemScalarFieldEnum = {
   productId: 'productId',
   variantId: 'variantId',
   quantity: 'quantity',
-  price: 'price'
+  price: 'price',
+  notes: 'notes'
 } as const
 
 export type SaleItemScalarFieldEnum = (typeof SaleItemScalarFieldEnum)[keyof typeof SaleItemScalarFieldEnum]
@@ -1821,6 +1912,7 @@ export type GlobalOmitConfig = {
   category?: Prisma.CategoryOmit
   product?: Prisma.ProductOmit
   productVariant?: Prisma.ProductVariantOmit
+  productModifier?: Prisma.ProductModifierOmit
   expenseCategory?: Prisma.ExpenseCategoryOmit
   expense?: Prisma.ExpenseOmit
   expenseItem?: Prisma.ExpenseItemOmit

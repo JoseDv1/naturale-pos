@@ -31,6 +31,9 @@
           {#if item.variant}
             <span class="variant-sale-tag">({item.variant.name})</span>
           {/if}
+          {#if item.notes}
+            <small style="color: #f472b6; font-style: italic;">[{item.notes}]</small>
+          {/if}
           (x{item.quantity}) @ ${Number(item.price).toLocaleString()}
         </span>
       {/each}

@@ -487,4 +487,46 @@ expenses.put('/:id', adminMiddleware, zValidator('json', expenseUpdateSchema, (r
   }
 });
 
+// DELETE /expenses/:id - Delete an expense and revert any inventory adjustments (Admin only)
+expenses.delete('/:id', adminMiddleware, async (c) => {
+  try {
+    const id = c.req.param('id');
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.expense.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+
+      if (!existing) {
+        throw new ExpenseApiError('Gasto no encontrado', 404);
+      }
+
+      // Revert inventory stock if this expense added supply items
+      if (existing.items && existing.items.length > 0) {
+        for (const item of existing.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: { decrement: item.quantity },
+            },
+          });
+        }
+        await tx.expenseItem.deleteMany({ where: { expenseId: id } });
+      }
+
+      await tx.expense.delete({ where: { id } });
+
+      return { id };
+    });
+
+    return c.json({ success: true, message: 'Gasto eliminado correctamente', id: result.id });
+  } catch (error: any) {
+    if (error instanceof ExpenseApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json({ error: error.message || 'Error al eliminar el gasto' }, 500);
+  }
+});
+
 export default expenses;

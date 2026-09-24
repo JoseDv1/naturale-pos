@@ -136,6 +136,7 @@ const saleSchema = z.object({
     price: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
       .refine((num) => !isNaN(num) && num >= 0, { message: 'El precio no puede ser negativo' }),
+    notes: z.string().nullable().optional(),
   })).min(1, 'La venta debe contener al menos un producto'),
   payments: z.array(z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
@@ -243,6 +244,7 @@ sales.post('/', zValidator('json', saleSchema, (result, c) => {
               variantId: item.variantId || null,
               quantity: item.quantity,
               price: item.price,
+              notes: item.notes || null,
             })),
           },
           payments: {

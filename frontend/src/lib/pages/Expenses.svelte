@@ -7,7 +7,8 @@
     getExpenseCategories,
     createExpenseCategory,
     updateExpenseCategory,
-    deleteExpenseCategory
+    deleteExpenseCategory,
+    deleteExpense as apiDeleteExpense
   } from '../api/expenses';
   import ExpenseRow from '../components/organisms/ExpenseRow.svelte';
   import OpenShiftModal from '../components/organisms/OpenShiftModal.svelte';
@@ -78,6 +79,24 @@
       editExpenseError = err.message || 'Error al actualizar el egreso.';
     } finally {
       isUpdatingExpense = false;
+    }
+  }
+
+  async function handleDeleteExpense(exp: any) {
+    if ($user?.role !== 'ADMIN') return;
+    const itemsWarning = exp.items && exp.items.length > 0
+      ? '\n\n⚠️ Nota: El stock de los productos ingresados en esta compra será revertido del inventario.'
+      : '';
+    if (!confirm(`¿Estás seguro de eliminar el gasto "${exp.description}" por $${Number(exp.amount).toLocaleString()}?${itemsWarning}`)) {
+      return;
+    }
+
+    try {
+      await apiDeleteExpense(exp.id);
+      loadExpenses();
+      triggerRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Error al eliminar el gasto');
     }
   }
 
@@ -380,7 +399,7 @@
           </thead>
           <tbody>
             {#each filteredExpenses as exp}
-              <ExpenseRow expense={exp} onedit={openEditExpenseModal} />
+              <ExpenseRow expense={exp} onedit={openEditExpenseModal} ondelete={handleDeleteExpense} />
             {:else}
               <tr>
                 <td colspan="8" class="text-center text-muted italic">No se han registrado egresos o compras de suministros aún.</td>

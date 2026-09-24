@@ -320,7 +320,6 @@
               placeholder="Ej: Cafetería, Bebidas Frías, Pastelería..."
               bind:value={formName}
               required
-              autofocus
             />
           </div>
 

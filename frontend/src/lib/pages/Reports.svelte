@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
   import { refreshTrigger, triggerRefresh } from '../store';
   import { getDashboardData, getInventoryAlerts } from '../api/reports';
   import { getSales, cancelSale as apiCancelSale } from '../api/sales';
+  import { getShifts } from '../api/shifts';
   import KpiCard from '../components/molecules/KpiCard.svelte';
   import PayMethodBar from '../components/molecules/PayMethodBar.svelte';
   import AlertItem from '../components/molecules/AlertItem.svelte';
   import SaleRow from '../components/organisms/SaleRow.svelte';
   import SaleDetailModal from '../components/organisms/SaleDetailModal.svelte';
+  import ShiftDetailModal from '../components/organisms/ShiftDetailModal.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
 
   // Filters
@@ -15,11 +16,20 @@
   let endDate = $state('');
   let activeTab = $state('CONSOLIDATED'); // 'CONSOLIDATED' | 'MARKET' | 'CAFE'
 
+  // Subtab switch between Sales History and Shift Closures
+  let historySubTab = $state<'sales' | 'shifts'>('sales');
+
   // Sales History Interactive Filters
   let searchQuery = $state('');
   let selectedStatus = $state('ALL'); // 'ALL' | 'COMPLETED' | 'CANCELLED' | 'TRANSFER_OUT'
   let selectedPayment = $state('ALL'); // 'ALL' | 'CASH' | 'CARD' | 'TRANSFER' | 'INTERNAL'
   let salesList = $state<any[]>([]);
+
+  // Shift History State
+  let shiftsList = $state<any[]>([]);
+  let shiftsPromise = $state<Promise<any[]>>(getShifts());
+  let selectedShiftId = $state<string | null>(null);
+  let showShiftDetailModal = $state(false);
 
   // Modal State for Sale Ticket Details
   let showDetailModal = $state(false);
@@ -34,6 +44,7 @@
       loadReports();
       loadLowStock();
       loadSalesHistory();
+      loadShifts();
     }
   });
 
@@ -60,9 +71,19 @@
     return p;
   }
 
+  function loadShifts(): Promise<any[]> {
+    const p: Promise<any[]> = getShifts().then((data) => {
+      shiftsList = data;
+      return data;
+    });
+    shiftsPromise = p;
+    return p;
+  }
+
   function handleDateChange() {
     loadReports();
     loadSalesHistory();
+    loadShifts();
   }
 
   function resetDateFilters() {
@@ -228,103 +249,226 @@
        ========================================== -->
   <div class="sales-history-panel glass-panel flex-1 flex-column animate-scale-up">
     <div class="panel-top-row">
-      <div class="title-with-count">
-        <h3>Historial de Ventas</h3>
-        <span class="count-pill">
-          {filteredSales.length} {filteredSales.length === 1 ? 'venta' : 'ventas'}
-        </span>
+      <div class="history-subtab-switch">
+        <button
+          type="button"
+          class="subtab-btn"
+          class:active={historySubTab === 'sales'}
+          onclick={() => (historySubTab = 'sales')}
+        >
+          📋 Historial de Ventas
+          <span class="count-pill">
+            {filteredSales.length} {filteredSales.length === 1 ? 'venta' : 'ventas'}
+          </span>
+        </button>
+        <button
+          type="button"
+          class="subtab-btn"
+          class:active={historySubTab === 'shifts'}
+          onclick={() => { historySubTab = 'shifts'; loadShifts(); }}
+        >
+          🔒 Turnos y Cierres de Caja
+          <span class="count-pill">
+            {shiftsList.length} {shiftsList.length === 1 ? 'turno' : 'turnos'}
+          </span>
+        </button>
       </div>
     </div>
 
-    <!-- Real-Time Interactive Filter Toolbar -->
-    <div class="sales-filter-toolbar">
-      <!-- Search Input -->
-      <div class="search-field">
-        <span class="search-icon">🔍</span>
-        <input
-          type="text"
-          placeholder="Buscar por # ticket, cajero o producto..."
-          bind:value={searchQuery}
-          class="sales-search-input"
-          aria-label="Buscar ventas"
-        />
-        {#if searchQuery}
-          <button type="button" class="btn-clear-search" onclick={() => (searchQuery = '')}>✕</button>
+    {#if historySubTab === 'sales'}
+      <!-- Real-Time Interactive Filter Toolbar for Sales -->
+      <div class="sales-filter-toolbar">
+        <!-- Search Input -->
+        <div class="search-field">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar por # ticket, cajero o producto..."
+            bind:value={searchQuery}
+            class="sales-search-input"
+            aria-label="Buscar ventas"
+          />
+          {#if searchQuery}
+            <button type="button" class="btn-clear-search" onclick={() => (searchQuery = '')}>✕</button>
+          {/if}
+        </div>
+
+        <!-- Status Filter -->
+        <div class="filter-select-group">
+          <label for="status-filter">Estado:</label>
+          <select id="status-filter" bind:value={selectedStatus} class="filter-select">
+            <option value="ALL">Todos los Estados</option>
+            <option value="COMPLETED">✅ Completadas</option>
+            <option value="CANCELLED">❌ Anuladas</option>
+            <option value="TRANSFER_OUT">🔄 Traslados</option>
+          </select>
+        </div>
+
+        <!-- Payment Method Filter -->
+        <div class="filter-select-group">
+          <label for="payment-filter">Método de Pago:</label>
+          <select id="payment-filter" bind:value={selectedPayment} class="filter-select">
+            <option value="ALL">Todos los Métodos</option>
+            <option value="CASH">💵 Efectivo</option>
+            <option value="CARD">💳 Tarjeta</option>
+            <option value="TRANSFER">📲 Transferencia</option>
+            <option value="INTERNAL">🔄 Interno</option>
+          </select>
+        </div>
+
+        {#if searchQuery || selectedStatus !== 'ALL' || selectedPayment !== 'ALL'}
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            onclick={() => { searchQuery = ''; selectedStatus = 'ALL'; selectedPayment = 'ALL'; }}
+          >
+            Limpiar Filtros
+          </button>
         {/if}
       </div>
 
-      <!-- Status Filter -->
-      <div class="filter-select-group">
-        <label for="status-filter">Estado:</label>
-        <select id="status-filter" bind:value={selectedStatus} class="filter-select">
-          <option value="ALL">Todos los Estados</option>
-          <option value="COMPLETED">✅ Completadas</option>
-          <option value="CANCELLED">❌ Anuladas</option>
-          <option value="TRANSFER_OUT">🔄 Traslados</option>
-        </select>
-      </div>
-
-      <!-- Payment Method Filter -->
-      <div class="filter-select-group">
-        <label for="payment-filter">Método de Pago:</label>
-        <select id="payment-filter" bind:value={selectedPayment} class="filter-select">
-          <option value="ALL">Todos los Métodos</option>
-          <option value="CASH">💵 Efectivo</option>
-          <option value="CARD">💳 Tarjeta</option>
-          <option value="TRANSFER">📲 Transferencia</option>
-          <option value="INTERNAL">🔄 Interno</option>
-        </select>
-      </div>
-
-      {#if searchQuery || selectedStatus !== 'ALL' || selectedPayment !== 'ALL'}
-        <button
-          type="button"
-          class="btn btn-secondary btn-sm"
-          onclick={() => { searchQuery = ''; selectedStatus = 'ALL'; selectedPayment = 'ALL'; }}
-        >
-          Limpiar Filtros
-        </button>
-      {/if}
-    </div>
-
-    <div class="table-container scroll-y flex-1">
-      {#await salesPromise}
-        <div class="loading-state flex-center" style="padding: 40px 0;">
-          <Spinner size="40px" />
-          <p style="margin-top: 12px; color: var(--text-secondary);">Cargando historial...</p>
-        </div>
-      {:then}
-        <table class="pos-table" aria-label="Historial de Ventas">
-          <thead>
-            <tr>
-              <th>ID Ticket</th>
-              <th>Fecha y Hora</th>
-              <th>Usuario</th>
-              <th>Productos</th>
-              <th>Métodos de Pago</th>
-              <th class="text-right">Total</th>
-              <th class="text-center">Estado</th>
-              <th class="text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each filteredSales as sale (sale.id)}
-              <SaleRow {sale} oncancel={cancelSale} onview={openSaleDetail} />
-            {:else}
+      <div class="table-container scroll-y flex-1">
+        {#await salesPromise}
+          <div class="loading-state flex-center" style="padding: 40px 0;">
+            <Spinner size="40px" />
+            <p style="margin-top: 12px; color: var(--text-secondary);">Cargando historial...</p>
+          </div>
+        {:then}
+          <table class="pos-table" aria-label="Historial de Ventas">
+            <thead>
               <tr>
-                <td colspan="8" class="text-center text-muted italic" style="padding: 30px;">
-                  No se encontraron ventas que coincidan con los filtros aplicados.
-                </td>
+                <th>ID Ticket</th>
+                <th>Fecha y Hora</th>
+                <th>Usuario</th>
+                <th>Productos</th>
+                <th>Métodos de Pago</th>
+                <th class="text-right">Total</th>
+                <th class="text-center">Estado</th>
+                <th class="text-center">Acciones</th>
               </tr>
-            {/each}
-          </tbody>
-        </table>
-      {:catch error}
-        <div class="error-banner animate-fade-in" style="margin: 20px;">
-          Error al cargar historial: {error.message}
-        </div>
-      {/await}
-    </div>
+            </thead>
+            <tbody>
+              {#each filteredSales as sale (sale.id)}
+                <SaleRow {sale} oncancel={cancelSale} onview={openSaleDetail} />
+              {:else}
+                <tr>
+                  <td colspan="8" class="text-center text-muted italic" style="padding: 30px;">
+                    No se encontraron ventas que coincidan con los filtros aplicados.
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        {:catch error}
+          <div class="error-banner animate-fade-in" style="margin: 20px;">
+            Error al cargar historial: {error.message}
+          </div>
+        {/await}
+      </div>
+    {:else}
+      <!-- Shifts and Cash Closures Table -->
+      <div class="table-container scroll-y flex-1">
+        {#await shiftsPromise}
+          <div class="loading-state flex-center" style="padding: 40px 0;">
+            <Spinner size="40px" />
+            <p style="margin-top: 12px; color: var(--text-secondary);">Cargando turnos y cierres de caja...</p>
+          </div>
+        {:then}
+          <table class="pos-table" aria-label="Turnos y Cierres de Caja">
+            <thead>
+              <tr>
+                <th>ID Turno</th>
+                <th>Apertura</th>
+                <th>Cajero</th>
+                <th>Cierre</th>
+                <th>Estado</th>
+                <th class="text-right">Base Inicial</th>
+                <th class="text-right">Efectivo Real</th>
+                <th class="text-right">Diferencia</th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each shiftsList as shift (shift.id)}
+                <tr>
+                  <td class="font-mono" style="font-weight: 600;">
+                    #{shift.id.slice(0, 8).toUpperCase()}
+                  </td>
+                  <td>
+                    {new Date(shift.openedAt).toLocaleDateString()}
+                    <span style="display: block; font-size: 0.75rem; color: var(--text-secondary);">
+                      {new Date(shift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </td>
+                  <td>
+                    <strong>{shift.user?.name || shift.user?.username || 'Cajero'}</strong>
+                  </td>
+                  <td>
+                    {#if shift.closedAt}
+                      {new Date(shift.closedAt).toLocaleDateString()}
+                      <span style="display: block; font-size: 0.75rem; color: var(--text-secondary);">
+                        {new Date(shift.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    {:else}
+                      <span style="color: #10b981; font-weight: 500;">En curso</span>
+                    {/if}
+                  </td>
+                  <td>
+                    {#if shift.status === 'OPEN'}
+                      <span class="status-badge status-open">🟢 Abierto</span>
+                    {:else}
+                      <span class="status-badge status-closed">🔒 Cerrado</span>
+                    {/if}
+                  </td>
+                  <td class="text-right font-mono">
+                    ${Number(shift.initialCash || 0).toLocaleString()}
+                  </td>
+                  <td class="text-right font-mono">
+                    {#if shift.actualCash !== null}
+                      ${Number(shift.actualCash).toLocaleString()}
+                    {:else}
+                      <span class="text-muted">-</span>
+                    {/if}
+                  </td>
+                  <td class="text-right font-mono">
+                    {#if shift.difference !== null}
+                      <span class={shift.difference > 0 ? 'diff-positive' : shift.difference < 0 ? 'diff-negative' : 'diff-zero'}>
+                        {shift.difference > 0 ? '+' : ''}${Number(shift.difference).toLocaleString()}
+                      </span>
+                    {:else}
+                      <span class="text-muted">-</span>
+                    {/if}
+                  </td>
+                  <td class="text-center">
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      onclick={() => {
+                        selectedShiftId = shift.id;
+                        showShiftDetailModal = true;
+                      }}
+                      title="Ver arqueo y comprobante de cierre"
+                    >
+                      🧾 Ver Cierre
+                    </button>
+                  </td>
+                </tr>
+              {:else}
+                <tr>
+                  <td colspan="9" class="text-center text-muted italic" style="padding: 30px;">
+                    No se han registrado turnos de caja en este período.
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        {:catch error}
+          <div class="error-banner animate-fade-in" style="margin: 20px;">
+            Error al cargar turnos: {error.message}
+          </div>
+        {/await}
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -333,6 +477,14 @@
   <SaleDetailModal
     sale={selectedSale}
     onclose={() => { showDetailModal = false; selectedSale = null; }}
+  />
+{/if}
+
+<!-- Modal: Detalle y Comprobante de Cierre de Caja -->
+{#if showShiftDetailModal && selectedShiftId}
+  <ShiftDetailModal
+    shiftId={selectedShiftId}
+    onclose={() => { showShiftDetailModal = false; selectedShiftId = null; }}
   />
 {/if}
 
@@ -507,16 +659,74 @@
     margin-bottom: 12px;
   }
 
-  .title-with-count {
+  .history-subtab-switch {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-glass);
   }
 
-  .title-with-count h3 {
-    font-size: 1rem;
+  .subtab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .subtab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .subtab-btn.active {
+    background: var(--color-general);
+    color: white;
     font-weight: 600;
-    margin: 0;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .status-open {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .status-closed {
+    background: rgba(100, 116, 139, 0.15);
+    color: #94a3b8;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+  }
+
+  .diff-positive {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .diff-negative {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .diff-zero {
+    color: var(--text-secondary);
   }
 
   .count-pill {

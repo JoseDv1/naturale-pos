@@ -9,6 +9,7 @@
   let { product: p, onclick }: Props = $props();
 
   let hasVariants = $derived(Boolean(p.variants && p.variants.length > 0));
+  let hasModifiers = $derived(Boolean(p.modifiers && p.modifiers.length > 0));
   let minVariantPrice = $derived(hasVariants ? Math.min(...p.variants.map((v: any) => Number(v.price))) : Number(p.price));
   let maxVariantPrice = $derived(hasVariants ? Math.max(...p.variants.map((v: any) => Number(v.price))) : Number(p.price));
   let totalStock = $derived(hasVariants ? p.variants.reduce((acc: number, v: any) => acc + Number(v.stock || 0), 0) : Number(p.stock));
@@ -22,6 +23,11 @@
   {#if hasVariants}
     <span class="variant-count-pill" title={`${p.variants.length} opciones disponibles`}>
       {p.variants.length} var.
+    </span>
+  {/if}
+  {#if hasModifiers}
+    <span class="modifier-count-pill" title={`${p.modifiers.length} adiciones disponibles`}>
+      🍓 Adiciones
     </span>
   {/if}
 {/snippet}
@@ -158,6 +164,17 @@
     background: rgba(4, 120, 87, 0.15);
     color: var(--color-general);
     border: 1px solid rgba(4, 120, 87, 0.3);
+    backdrop-filter: blur(4px);
+  }
+
+  .modifier-count-pill {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(236, 72, 153, 0.15);
+    color: #f472b6;
+    border: 1px solid rgba(236, 72, 153, 0.3);
     backdrop-filter: blur(4px);
   }
 

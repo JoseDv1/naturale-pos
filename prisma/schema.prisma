@@ -98,6 +98,7 @@ model Product {
   transfersFrom  ProductTransfer[] @relation("TransferSource")
   transfersTo    ProductTransfer[] @relation("TransferTarget")
   variants       ProductVariant[]
+  modifiers      ProductModifier[]
 
   @@index([categoryId])            // Índice para consultas de categorías
   @@index([active])                // Índice para filtros de productos activos
@@ -121,6 +122,22 @@ model ProductVariant {
   @@index([productId])
   @@index([active])
   @@index([sku, active])
+}
+
+model ProductModifier {
+  id          String     @id @default(uuid())
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String     // e.g. "Mermelada de Frutos Rojos", "Fresa Fresca", "Granola extra"
+  price       Decimal    @default(0) // Precio extra de venta (0 si incluida en receta base)
+  cost        Decimal    @default(0) // Costo del insumo
+  isDefault   Boolean    @default(false) // Si viene incluida en la receta base
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([productId])
+  @@index([active])
 }
 
 model ExpenseCategory {
@@ -196,6 +213,7 @@ model SaleItem {
   variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   quantity  Int
   price     Decimal // Cambiado de Float a Decimal
+  notes     String? // Descripción de adiciones, modificaciones o receta (ej. "+ Mermelada, + Fresa")
 
   @@index([saleId])
   @@index([productId])

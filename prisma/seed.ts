@@ -159,14 +159,43 @@ async function main() {
       isRawMaterial: false,
       active: true,
     },
+    {
+      sku: 'CAFE-005',
+      name: 'Parfait Saludable de Frutas',
+      description: 'Yogurt griego artesanal, granola crocante y adiciones a elección',
+      price: 12000,
+      cost: 4500,
+      stock: 999,
+      categoryId: categories['Snacks'].id,
+      department: 'CAFE',
+      isRawMaterial: false,
+      active: true,
+    },
   ];
 
   for (const prod of productsData) {
-    await prisma.product.upsert({
+    const created = await prisma.product.upsert({
       where: { sku: prod.sku },
       update: {},
       create: prod,
     });
+
+    if (prod.sku === 'CAFE-005') {
+      const existingModifiers = await prisma.productModifier.count({ where: { productId: created.id } });
+      if (existingModifiers === 0) {
+        await prisma.productModifier.createMany({
+          data: [
+            { productId: created.id, name: 'Mermelada de Frutos Rojos', price: 2000, cost: 600, isDefault: false },
+            { productId: created.id, name: 'Fruta Extra (Fresas frescas)', price: 1500, cost: 500, isDefault: false },
+            { productId: created.id, name: 'Banano en rodajas', price: 1000, cost: 300, isDefault: false },
+            { productId: created.id, name: 'Granola Artesanal Extra', price: 1500, cost: 400, isDefault: false },
+            { productId: created.id, name: 'Mantequilla de Maní 100% natural', price: 2000, cost: 700, isDefault: false },
+            { productId: created.id, name: 'Miel de Abejas pura', price: 1000, cost: 300, isDefault: false },
+            { productId: created.id, name: 'Semillas de Chía', price: 1000, cost: 200, isDefault: false },
+          ]
+        });
+      }
+    }
   }
 
   console.log('Products seeded successfully.');

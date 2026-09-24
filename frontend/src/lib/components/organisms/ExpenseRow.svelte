@@ -5,9 +5,10 @@
   interface Props {
     expense: any;
     onedit?: (expense: any) => void;
+    ondelete?: (expense: any) => void;
   }
 
-  let { expense: exp, onedit }: Props = $props();
+  let { expense: exp, onedit, ondelete }: Props = $props();
 
   const categoryLabels: Record<string, { label: string; icon?: string }> = {
     utilities: { label: 'Servicios Públicos', icon: '💡' },
@@ -66,15 +67,26 @@
   <td>{exp.user?.name || 'Sistema'}</td>
   <td class="text-center actions-cell">
     {#if $user?.role === 'ADMIN'}
-      <button
-        type="button"
-        class="btn-edit-expense"
-        onclick={() => onedit?.(exp)}
-        title="Editar Egreso"
-        aria-label={`Editar egreso ${exp.description}`}
-      >
-        ✏️ Editar
-      </button>
+      <div class="expense-actions-grp">
+        <button
+          type="button"
+          class="btn-edit-expense"
+          onclick={() => onedit?.(exp)}
+          title="Editar Egreso"
+          aria-label={`Editar egreso ${exp.description}`}
+        >
+          ✏️ Editar
+        </button>
+        <button
+          type="button"
+          class="btn-delete-expense"
+          onclick={() => ondelete?.(exp)}
+          title="Eliminar Egreso"
+          aria-label={`Eliminar egreso ${exp.description}`}
+        >
+          🗑️
+        </button>
+      </div>
     {:else}
       <span class="text-muted italic" style="font-size: 0.8rem;">—</span>
     {/if}
@@ -112,14 +124,21 @@
   }
 
   .actions-cell {
-    width: 100px;
+    width: 120px;
+  }
+
+  .expense-actions-grp {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
   }
 
   .btn-edit-expense {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-sm);
-    padding: 5px 10px;
+    padding: 5px 8px;
     font-size: 0.82rem;
     color: var(--text-primary);
     cursor: pointer;
@@ -130,6 +149,22 @@
   .btn-edit-expense:hover {
     background: rgba(255, 255, 255, 0.12);
     border-color: var(--color-general);
+    transform: translateY(-1px);
+  }
+
+  .btn-delete-expense {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: var(--radius-sm);
+    padding: 5px 7px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .btn-delete-expense:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
     transform: translateY(-1px);
   }
 </style>

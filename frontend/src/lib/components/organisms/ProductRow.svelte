@@ -12,6 +12,8 @@
 
   let activeVariants = $derived((p.variants || []).filter((v: any) => v.active !== false));
   let hasVariants = $derived(activeVariants.length > 0);
+  let activeModifiers = $derived((p.modifiers || []).filter((m: any) => m.active !== false));
+  let hasModifiers = $derived(activeModifiers.length > 0);
   let minVariantPrice = $derived(hasVariants ? Math.min(...activeVariants.map((v: any) => Number(v.price))) : Number(p.price));
   let maxVariantPrice = $derived(hasVariants ? Math.max(...activeVariants.map((v: any) => Number(v.price))) : Number(p.price));
   let minVariantCost = $derived(hasVariants ? Math.min(...activeVariants.map((v: any) => Number(v.cost ?? 0))) : Number(p.cost));
@@ -35,6 +37,11 @@
         {#if hasVariants}
           <span class="row-variants-pill" title={activeVariants.map((v: any) => `${v.name}: $${Number(v.price).toLocaleString()} (Stock: ${v.stock})`).join('\n')}>
             ✨ {activeVariants.length} var: {activeVariants.map((v: any) => v.name).join(', ')}
+          </span>
+        {/if}
+        {#if hasModifiers}
+          <span class="row-modifiers-pill" title={activeModifiers.map((m: any) => `${m.name}: +$${Number(m.price).toLocaleString()}`).join('\n')}>
+            🍓 {activeModifiers.length} adic: {activeModifiers.map((m: any) => m.name).join(', ')}
           </span>
         {/if}
         {#if p.description}
@@ -151,6 +158,23 @@
     font-weight: 600;
     color: var(--color-general);
     background: var(--color-general-glow);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 2px;
+    width: fit-content;
+    white-space: nowrap;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .row-modifiers-pill {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #f472b6;
+    background: rgba(236, 72, 153, 0.15);
+    border: 1px solid rgba(236, 72, 153, 0.3);
     padding: 1px 6px;
     border-radius: 4px;
     margin-top: 2px;

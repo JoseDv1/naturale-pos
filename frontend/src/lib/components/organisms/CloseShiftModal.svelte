@@ -85,23 +85,42 @@
   function printClosureTicket() {
     window.print();
   }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onclose();
+    }
+  }
 </script>
 
-<div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="close-shift-title">
+<svelte:window onkeydown={handleKeydown} />
+
+<div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby={closedReport ? 'receipt-title' : 'close-shift-title'}>
   <div class="modal-container glass-panel animate-scale-up printable-modal close-shift-dialog" style="max-width: 530px;">
     <!-- If not yet closed, show Guided Arqueo Form -->
     {#if !closedReport}
+      <div class="dialog-accent-bar amber"></div>
       <header class="modal-header">
-        <div class="header-info">
+        <div class="header-main">
           <div class="header-icon-badge amber">
-            <span>🔒</span>
+            <span class="badge-emoji">🔒</span>
+            <div class="badge-glow amber"></div>
           </div>
-          <div>
-            <h2 id="close-shift-title">Cierre de Caja & Arqueo</h2>
-            <p class="header-sub">Verifica el efectivo físico en gaveta y genera el balance del turno.</p>
+          <div class="header-text-group">
+            <div class="header-pretitle amber">FIN DE JORNADA • ARQUEO DE CAJA</div>
+            <h2 id="close-shift-title">Cierre de Turno & Arqueo</h2>
+            <p class="header-sub">Verifica el efectivo físico en gaveta y genera el balance del turno</p>
           </div>
         </div>
-        <button type="button" class="close-modal-btn" onclick={onclose} aria-label="Cerrar modal">✕</button>
+        <button
+          type="button"
+          class="close-modal-btn"
+          onclick={onclose}
+          aria-label="Cerrar modal de cierre"
+          title="Cerrar (Esc)"
+        >
+          ✕
+        </button>
       </header>
 
       {#if isLoadingData}
@@ -111,7 +130,7 @@
         </div>
       {:else if !activeShift}
         <div class="modal-body">
-          <div class="error-banner">
+          <div class="error-banner animate-fade-in" role="alert">
             ⚠️ No hay ningún turno de caja abierto actualmente para cerrar.
           </div>
         </div>
@@ -119,6 +138,16 @@
           <button type="button" class="btn btn-secondary" onclick={onclose}>Cerrar</button>
         </footer>
       {:else}
+        {#snippet metaCard(icon: string, label: string, value: string, extraClass: string = '')}
+          <div class="meta-card">
+            <span class="meta-icon">{icon}</span>
+            <div class="meta-col">
+              <span class="meta-label">{label}</span>
+              <strong class="meta-val {extraClass}">{value}</strong>
+            </div>
+          </div>
+        {/snippet}
+
         <form onsubmit={handleCloseShift}>
           <div class="modal-body">
             {#if errorMessage}
@@ -129,27 +158,9 @@
 
             <!-- Cashier & Opening Info -->
             <div class="shift-meta-cards">
-              <div class="meta-card">
-                <span class="meta-icon">👤</span>
-                <div class="meta-col">
-                  <span class="meta-label">Cajero</span>
-                  <strong class="meta-val">{activeShift.user?.name || $user?.name || 'Cajero'}</strong>
-                </div>
-              </div>
-              <div class="meta-card">
-                <span class="meta-icon">🕒</span>
-                <div class="meta-col">
-                  <span class="meta-label">Apertura</span>
-                  <strong class="meta-val">{new Date(activeShift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
-                </div>
-              </div>
-              <div class="meta-card">
-                <span class="meta-icon">💵</span>
-                <div class="meta-col">
-                  <span class="meta-label">Base Inicial</span>
-                  <strong class="meta-val text-general">${Number(activeShift.initialCash).toLocaleString()}</strong>
-                </div>
-              </div>
+              {@render metaCard('👤', 'Cajero', activeShift.user?.name || $user?.name || 'Cajero')}
+              {@render metaCard('🕒', 'Apertura', new Date(activeShift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
+              {@render metaCard('💵', 'Base Inicial', `$${Number(activeShift.initialCash).toLocaleString()}`, 'text-general')}
             </div>
 
             <!-- Financial Breakdown Card -->
@@ -215,7 +226,7 @@
             </div>
 
             <!-- Real-Time Discrepancy Assessment -->
-            <div class="discrepancy-card" class:cuadrado={discrepancy === 0} class:faltante={discrepancy < 0} class:sobrante={discrepancy > 0}>
+            <div class="discrepancy-card" class:cuadrado={discrepancy === 0} class:faltante={discrepancy < 0} class:sobrante={discrepancy > 0} aria-live="polite">
               <div class="discrepancy-header">
                 {#if discrepancy === 0}
                   <span class="disc-icon">✅</span>
@@ -273,17 +284,28 @@
       <!-- ==========================================
            PRINTABLE CLOSING SUMMARY TICKET (R1)
            ========================================== -->
+      <div class="dialog-accent-bar green"></div>
       <header class="modal-header no-print">
-        <div class="header-info">
+        <div class="header-main">
           <div class="header-icon-badge green">
-            <span>🧾</span>
+            <span class="badge-emoji">🧾</span>
+            <div class="badge-glow green"></div>
           </div>
-          <div>
-            <h2>Comprobante de Cierre</h2>
-            <p class="header-sub">El turno ha sido cerrado y registrado exitosamente.</p>
+          <div class="header-text-group">
+            <div class="header-pretitle">COMPROBANTE FINAL REGISTRADO</div>
+            <h2 id="receipt-title">Comprobante de Cierre</h2>
+            <p class="header-sub">El turno ha sido cerrado y registrado exitosamente en el sistema</p>
           </div>
         </div>
-        <button type="button" class="close-modal-btn" onclick={onclose} aria-label="Cerrar modal">✕</button>
+        <button
+          type="button"
+          class="close-modal-btn"
+          onclick={onclose}
+          aria-label="Cerrar comprobante"
+          title="Cerrar (Esc)"
+        >
+          ✕
+        </button>
       </header>
 
       <div class="receipt-thermal-paper" id="closure-ticket">
@@ -355,7 +377,7 @@
           </div>
           <div class="summary-line font-bold" style="margin-top: 6px; border-top: 1px dotted #ccc; padding-top: 6px; font-size: 0.95rem;">
             <span>TOTAL VENTAS DEL TURNO:</span>
-            <span>${(Number(closedReport.totals?.cashSales || 0) + Number(closedReport.totals?.cardSales || 0) + Number(totals?.transferSales || 0)).toLocaleString()}</span>
+            <span>${(Number(closedReport.totals?.cashSales || 0) + Number(closedReport.totals?.cardSales || 0) + Number(closedReport.totals?.transferSales || totals?.transferSales || 0)).toLocaleString()}</span>
           </div>
         </div>
 
@@ -393,49 +415,133 @@
 
 <style>
   .close-shift-dialog {
-    border: 1px solid rgba(16, 185, 129, 0.25);
-    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+    border: 1px solid rgba(245, 158, 11, 0.28);
+    box-shadow: 0 24px 60px -15px rgba(217, 119, 6, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
     border-radius: var(--radius-lg);
     overflow: hidden;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
   }
 
-  .header-info {
+  .dialog-accent-bar {
+    height: 4px;
+    width: 100%;
+    background: linear-gradient(90deg, #f59e0b, #d97706, #fbbf24);
+  }
+  .dialog-accent-bar.green {
+    background: linear-gradient(90deg, #059669, #10b981, #34d399);
+  }
+
+  .modal-header {
     display: flex;
     align-items: center;
-    gap: 14px;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+    position: relative;
+  }
+
+  .header-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
 
   .header-icon-badge {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.4rem;
+    font-size: 1.5rem;
+    flex-shrink: 0;
   }
   .header-icon-badge.amber {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.08));
-    border: 1px solid rgba(245, 158, 11, 0.35);
-    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.15);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.08));
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
   }
   .header-icon-badge.green {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.08));
-    border: 1px solid rgba(16, 185, 129, 0.35);
-    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.15);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(5, 150, 105, 0.08));
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
   }
 
-  .header-info h2 {
-    font-size: 1.2rem;
+  .badge-emoji {
+    z-index: 1;
+    transform: scale(1.05);
+  }
+
+  .badge-glow {
+    position: absolute;
+    inset: 4px;
+    border-radius: 10px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);
+  }
+  .badge-glow.green {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%);
+  }
+
+  .header-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .header-pretitle {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-market);
+  }
+  .header-pretitle.amber {
+    color: #d97706;
+  }
+
+  .modal-header h2 {
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
   }
 
   .header-sub {
     font-size: 0.82rem;
     color: var(--text-secondary);
-    margin: 2px 0 0 0;
+    margin: 0;
+    line-height: 1.35;
+  }
+
+  .close-modal-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+    outline: none;
+    padding: 0;
+  }
+
+  .close-modal-btn:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.25);
+    transform: rotate(90deg) scale(1.08);
   }
 
   .modal-body {

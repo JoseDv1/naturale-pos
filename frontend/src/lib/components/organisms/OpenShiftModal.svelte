@@ -22,14 +22,14 @@
     errorMessage = '';
   }
 
-  const currentDateString = new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-  const currentTimeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape' && onclose) {
       onclose();
     }
   }
+
+  const currentDateString = new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+  const currentTimeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   async function handleOpenShift(e: SubmitEvent) {
     e.preventDefault();
@@ -62,7 +62,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="open-shift-title">
-  <div class="modal-container glass-panel animate-scale-up open-shift-dialog" style="max-width: 500px;">
+  <div class="modal-container glass-panel animate-scale-up open-shift-dialog" style="max-width: 480px;">
     <!-- Top Decorative Line -->
     <div class="dialog-accent-bar"></div>
 
@@ -196,7 +196,7 @@
           <textarea
             id="shift-notes"
             class="notes-textarea"
-            rows="2"
+            rows="1"
             bind:value={notes}
             placeholder="Ej. Billetes de $2.000 y $5.000 para cambio, monedas en bandeja..."
           ></textarea>
@@ -224,26 +224,31 @@
 <style>
   .open-shift-dialog {
     border: 1px solid rgba(16, 185, 129, 0.28);
-    box-shadow: 0 24px 60px -15px rgba(4, 120, 87, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    box-shadow: 0 20px 50px -15px rgba(4, 120, 87, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
     border-radius: var(--radius-lg);
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(28px);
     -webkit-backdrop-filter: blur(28px);
+    max-height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
   }
 
   .dialog-accent-bar {
-    height: 4px;
+    height: 3px;
     width: 100%;
     background: linear-gradient(90deg, #059669, #10b981, #34d399, #10b981);
     background-size: 200% 100%;
+    flex-shrink: 0;
   }
 
   .modal-header {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 24px;
+    padding: 12px 18px;
     background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
     border-bottom: 1px solid rgba(16, 185, 129, 0.15);
     position: relative;
@@ -252,52 +257,51 @@
   .header-main {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
   }
 
   .header-icon-badge {
     position: relative;
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.08));
     border: 1px solid rgba(16, 185, 129, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    font-size: 1.25rem;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.7);
     flex-shrink: 0;
   }
 
   .badge-emoji {
     z-index: 1;
-    transform: scale(1.05);
   }
 
   .badge-glow {
     position: absolute;
-    inset: 4px;
-    border-radius: 10px;
+    inset: 2px;
+    border-radius: 8px;
     background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%);
   }
 
   .header-text-group {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
   }
 
   .header-pretitle {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--color-general);
   }
 
   .modal-header h2 {
-    font-size: 1.3rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
@@ -306,15 +310,15 @@
   }
 
   .header-sub {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--text-secondary);
     margin: 0;
-    line-height: 1.35;
+    line-height: 1.2;
   }
 
   .close-modal-btn {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.04);
     border: 1px solid var(--border-glass);
@@ -322,7 +326,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     flex-shrink: 0;
@@ -337,22 +341,33 @@
     transform: rotate(90deg) scale(1.08);
   }
 
-  .modal-body {
-    padding: 22px 24px;
+  form {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .modal-body {
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
   }
 
   .cashier-strip {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 12px 16px;
+    gap: 10px;
+    padding: 8px 12px;
     background: rgba(255, 255, 255, 0.65);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-sm);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
   }
 
   .cashier-avatar-col {
@@ -360,8 +375,8 @@
   }
 
   .cashier-avatar {
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--color-general), var(--color-market));
     color: white;
@@ -369,31 +384,30 @@
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 1rem;
-    box-shadow: 0 3px 8px rgba(4, 120, 87, 0.25);
+    font-size: 0.88rem;
   }
 
   .status-indicator-dot {
     position: absolute;
     bottom: -1px;
     right: -1px;
-    width: 11px;
-    height: 11px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     background: #10b981;
-    border: 2px solid white;
-    box-shadow: 0 0 4px #10b981;
+    border: 1.5px solid white;
   }
 
   .cashier-details {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
+    min-width: 0;
   }
 
   .cashier-sub {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -403,18 +417,18 @@
   .cashier-name-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .cashier-name {
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     color: var(--text-primary);
   }
 
   .role-pill {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-weight: 700;
-    padding: 1px 6px;
+    padding: 1px 5px;
     border-radius: 4px;
     background: rgba(16, 185, 129, 0.12);
     color: var(--color-general);
@@ -424,15 +438,15 @@
   .shift-time-chip {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     background: rgba(0, 0, 0, 0.03);
     border: 1px solid var(--border-glass);
-    padding: 5px 10px;
-    border-radius: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
   }
 
   .clock-icon {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
   }
 
   .time-texts {
@@ -443,13 +457,13 @@
   }
 
   .date-text {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: var(--text-muted);
     text-transform: capitalize;
   }
 
   .time-text {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: var(--text-secondary);
   }
@@ -457,50 +471,50 @@
   .cash-card {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 18px 20px;
-    background: rgba(255, 255, 255, 0.7);
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.75);
     border: 1.5px solid rgba(16, 185, 129, 0.3);
     border-radius: var(--radius-md);
-    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.06);
   }
 
   .cash-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
   }
 
   .cash-card-title-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
 
   .cash-icon-tag {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
   }
 
   .cash-label {
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     font-weight: 700;
     color: var(--text-primary);
     display: block;
+    margin: 0;
   }
 
   .cash-helper {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     color: var(--text-muted);
-    margin: 1px 0 0 0;
+    margin: 0;
   }
 
   .required-badge {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: var(--color-general);
     background: rgba(16, 185, 129, 0.1);
-    padding: 2px 7px;
-    border-radius: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
     border: 1px solid rgba(16, 185, 129, 0.25);
   }
 
@@ -512,8 +526,8 @@
 
   .currency-symbol {
     position: absolute;
-    left: 18px;
-    font-size: 1.7rem;
+    left: 14px;
+    font-size: 1.4rem;
     font-weight: 800;
     color: var(--color-general);
     pointer-events: none;
@@ -522,23 +536,23 @@
 
   .cash-input {
     width: 100%;
-    font-size: 1.85rem !important;
+    font-size: 1.45rem !important;
     font-weight: 800 !important;
-    padding-left: 42px !important;
-    padding-top: 12px !important;
-    padding-bottom: 12px !important;
+    padding-left: 36px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
     color: var(--color-general) !important;
     background: rgba(255, 255, 255, 0.95) !important;
     border: 2px solid rgba(16, 185, 129, 0.35) !important;
     border-radius: var(--radius-sm) !important;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08) !important;
+    box-shadow: 0 1px 4px rgba(16, 185, 129, 0.08) !important;
     letter-spacing: 0.02em;
     font-family: inherit;
   }
 
   .cash-input:focus {
     border-color: var(--color-general) !important;
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22) !important;
     background: #ffffff !important;
   }
 
@@ -546,19 +560,19 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 12px;
+    padding: 3px 8px;
     background: rgba(16, 185, 129, 0.08);
-    border-radius: 6px;
+    border-radius: 4px;
     border: 1px dashed rgba(16, 185, 129, 0.3);
   }
 
   .preview-label {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
   }
 
   .preview-amount {
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--color-general);
   }
@@ -566,12 +580,12 @@
   .quick-base-section {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 2px;
+    gap: 6px;
+    margin-top: 1px;
   }
 
   .quick-label {
-    font-size: 0.74rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
@@ -581,22 +595,22 @@
   .quick-pills-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
   }
 
   .base-pill {
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(16, 185, 129, 0.3);
-    border-radius: 18px;
-    padding: 7px 14px;
-    font-size: 0.84rem;
+    border-radius: 14px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all var(--transition-fast);
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     user-select: none;
   }
 
@@ -605,15 +619,13 @@
     border-color: var(--color-general);
     color: var(--color-general);
     transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
   }
 
   .base-pill.selected {
     background: var(--color-general);
     border-color: var(--color-general);
     color: white;
-    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.35);
-    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(4, 120, 87, 0.3);
   }
 
   .base-pill.zero-pill {
@@ -624,31 +636,31 @@
     background: #64748b;
     border-color: #64748b;
     color: white;
-    box-shadow: 0 3px 8px rgba(100, 116, 139, 0.3);
+    box-shadow: 0 2px 6px rgba(100, 116, 139, 0.3);
   }
 
   .pill-check {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 800;
   }
 
   .notes-card {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
 
   .field-label {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-secondary);
   }
 
   .optional-tag {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: var(--text-muted);
     font-weight: normal;
   }
@@ -656,11 +668,13 @@
   .notes-textarea {
     border-radius: var(--radius-sm);
     resize: none;
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     background: rgba(255, 255, 255, 0.75);
     border: 1px solid var(--border-glass);
-    padding: 10px 12px;
-    line-height: 1.4;
+    padding: 6px 10px;
+    line-height: 1.35;
+    min-height: 40px;
+    height: 40px;
   }
   .notes-textarea:focus {
     background: #ffffff;
@@ -668,49 +682,50 @@
   }
 
   .modal-footer {
-    padding: 18px 24px;
+    flex-shrink: 0;
+    padding: 12px 18px;
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: 10px;
     border-top: 1px solid var(--border-glass);
     background: rgba(255, 255, 255, 0.03);
   }
 
   .btn-cancel {
-    height: 46px;
-    padding: 0 20px;
+    height: 38px;
+    padding: 0 16px;
+    font-size: 0.88rem;
     font-weight: 500;
   }
 
   .btn-open-confirm {
     flex: 1;
-    height: 46px;
-    font-size: 0.98rem;
+    height: 38px;
+    font-size: 0.92rem;
     font-weight: 700;
     background: linear-gradient(135deg, #059669, #10b981);
-    box-shadow: 0 4px 14px rgba(4, 120, 87, 0.3);
+    box-shadow: 0 3px 10px rgba(4, 120, 87, 0.3);
     border-radius: var(--radius-sm);
-    letter-spacing: 0.01em;
   }
   .btn-open-confirm:hover:not(:disabled) {
     background: linear-gradient(135deg, #047857, #059669);
-    box-shadow: 0 6px 18px rgba(4, 120, 87, 0.4);
+    box-shadow: 0 4px 14px rgba(4, 120, 87, 0.35);
     transform: translateY(-1px);
   }
 
   .error-banner {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
+    gap: 6px;
+    padding: 8px 12px;
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
     border-radius: var(--radius-sm);
     color: #ef4444;
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     font-weight: 500;
   }
   .error-icon {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 </style>

@@ -416,17 +416,21 @@
 <style>
   .close-shift-dialog {
     border: 1px solid rgba(245, 158, 11, 0.28);
-    box-shadow: 0 24px 60px -15px rgba(217, 119, 6, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    box-shadow: 0 20px 50px -15px rgba(217, 119, 6, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
     border-radius: var(--radius-lg);
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(28px);
     -webkit-backdrop-filter: blur(28px);
+    max-height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
   }
 
   .dialog-accent-bar {
-    height: 4px;
+    height: 3px;
     width: 100%;
+    flex-shrink: 0;
     background: linear-gradient(90deg, #f59e0b, #d97706, #fbbf24);
   }
   .dialog-accent-bar.green {
@@ -434,10 +438,11 @@
   }
 
   .modal-header {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 24px;
+    padding: 12px 18px;
     background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
     border-bottom: 1px solid rgba(245, 158, 11, 0.15);
     position: relative;
@@ -446,18 +451,18 @@
   .header-main {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
   }
 
   .header-icon-badge {
     position: relative;
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     flex-shrink: 0;
   }
   .header-icon-badge.amber {
@@ -473,13 +478,12 @@
 
   .badge-emoji {
     z-index: 1;
-    transform: scale(1.05);
   }
 
   .badge-glow {
     position: absolute;
-    inset: 4px;
-    border-radius: 10px;
+    inset: 2px;
+    border-radius: 8px;
     background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);
   }
   .badge-glow.green {
@@ -489,13 +493,13 @@
   .header-text-group {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
   }
 
   .header-pretitle {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--color-market);
   }
@@ -504,24 +508,23 @@
   }
 
   .modal-header h2 {
-    font-size: 1.3rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
-    letter-spacing: -0.015em;
     line-height: 1.2;
   }
 
   .header-sub {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--text-secondary);
     margin: 0;
-    line-height: 1.35;
+    line-height: 1.2;
   }
 
   .close-modal-btn {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.04);
     border: 1px solid var(--border-glass);
@@ -529,7 +532,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     flex-shrink: 0;
@@ -544,11 +547,23 @@
     transform: rotate(90deg) scale(1.08);
   }
 
-  .modal-body {
-    padding: 20px;
+  form {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .modal-body {
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
   }
 
   .shift-meta-cards {
@@ -782,31 +797,33 @@
   }
 
   .modal-footer {
-    padding: 16px 20px;
+    flex-shrink: 0;
+    padding: 12px 18px;
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: 10px;
     border-top: 1px solid var(--border-glass);
     background: rgba(255, 255, 255, 0.02);
   }
 
   .btn-cancel {
-    height: 44px;
-    padding: 0 18px;
+    height: 38px;
+    padding: 0 16px;
+    font-size: 0.88rem;
     font-weight: 500;
   }
 
   .btn-close-confirm {
     flex: 1;
-    height: 44px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
+    height: 38px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    box-shadow: 0 3px 10px rgba(4, 120, 87, 0.25);
   }
 
   .btn-new-shift {
-    height: 44px;
-    font-size: 0.9rem;
+    height: 38px;
+    font-size: 0.88rem;
     font-weight: 600;
   }
 
@@ -814,10 +831,14 @@
   .receipt-thermal-paper {
     background: #ffffff;
     color: #1a1a1a;
-    padding: 24px 22px;
+    padding: 18px 20px;
     font-family: var(--font-sans);
     font-size: 0.86rem;
     line-height: 1.45;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-sm);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     border: 1px solid rgba(0, 0, 0, 0.08);

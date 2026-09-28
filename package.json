@@ -15,10 +15,11 @@
     "build:server": "bun run build:migrations && bun build --compile --minify --outfile dist/pos src/index.ts",
     "package": "bun scripts/package.ts",
     "migrate:odoo": "bun scripts/migrate-odoo.ts",
-    "import:catalog": "bun scripts/import-odoo-products.ts",
+    "import:catalog": "bun scripts/populate-catalog.ts",
     "export:catalog": "bun scripts/export-odoo-catalog.ts",
     "export:web": "bun scripts/export-pos-to-web.ts",
     "db:clean": "bun scripts/clean-database.ts",
+    "db:populate": "bun scripts/populate-catalog.ts",
     "test": "bun test"
   },
   "dependencies": {

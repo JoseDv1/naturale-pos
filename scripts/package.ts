@@ -65,11 +65,18 @@ Para respaldar tu información o moverla a otro computador, simplemente copia el
 
 ---
 
-## 🧹 Limpiar o Restablecer la Base de Datos:
-Si en este computador ya existía una base de datos con datos de prueba o deseas recargar el catálogo limpio de Odoo:
+## 🧹 Limpiar la Base de Datos:
+Para borrar las ventas de prueba, turnos y gastos previos (conservando los productos):
 - **En Windows:** Haz doble clic en \`clean-database.bat\`
 - **En Linux / Mac:** Ejecuta \`./clean-database.sh\`
-(El limpiador crea automáticamente un respaldo de seguridad antes de proceder).
+
+---
+
+## 📦 Poblar o Actualizar Catálogo de Odoo:
+Para cargar o restablecer las categorías, productos y variantes desde el catálogo limpio:
+- **En Windows:** Haz doble clic en \`populate-catalog.bat\`
+- **En Linux / Mac:** Ejecuta \`./populate-catalog.sh\`
+(Ambas utilidades crean automáticamente un respaldo de seguridad antes de proceder).
 `;
   await writeFile(join(targetDir, 'README.md'), content, 'utf-8');
 }
@@ -102,6 +109,18 @@ clean-database.exe %*
 pause
 `;
     await writeFile(join(targetDir, 'clean-database.bat'), cleanBat, 'utf-8');
+
+    const populateBat = `@echo off
+title Poblar Catalogo de Odoo - Naturale POS
+cd /d "%~dp0"
+echo ==========================================
+echo     POBLAR CATALOGO DE ODOO
+echo ==========================================
+echo.
+populate-catalog.exe %*
+pause
+`;
+    await writeFile(join(targetDir, 'populate-catalog.bat'), populateBat, 'utf-8');
   } else {
     const shContent = `#!/bin/bash
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -135,6 +154,16 @@ chmod +x ./clean-database 2>/dev/null
     const cleanShPath = join(targetDir, 'clean-database.sh');
     await writeFile(cleanShPath, cleanSh, 'utf-8');
     await chmod(cleanShPath, 0o755);
+
+    const populateSh = `#!/bin/bash
+DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$DIR"
+chmod +x ./populate-catalog 2>/dev/null
+./populate-catalog "$@"
+`;
+    const populateShPath = join(targetDir, 'populate-catalog.sh');
+    await writeFile(populateShPath, populateSh, 'utf-8');
+    await chmod(populateShPath, 0o755);
   }
 }
 
@@ -150,7 +179,7 @@ async function packagePlatform(target: 'linux' | 'windows') {
   }
   await mkdir(packageDir, { recursive: true });
 
-  // 1. Compile Binaries (Server and Database Cleaner)
+  // 1. Compile Binaries (Server, Cleaner and Catalog Populator)
   const binaryName = isWin ? 'naturale-pos.exe' : 'naturale-pos';
   const bunTarget = isWin ? 'bun-windows-x64' : 'bun-linux-x64';
   const binaryDest = join(packageDir, binaryName);
@@ -165,6 +194,13 @@ async function packagePlatform(target: 'linux' | 'windows') {
   await runCommand(`bun build --compile --minify --target=${bunTarget} --outfile ${cleanBinaryDest} scripts/clean-database.ts`);
   if (!isWin) {
     await chmod(cleanBinaryDest, 0o755);
+  }
+
+  const populateBinaryName = isWin ? 'populate-catalog.exe' : 'populate-catalog';
+  const populateBinaryDest = join(packageDir, populateBinaryName);
+  await runCommand(`bun build --compile --minify --target=${bunTarget} --outfile ${populateBinaryDest} scripts/populate-catalog.ts`);
+  if (!isWin) {
+    await chmod(populateBinaryDest, 0o755);
   }
 
   // 2. Copy Frontend Dist

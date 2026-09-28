@@ -235,7 +235,29 @@
       >
         -
       </button>
-      <span class="stepper-value">{selectedQty}</span>
+      <input
+        type="number"
+        class="stepper-input"
+        min="0"
+        max={item.quantity}
+        value={selectedQty}
+        onfocus={(e) => e.currentTarget.select()}
+        oninput={(e) => {
+          const val = parseInt(e.currentTarget.value, 10);
+          if (!isNaN(val)) {
+            const clamped = Math.max(0, Math.min(val, item.quantity));
+            selectedQuantities = { ...selectedQuantities, [item.id]: clamped };
+          }
+        }}
+        onblur={(e) => {
+          const val = parseInt(e.currentTarget.value, 10);
+          if (isNaN(val) || val < 0) {
+            selectedQuantities = { ...selectedQuantities, [item.id]: 0 };
+          }
+        }}
+        onkeydown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+        aria-label="Cantidad a dividir"
+      />
       <button
         type="button"
         class="stepper-btn"
@@ -667,12 +689,35 @@
     cursor: not-allowed;
   }
 
-  .stepper-value {
-    min-width: 24px;
+  .stepper-input {
+    width: 36px;
+    height: 28px;
     text-align: center;
     font-weight: 700;
     font-size: 0.95rem;
     color: var(--text-primary);
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-glass);
+    border-radius: 4px;
+    outline: none;
+    padding: 0 2px;
+    font-family: inherit;
+    -moz-appearance: textfield;
+    appearance: textfield;
+    transition: all 0.15s ease;
+  }
+
+  .stepper-input::-webkit-inner-spin-button,
+  .stepper-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .stepper-input:focus {
+    border-color: var(--color-general);
+    box-shadow: 0 0 0 2px var(--color-general-glow);
+    background: rgba(16, 185, 129, 0.15);
+    color: #fff;
   }
 
   .stepper-all-btn {

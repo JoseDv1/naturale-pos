@@ -323,14 +323,19 @@
     );
   }
 
-  function updateQuantity(productId: string, variantId: string | null, delta: number) {
-    const item = $cart.find(
-      (i) => i.product.id === productId && (i.variant?.id || null) === (variantId || null)
-    );
+  function updateQuantity(productId: string, variantId: string | null, delta: number, itemIndex?: number) {
+    let item: any;
+    if (itemIndex !== undefined && $cart[itemIndex]) {
+      item = $cart[itemIndex];
+    } else {
+      item = $cart.find(
+        (i) => i.product.id === productId && (i.variant?.id || null) === (variantId || null)
+      );
+    }
     if (!item) return;
     const newQty = item.quantity + delta;
     if (newQty <= 0) {
-      removeFromCart(productId, variantId);
+      removeFromCart(productId, variantId, itemIndex);
       return;
     }
 
@@ -340,14 +345,51 @@
     const availableStock = item.variant ? Number(item.variant.stock || 0) : Number(item.product.stock || 0);
 
     if (!isCafeInfinite && newQty > availableStock) {
-      alert('No puedes superar el stock disponible.');
+      showToast('Stock insuficiente', 'warning', `Máximo disponible: ${availableStock}`);
       return;
     }
     item.quantity = newQty;
     cart.set([...$cart]);
   }
 
-  function removeFromCart(productId: string, variantId: string | null) {
+  function setQuantity(productId: string, variantId: string | null, targetQty: number, itemIndex?: number) {
+    let item: any;
+    if (itemIndex !== undefined && $cart[itemIndex]) {
+      item = $cart[itemIndex];
+    } else {
+      item = $cart.find(
+        (i) => i.product.id === productId && (i.variant?.id || null) === (variantId || null)
+      );
+    }
+    if (!item) return;
+
+    if (isNaN(targetQty) || targetQty <= 0) {
+      removeFromCart(productId, variantId, itemIndex);
+      return;
+    }
+
+    const isCafeInfinite = item.product.department === 'CAFE' && (
+      item.product.stock >= 900 || (item.variant && (item.variant.stock ?? 0) >= 900)
+    );
+    const availableStock = item.variant ? Number(item.variant.stock || 0) : Number(item.product.stock || 0);
+
+    if (!isCafeInfinite && targetQty > availableStock) {
+      showToast('Stock insuficiente', 'warning', `Máximo disponible: ${availableStock}`);
+      item.quantity = Math.max(1, availableStock);
+      cart.set([...$cart]);
+      return;
+    }
+
+    item.quantity = Math.floor(targetQty);
+    cart.set([...$cart]);
+  }
+
+  function removeFromCart(productId: string, variantId: string | null, itemIndex?: number) {
+    if (itemIndex !== undefined && $cart[itemIndex]) {
+      $cart.splice(itemIndex, 1);
+      cart.set([...$cart]);
+      return;
+    }
     cart.set(
       $cart.filter(
         (item) => !(item.product.id === productId && (item.variant?.id || null) === (variantId || null))
@@ -775,8 +817,9 @@
       {#each $cart as item, index (item.product.id + (item.variant?.id || '') + (item.notes || '') + index)}
         <CartItem
           {item}
-          onupdateqty={updateQuantity}
-          onremove={removeFromCart}
+          onupdateqty={(prodId, varId, delta) => updateQuantity(prodId, varId, delta, index)}
+          onsetqty={(prodId, varId, qty) => setQuantity(prodId, varId, qty, index)}
+          onremove={(prodId, varId) => removeFromCart(prodId, varId, index)}
           oncustomize={() => openCustomizeModal(item.product, item.variant, index)}
         />
       {:else}

@@ -70,6 +70,49 @@
   // Preparation notes
   let notes = $state(untrack(() => initialNotes || ''));
   let quantity = $state(untrack(() => (initialQuantity > 0 ? initialQuantity : 1)));
+  let isQtyFocused = $state(false);
+  let qtyInputVal = $state<number | string>(untrack(() => (initialQuantity > 0 ? initialQuantity : 1)));
+
+  $effect(() => {
+    if (!isQtyFocused) {
+      qtyInputVal = quantity;
+    }
+  });
+
+  function handleQtyFocus(e: FocusEvent) {
+    isQtyFocused = true;
+    (e.currentTarget as HTMLInputElement).select();
+  }
+
+  function handleQtyBlur() {
+    isQtyFocused = false;
+    const val = parseInt(String(qtyInputVal), 10);
+    if (isNaN(val) || val <= 0) {
+      quantity = 1;
+      qtyInputVal = 1;
+    } else {
+      quantity = val;
+      qtyInputVal = val;
+    }
+  }
+
+  function handleQtyInput(e: Event) {
+    const target = e.currentTarget as HTMLInputElement;
+    qtyInputVal = target.value;
+    const val = parseInt(target.value, 10);
+    if (!isNaN(val) && val > 0) {
+      quantity = val;
+    }
+  }
+
+  function handleQtyKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      (e.currentTarget as HTMLInputElement).blur();
+    } else if (e.key === 'Escape') {
+      qtyInputVal = quantity;
+      (e.currentTarget as HTMLInputElement).blur();
+    }
+  }
 
   // Derived base unit price
   let basePrice = $derived.by(() => {
@@ -286,7 +329,18 @@
           >
             -
           </button>
-          <span class="qty-display">{quantity}</span>
+          <input
+            type="number"
+            class="qty-input"
+            min="1"
+            step="1"
+            value={qtyInputVal}
+            onfocus={handleQtyFocus}
+            onblur={handleQtyBlur}
+            oninput={handleQtyInput}
+            onkeydown={handleQtyKeyDown}
+            aria-label="Cantidad a agregar"
+          />
           <button
             type="button"
             class="qty-btn"
@@ -639,12 +693,35 @@
     cursor: not-allowed;
   }
 
-  .qty-display {
+  .qty-input {
+    width: 48px;
+    height: 32px;
+    text-align: center;
     font-size: 1.1rem;
     font-weight: 700;
-    min-width: 24px;
-    text-align: center;
-    font-family: monospace;
+    color: var(--text-primary);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-xs);
+    outline: none;
+    padding: 0 4px;
+    font-family: inherit;
+    -moz-appearance: textfield;
+    appearance: textfield;
+    transition: all 0.15s ease;
+  }
+
+  .qty-input::-webkit-inner-spin-button,
+  .qty-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .qty-input:focus {
+    background: rgba(236, 72, 153, 0.15);
+    border-color: #f472b6;
+    box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.25);
+    color: #fff;
   }
 
   .modal-footer-custom {

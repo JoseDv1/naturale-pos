@@ -39,7 +39,7 @@
   // Table shapes database (persists in localStorage)
   let tableShapes = $state<Record<string, 'circle' | 'square' | 'rectangle'>>({});
 
-  let tablesPromise = $state<Promise<any[]>>(Promise.resolve([]));
+  let tablesPromise: Promise<any[]> = Promise.resolve([]);
 
   // Modal state for adding a table
   let showAddModal = $state(false);
@@ -48,9 +48,10 @@
 
   // Reload tables on refresh trigger
   $effect(() => {
-    if ($refreshTrigger) {
+    const _ = $refreshTrigger;
+    untrack(() => {
       loadTables();
-    }
+    });
   });
 
   async function loadTables() {

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Naturale | Catálogo de Productos & Café</title>
+  <meta name="description" content="Catálogo de productos saludables, café de especialidad y mercado consciente de Naturale. Haz tu pedido directo por WhatsApp.">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+
+  <!-- Fuentes Google: Fraunces & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       HEADER / HERO PRINCIPAL
+       ========================================== -->
+  <header class="site-header">
+    <div class="brand-wrapper">
+      <div class="brand-badge">
+        <span>🌿</span>
+        <span>Catálogo Online Oficial</span>
+      </div>
+      <h1 class="brand-title" id="store-title">Naturale</h1>
+      <p class="brand-subtitle" id="store-subtitle">Mercado Saludable & Café</p>
+      <p class="brand-tagline" id="store-tagline">Alimentación consciente, café de especialidad y bienestar.</p>
+
+      <div class="header-info-chips">
+        <div class="info-chip" id="chip-hours">
+          <span>🕒</span>
+          <span id="store-hours">Lunes a Domingo: 8:00 AM - 7:00 PM</span>
+        </div>
+        <div class="info-chip" id="chip-location">
+          <span>📍</span>
+          <span id="store-location">Guatapé, Antioquia, Colombia</span>
+        </div>
+        <div class="info-chip">
+          <span>💬</span>
+          <span>Pedidos directos a WhatsApp</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+       BARRA DE CONTROLES (Sticky)
+       ========================================== -->
+  <div class="controls-container">
+    <div class="controls-inner">
+      <!-- Búsqueda y Selector de Departamento -->
+      <div class="search-and-dept">
+        <!-- Buscador en tiempo real -->
+        <div class="search-box">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input 
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="Buscar producto, marca o ingrediente..." 
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button id="search-clear" class="search-clear-btn" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Filtro Departamento: Todos / Café / Mercado -->
+        <div class="dept-pill-group" role="tablist" aria-label="Filtro de departamento">
+          <button class="dept-pill active" data-dept="ALL" role="tab" aria-selected="true">
+            <span>✨</span> Todos
+          </button>
+          <button class="dept-pill" data-dept="CAFE" role="tab" aria-selected="false">
+            <span>☕</span> Café
+          </button>
+          <button class="dept-pill" data-dept="MARKET" role="tab" aria-selected="false">
+            <span>🛒</span> Mercado
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtro Horizontal de Categorías -->
+      <div class="category-scroll-wrapper" id="categories-container" role="tablist" aria-label="Filtro de categorías">
+        <button class="cat-chip active" data-cat="ALL" role="tab" aria-selected="true">
+          <span>Todas</span>
+          <span class="cat-count" id="all-count">(0)</span>
+        </button>
+        <!-- Categorías inyectadas dinámicamente -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       CONTENIDO PRINCIPAL: CATÁLOGO
+       ========================================== -->
+  <main class="main-content">
+    <!-- Barra de Estado / Contador -->
+    <div class="catalog-status-bar">
+      <div>
+        Mostrando <strong id="visible-count">0</strong> productos
+        <span id="filter-indicator" style="display: none; color: var(--accent-terracotta); margin-left: 6px;"></span>
+      </div>
+      <div>
+        <span id="order-hint" style="font-size: 0.85rem; color: var(--text-muted);">
+          Precios al consumidor (COP)
+        </span>
+      </div>
+    </div>
+
+    <!-- Cuadrícula de Tarjetas de Productos -->
+    <div class="products-grid" id="products-grid">
+      <!-- Los productos se renderizan dinámicamente con JS -->
+    </div>
+
+    <!-- Plantilla de Sin Resultados (Oculta por defecto) -->
+    <div class="empty-state" id="empty-state" style="display: none;">
+      <div class="empty-icon">🍃</div>
+      <h3 class="empty-title">No encontramos productos</h3>
+      <p class="empty-text">No hay coincidencias con tu búsqueda o filtro seleccionado. Prueba con otra palabra clave o restablece los filtros.</p>
+      <button class="btn-reset" id="btn-reset-filters">Restablecer todos los filtros</button>
+    </div>
+  </main>
+
+  <!-- ==========================================
+       FOOTER
+       ========================================== -->
+  <footer class="site-footer">
+    <div class="footer-content">
+      <div class="footer-logo">🌿 Naturale</div>
+      <p id="footer-tagline">Alimentación consciente, café de especialidad y bienestar.</p>
+      <div class="footer-links">
+        <a href="#" id="footer-wa-link" target="_blank" rel="noopener noreferrer" class="footer-link">WhatsApp</a>
+        <span>•</span>
+        <a href="https://instagram.com/naturale_col" id="footer-ig-link" target="_blank" rel="noopener noreferrer" class="footer-link">Instagram</a>
+      </div>
+      <p class="footer-copy">
+        © <span id="current-year"></span> Naturale. Catálogo para clientes.
+      </p>
+    </div>
+  </footer>
+
+  <!-- ==========================================
+       BOTÓN FLOTANTE WHATSAPP
+       ========================================== -->
+  <a href="#" id="floating-whatsapp" class="floating-whatsapp" target="_blank" rel="noopener noreferrer" aria-label="Escríbenos por WhatsApp">
+    <svg viewBox="0 0 24 24">
+      <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.697c1.002.548 1.83.821 2.806.821h.005c3.18 0 5.767-2.586 5.767-5.766.001-3.182-2.585-5.77-5.767-5.772zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.697.073-1.045-.043-.223-.075-.461-.174-.78-.313-1.354-.59-2.234-1.93-2.302-2.02-.068-.09-1.046-1.391-1.046-2.653 0-1.262.66-1.882.894-2.14.234-.257.51-.322.68-.322.17 0 .34.002.488.01.159.008.371-.06.58.442.213.513.727 1.77.79 1.9.064.13.106.284.021.455-.085.17-.128.277-.255.426-.128.149-.27.332-.385.446-.128.127-.26.265-.112.52.149.255.66 1.09 1.415 1.764.97.865 1.787 1.134 2.042 1.261.255.128.404.106.553-.064.149-.17.638-.745.808-.999.17-.255.34-.213.574-.128.234.085 1.488.702 1.743.83.255.127.425.191.488.3.064.106.064.616-.08 1.021zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.175L2 22l4.98-1.306A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
+    </svg>
+    <span>Pedir por WhatsApp</span>
+  </a>
+
+  <!-- ==========================================
+       SCRIPTS
+       ========================================== -->
+  <!-- 1. Carga de los datos de productos exportados de Odoo -->
+  <script src="data/products.js"></script>
+  <!-- 2. Configuración de WhatsApp y tienda -->
+  <script src="config.js"></script>
+  <!-- 3. Lógica de la aplicación web del catálogo -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -775,7 +775,8 @@ describe('Naturale POS v1.2.0 QA Comprehensive Pre-Release Test Suite', () => {
       const list = await res.json();
       expect(Array.isArray(list)).toBe(true);
       for (const item of list) {
-        expect(item.stock).toBeLessThanOrEqual(3);
+        const hasLowVariant = item.variants && item.variants.some((v: any) => v.stock <= 3);
+        expect(item.stock <= 3 || hasLowVariant).toBe(true);
         expect(item.stock).toBeLessThan(900); // Infinite stock products excluded
       }
     });

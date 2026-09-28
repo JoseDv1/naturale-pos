@@ -62,6 +62,14 @@ async function createReadme(targetDir: string) {
 
 ## 💡 Copias de Seguridad (Backups):
 Para respaldar tu información o moverla a otro computador, simplemente copia el archivo \`prisma/dev.db\`.
+
+---
+
+## 🧹 Limpiar o Restablecer la Base de Datos:
+Si en este computador ya existía una base de datos con datos de prueba o deseas recargar el catálogo limpio de Odoo:
+- **En Windows:** Haz doble clic en \`clean-database.bat\`
+- **En Linux / Mac:** Ejecuta \`./clean-database.sh\`
+(El limpiador crea automáticamente un respaldo de seguridad antes de proceder).
 `;
   await writeFile(join(targetDir, 'README.md'), content, 'utf-8');
 }
@@ -82,6 +90,18 @@ naturale-pos.exe
 pause
 `;
     await writeFile(join(targetDir, 'start.bat'), batContent, 'utf-8');
+
+    const cleanBat = `@echo off
+title Limpiar Base de Datos - Naturale POS
+cd /d "%~dp0"
+echo ==========================================
+echo     LIMPIEZA DE BASE DE DATOS
+echo ==========================================
+echo.
+clean-database.exe %*
+pause
+`;
+    await writeFile(join(targetDir, 'clean-database.bat'), cleanBat, 'utf-8');
   } else {
     const shContent = `#!/bin/bash
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -105,6 +125,16 @@ fi
     const shPath = join(targetDir, 'start.sh');
     await writeFile(shPath, shContent, 'utf-8');
     await chmod(shPath, 0o755);
+
+    const cleanSh = `#!/bin/bash
+DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$DIR"
+chmod +x ./clean-database 2>/dev/null
+./clean-database "$@"
+`;
+    const cleanShPath = join(targetDir, 'clean-database.sh');
+    await writeFile(cleanShPath, cleanSh, 'utf-8');
+    await chmod(cleanShPath, 0o755);
   }
 }
 
@@ -120,7 +150,7 @@ async function packagePlatform(target: 'linux' | 'windows') {
   }
   await mkdir(packageDir, { recursive: true });
 
-  // 1. Compile Binary
+  // 1. Compile Binaries (Server and Database Cleaner)
   const binaryName = isWin ? 'naturale-pos.exe' : 'naturale-pos';
   const bunTarget = isWin ? 'bun-windows-x64' : 'bun-linux-x64';
   const binaryDest = join(packageDir, binaryName);
@@ -130,19 +160,32 @@ async function packagePlatform(target: 'linux' | 'windows') {
     await chmod(binaryDest, 0o755);
   }
 
+  const cleanBinaryName = isWin ? 'clean-database.exe' : 'clean-database';
+  const cleanBinaryDest = join(packageDir, cleanBinaryName);
+  await runCommand(`bun build --compile --minify --target=${bunTarget} --outfile ${cleanBinaryDest} scripts/clean-database.ts`);
+  if (!isWin) {
+    await chmod(cleanBinaryDest, 0o755);
+  }
+
   // 2. Copy Frontend Dist
   const frontendDistSrc = join(ROOT_DIR, 'frontend', 'dist');
   const frontendDistDest = join(packageDir, 'frontend', 'dist');
   await mkdir(join(packageDir, 'frontend'), { recursive: true });
   await cp(frontendDistSrc, frontendDistDest, { recursive: true });
 
-  // 3. Copy/Create Prisma Dev DB and Uploads folder
+  // 3. Copy/Create Prisma Dev DB, Uploads and Data folder
   const prismaDest = join(packageDir, 'prisma');
   await mkdir(prismaDest, { recursive: true });
   await mkdir(join(packageDir, 'uploads'), { recursive: true });
   const dbSrc = join(ROOT_DIR, 'prisma', 'dev.db');
   if (existsSync(dbSrc)) {
     await cp(dbSrc, join(prismaDest, 'dev.db'));
+  }
+  const dataSrc = join(ROOT_DIR, 'data');
+  if (existsSync(dataSrc)) {
+    const dataDest = join(packageDir, 'data');
+    await mkdir(dataDest, { recursive: true });
+    await cp(dataSrc, dataDest, { recursive: true });
   }
 
   // 4. Create Start Scripts & Readme

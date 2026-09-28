@@ -1,0 +1,717 @@
+/* ==========================================================================
+   Naturale - Catálogo Web Saludable & Café
+   Paleta Botánica Orgánica & Diseño Editorial Moderno
+   ========================================================================== */
+
+:root {
+  /* Paleta de Colores Naturale */
+  --bg-body: #FAF7F2;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-warm-tint: #F3EFE8;
+  --bg-muted: #ECE6DC;
+
+  /* Tonos Botánicos */
+  --primary-forest: #224C36;
+  --primary-deep: #163625;
+  --primary-light: #EBF2EC;
+  --accent-terracotta: #C86C4F;
+  --accent-terracotta-light: #FBF0EC;
+  --accent-gold: #D4A359;
+
+  /* WhatsApp Oficial */
+  --wa-green: #25D366;
+  --wa-green-hover: #20BA5A;
+  --wa-dark: #128C7E;
+  --wa-light: #E8F8EE;
+
+  /* Tipografía & Textos */
+  --text-main: #1C2420;
+  --text-secondary: #58675F;
+  --text-muted: #84948B;
+  --text-inverse: #FFFFFF;
+
+  /* Bordes & Sombras */
+  --border-subtle: #E8E2D8;
+  --border-strong: #D5CCC0;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 9999px;
+
+  --shadow-sm: 0 2px 8px -2px rgba(22, 54, 37, 0.05);
+  --shadow-md: 0 8px 24px -4px rgba(22, 54, 37, 0.08), 0 2px 6px -1px rgba(22, 54, 37, 0.04);
+  --shadow-lg: 0 16px 36px -6px rgba(22, 54, 37, 0.12), 0 4px 12px -2px rgba(22, 54, 37, 0.06);
+  --shadow-float: 0 10px 25px rgba(37, 211, 102, 0.35);
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Reset Básico */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   HEADER / HERO
+   ========================================================================== */
+.site-header {
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--bg-body) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 32px 20px 24px;
+  text-align: center;
+  position: relative;
+}
+
+.brand-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--primary-light);
+  color: var(--primary-forest);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  border: 1px solid rgba(34, 76, 54, 0.1);
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  font-weight: 700;
+  color: var(--primary-deep);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+}
+
+.brand-subtitle {
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: var(--accent-terracotta);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.brand-tagline {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  max-width: 500px;
+  margin: 0 auto 16px;
+}
+
+.header-info-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   BARRA DE CONTROLES (Sticky: Búsqueda, Departamentos, Categorías)
+   ========================================================================== */
+.controls-container {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(250, 247, 242, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 14px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.controls-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-and-dept {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Buscador */
+.search-box {
+  flex: 1;
+  min-width: 260px;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 40px 12px 42px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  transition: var(--transition);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-forest);
+  box-shadow: 0 0 0 3px rgba(34, 76, 54, 0.12);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: none;
+}
+
+.search-clear-btn.visible {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Selector de Departamento (Todo / Café / Mercado) */
+.dept-pill-group {
+  display: flex;
+  background: var(--bg-muted);
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  gap: 4px;
+}
+
+.dept-pill {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dept-pill:hover {
+  color: var(--primary-deep);
+}
+
+.dept-pill.active {
+  background: var(--bg-surface);
+  color: var(--primary-forest);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Carrusel de Categorías */
+.category-scroll-wrapper {
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE */
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.category-scroll-wrapper::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.cat-chip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cat-chip:hover {
+  background: var(--bg-warm-tint);
+  color: var(--primary-forest);
+  border-color: var(--border-strong);
+}
+
+.cat-chip.active {
+  background: var(--primary-forest);
+  color: var(--text-inverse);
+  border-color: var(--primary-forest);
+}
+
+.cat-count {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   CUADRÍCULA DE PRODUCTOS
+   ========================================================================== */
+.main-content {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+  width: 100%;
+  flex: 1;
+}
+
+.catalog-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* Tarjeta de Producto */
+.product-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(34, 76, 54, 0.25);
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.badge-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.badge-cafe {
+  background: #F8ECE4;
+  color: var(--accent-terracotta);
+}
+
+.badge-market {
+  background: var(--primary-light);
+  color: var(--primary-forest);
+}
+
+.badge-category {
+  background: var(--bg-warm-tint);
+  color: var(--text-secondary);
+}
+
+.product-name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--primary-deep);
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+
+/* Selector de Variantes (Opciones como Tamaños o Sabores) */
+.variants-container {
+  margin: 12px 0;
+  background: var(--bg-body);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-subtle);
+}
+
+.variants-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.variants-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.variant-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.variant-btn:hover {
+  border-color: var(--primary-forest);
+  color: var(--primary-forest);
+}
+
+.variant-btn.selected {
+  background: var(--primary-forest);
+  color: var(--text-inverse);
+  border-color: var(--primary-forest);
+  font-weight: 600;
+}
+
+/* Precio y Botón WhatsApp */
+.card-bottom {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.price-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.price-value {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--primary-forest);
+}
+
+.price-currency {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 3px;
+}
+
+/* Botón WhatsApp */
+.btn-whatsapp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: var(--wa-green);
+  color: var(--text-inverse);
+  border: none;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--transition);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
+}
+
+.btn-whatsapp:hover {
+  background: var(--wa-green-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.35);
+}
+
+.btn-whatsapp:active {
+  transform: translateY(0);
+}
+
+.btn-whatsapp svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* ==========================================================================
+   ESTADO VACÍO (Sin Resultados)
+   ========================================================================== */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  max-width: 480px;
+  margin: 0 auto;
+  grid-column: 1 / -1;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--primary-deep);
+  margin-bottom: 8px;
+}
+
+.empty-text {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+}
+
+.btn-reset {
+  background: var(--primary-forest);
+  color: var(--text-inverse);
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-reset:hover {
+  background: var(--primary-deep);
+}
+
+/* ==========================================================================
+   BOTÓN FLOTANTE DE WHATSAPP
+   ========================================================================== */
+.floating-whatsapp {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99;
+  background: var(--wa-green);
+  color: var(--text-inverse);
+  border-radius: var(--radius-pill);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: var(--shadow-float);
+  transition: var(--transition);
+  animation: pulse-subtle 3s infinite;
+}
+
+.floating-whatsapp:hover {
+  background: var(--wa-green-hover);
+  transform: scale(1.04);
+}
+
+.floating-whatsapp svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    box-shadow: 0 10px 25px rgba(37, 211, 102, 0.35);
+  }
+  50% {
+    box-shadow: 0 10px 30px rgba(37, 211, 102, 0.55);
+  }
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+.site-footer {
+  background: #FFFFFF;
+  border-top: 1px solid var(--border-subtle);
+  padding: 40px 20px;
+  text-align: center;
+  margin-top: auto;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.footer-content {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.footer-logo {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-deep);
+  margin-bottom: 6px;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.footer-link {
+  color: var(--primary-forest);
+  text-decoration: none;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.footer-link:hover {
+  color: var(--accent-terracotta);
+}
+
+.footer-copy {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 12px;
+}
+
+/* ==========================================================================
+   RESPONSIVO / MÓVIL
+   ========================================================================== */
+@media (max-width: 640px) {
+  .site-header {
+    padding: 24px 16px 18px;
+  }
+
+  .controls-container {
+    padding: 10px 14px;
+  }
+
+  .search-and-dept {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dept-pill-group {
+    justify-content: space-around;
+  }
+
+  .dept-pill {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+
+  .products-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .product-card {
+    padding: 16px;
+  }
+
+  .floating-whatsapp span {
+    display: none;
+  }
+
+  .floating-whatsapp {
+    padding: 14px;
+    border-radius: 50%;
+    bottom: 18px;
+    right: 18px;
+  }
+}

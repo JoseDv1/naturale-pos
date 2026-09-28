@@ -214,13 +214,20 @@
       <!-- 3. Bottom Row: Alerts & Actions -->
       <div class="dashboard-row">
         <!-- Low Stock Alerts -->
-        <div class="dashboard-col glass-panel flex-column flex-1 animate-scale-up" style="max-height: 250px;">
-          <h3>Alertas de Inventario Crítico ⚠️</h3>
+        <div class="dashboard-col glass-panel flex-column flex-1 animate-scale-up alerts-panel-col">
+          <div class="col-header-row">
+            <h3>Alertas de Inventario Crítico ⚠️</h3>
+            {#if alerts.length > 0}
+              <span class="alerts-count-chip" class:has-crit={alerts.some((a: any) => a.stock === 0)}>
+                {alerts.length} {alerts.length === 1 ? 'producto' : 'productos'}
+              </span>
+            {/if}
+          </div>
           <div class="alerts-list scroll-y">
             {#each alerts as item}
               <div class="alert-item animate-fade-in">
                 <div class="alert-info">
-                  <strong class="product-name">{item.name}</strong>
+                  <strong class="product-name" title={item.name}>{item.name}</strong>
                   {#if item.variants && item.variants.length > 0}
                     {@const lowVars = item.variants.filter((v: any) => (v.stock ?? 0) <= 3 && !(item.department === 'CAFE' && ((item.stock >= 900) || (v.stock >= 900))))}
                     {#if lowVars.length > 0}
@@ -255,8 +262,10 @@
 {/snippet}
 
         <!-- Quick Actions Grid -->
-        <div class="dashboard-col glass-panel flex-column flex-1 animate-scale-up">
-          <h3>Atajos Operacionales Rápidos</h3>
+        <div class="dashboard-col glass-panel flex-column flex-1 animate-scale-up shortcuts-panel-col">
+          <div class="col-header-row">
+            <h3>Atajos Operacionales Rápidos</h3>
+          </div>
           <div class="shortcuts-grid">
             {@render shortcutBtn('🛒', 'Terminal Venta', 'Procesar pagos y comandas', 'checkout')}
             {@render shortcutBtn('🪑', 'Mapa de Mesas', 'Gestionar mesas y salón', 'tables')}
@@ -419,7 +428,46 @@
     margin-bottom: 4px;
   }
 
+  .col-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-glass);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+  }
 
+  .col-header-row h3 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  .alerts-count-chip {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--color-cafe);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+  }
+
+  .alerts-count-chip.has-crit {
+    background: rgba(244, 63, 94, 0.15);
+    color: var(--color-danger);
+    border-color: rgba(244, 63, 94, 0.3);
+  }
+
+  .alerts-panel-col,
+  .shortcuts-panel-col {
+    height: 340px;
+    max-height: 340px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
   /* Payment distribution */
   .payment-distribution {
@@ -444,34 +492,52 @@
   /* Alerts list */
   .alerts-list {
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    padding-right: 4px;
   }
 
   .alert-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-sm);
     padding: 8px 12px;
+    min-width: 0;
+    gap: 12px;
+    transition: var(--transition-fast);
+  }
+  .alert-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(16, 185, 129, 0.25);
   }
 
   .alert-info {
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    gap: 2px;
   }
 
   .product-name {
     font-size: 0.85rem;
+    font-weight: 600;
     color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .product-sku {
     font-size: 0.72rem;
     color: var(--text-muted);
+    word-break: break-word;
   }
 
   .alert-badge {
@@ -479,6 +545,8 @@
     padding: 3px 8px;
     border-radius: 4px;
     font-weight: 600;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .badge-zero {

@@ -88,15 +88,17 @@
 </script>
 
 <div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="close-shift-title">
-  <div class="modal-container glass-panel animate-scale-up printable-modal" style="max-width: 520px;">
+  <div class="modal-container glass-panel animate-scale-up printable-modal close-shift-dialog" style="max-width: 530px;">
     <!-- If not yet closed, show Guided Arqueo Form -->
     {#if !closedReport}
       <header class="modal-header">
         <div class="header-info">
-          <span class="header-icon">🔒</span>
+          <div class="header-icon-badge amber">
+            <span>🔒</span>
+          </div>
           <div>
-            <h2 id="close-shift-title">Cierre de Caja & Arqueo Guiado</h2>
-            <p class="header-sub">Verifica el efectivo físico en gaveta y genera el balance de la jornada.</p>
+            <h2 id="close-shift-title">Cierre de Caja & Arqueo</h2>
+            <p class="header-sub">Verifica el efectivo físico en gaveta y genera el balance del turno.</p>
           </div>
         </div>
         <button type="button" class="close-modal-btn" onclick={onclose} aria-label="Cerrar modal">✕</button>
@@ -126,57 +128,76 @@
             {/if}
 
             <!-- Cashier & Opening Info -->
-            <div class="shift-meta-grid">
-              <div class="meta-item">
-                <span class="meta-label">Cajero:</span>
-                <strong>{activeShift.user?.name || $user?.name || 'Cajero'}</strong>
+            <div class="shift-meta-cards">
+              <div class="meta-card">
+                <span class="meta-icon">👤</span>
+                <div class="meta-col">
+                  <span class="meta-label">Cajero</span>
+                  <strong class="meta-val">{activeShift.user?.name || $user?.name || 'Cajero'}</strong>
+                </div>
               </div>
-              <div class="meta-item">
-                <span class="meta-label">Apertura:</span>
-                <span>{new Date(activeShift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <div class="meta-card">
+                <span class="meta-icon">🕒</span>
+                <div class="meta-col">
+                  <span class="meta-label">Apertura</span>
+                  <strong class="meta-val">{new Date(activeShift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                </div>
               </div>
-              <div class="meta-item">
-                <span class="meta-label">Base Inicial:</span>
-                <strong class="text-general">${Number(activeShift.initialCash).toLocaleString()}</strong>
+              <div class="meta-card">
+                <span class="meta-icon">💵</span>
+                <div class="meta-col">
+                  <span class="meta-label">Base Inicial</span>
+                  <strong class="meta-val text-general">${Number(activeShift.initialCash).toLocaleString()}</strong>
+                </div>
               </div>
             </div>
 
             <!-- Financial Breakdown Card -->
             <div class="breakdown-card">
-              <h4>Desglose Financiero del Turno:</h4>
-              <div class="breakdown-row">
-                <span>💵 Ventas en Efectivo:</span>
-                <strong>+${Number(totals?.cashSales || 0).toLocaleString()}</strong>
+              <div class="breakdown-header">
+                <h4>Movimientos Registrados en Turno</h4>
               </div>
-              <div class="breakdown-row">
-                <span>💳 Ventas con Tarjeta:</span>
-                <span>${Number(totals?.cardSales || 0).toLocaleString()}</span>
-              </div>
-              <div class="breakdown-row">
-                <span>📲 Ventas por Transferencia:</span>
-                <span>${Number(totals?.transferSales || 0).toLocaleString()}</span>
-              </div>
-              {#if Number(totals?.internalSales || 0) > 0}
+              <div class="breakdown-list">
                 <div class="breakdown-row">
-                  <span>🔄 Consumo Interno:</span>
-                  <span>${Number(totals.internalSales).toLocaleString()}</span>
+                  <span class="row-label">💵 Ventas en Efectivo:</span>
+                  <strong class="text-general">+${Number(totals?.cashSales || 0).toLocaleString()}</strong>
                 </div>
-              {/if}
-              <div class="breakdown-row text-danger">
-                <span>💸 Egresos / Gastos Menores:</span>
-                <strong>-${Number(totals?.expenses || 0).toLocaleString()}</strong>
+                <div class="breakdown-row">
+                  <span class="row-label">💳 Ventas con Tarjeta:</span>
+                  <span>${Number(totals?.cardSales || 0).toLocaleString()}</span>
+                </div>
+                <div class="breakdown-row">
+                  <span class="row-label">📲 Ventas Transferencia:</span>
+                  <span>${Number(totals?.transferSales || 0).toLocaleString()}</span>
+                </div>
+                {#if Number(totals?.internalSales || 0) > 0}
+                  <div class="breakdown-row">
+                    <span class="row-label">🔄 Consumo Interno:</span>
+                    <span>${Number(totals.internalSales).toLocaleString()}</span>
+                  </div>
+                {/if}
+                {#if Number(totals?.expenses || 0) > 0}
+                  <div class="breakdown-row text-danger">
+                    <span class="row-label">💸 Egresos en Efectivo:</span>
+                    <strong>-${Number(totals?.expenses || 0).toLocaleString()}</strong>
+                  </div>
+                {/if}
               </div>
-              <div class="breakdown-divider"></div>
-              <div class="breakdown-row expected-row">
-                <span>💰 Efectivo Teórico Esperado:</span>
+
+              <div class="expected-highlight-box">
+                <div class="expected-text">
+                  <span class="expected-label">Efectivo Teórico Esperado:</span>
+                  <span class="expected-sub">(Base + Efectivo - Egresos)</span>
+                </div>
                 <strong class="expected-amount">${expectedCash.toLocaleString()}</strong>
               </div>
             </div>
 
             <!-- Physical Count Input (Arqueo) -->
-            <div class="form-group">
-              <label for="actual-cash-input">
-                Efectivo Físico Contado en Gaveta ($) <span class="required">*</span>
+            <div class="form-group cash-count-group">
+              <label for="actual-cash-input" class="field-label">
+                <span>Efectivo Físico Contado en Gaveta</span>
+                <span class="required-tag">* Requerido</span>
               </label>
               <div class="input-with-symbol">
                 <span class="currency-symbol">$</span>
@@ -200,7 +221,7 @@
                   <span class="disc-icon">✅</span>
                   <div>
                     <strong>Caja Cuadrada</strong>
-                    <p class="disc-sub">El conteo físico coincide exactamente con el efectivo teórico esperado.</p>
+                    <p class="disc-sub">El conteo físico coincide exactamente con el cálculo teórico del turno.</p>
                   </div>
                 {:else if discrepancy < 0}
                   <span class="disc-icon">⚠️</span>
@@ -216,16 +237,17 @@
                   </div>
                 {/if}
               </div>
-              <div class="discrepancy-value">
-                Diferencia: <strong>{discrepancy > 0 ? '+' : ''}${discrepancy.toLocaleString()}</strong>
+              <div class="discrepancy-badge">
+                <span>Diferencia:</span>
+                <strong>{discrepancy > 0 ? '+' : ''}${discrepancy.toLocaleString()}</strong>
               </div>
             </div>
 
             <div class="form-group">
-              <label for="close-notes">Observaciones de Cierre (Opcional)</label>
+              <label for="close-notes" class="field-label">Observaciones de Cierre (Opcional)</label>
               <textarea
                 id="close-notes"
-                class="form-control"
+                class="form-control notes-textarea"
                 rows="2"
                 bind:value={notes}
                 placeholder="Ej: Justificación de diferencias, novedades del turno..."
@@ -234,14 +256,14 @@
           </div>
 
           <footer class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick={onclose} disabled={isClosing}>
+            <button type="button" class="btn btn-secondary btn-cancel" onclick={onclose} disabled={isClosing}>
               Cancelar
             </button>
             <button type="submit" class="btn btn-primary btn-close-confirm" disabled={isClosing}>
               {#if isClosing}
                 <Spinner size="18px" /> Procesando Arqueo...
               {:else}
-                🔒 Confirmar Cierre de Caja
+                🔒 Confirmar y Cerrar Caja
               {/if}
             </button>
           </footer>
@@ -253,10 +275,12 @@
            ========================================== -->
       <header class="modal-header no-print">
         <div class="header-info">
-          <span class="header-icon">🧾</span>
+          <div class="header-icon-badge green">
+            <span>🧾</span>
+          </div>
           <div>
-            <h2>Comprobante de Cierre de Turno</h2>
-            <p class="header-sub">El turno ha sido cerrado y archivado satisfactoriamente.</p>
+            <h2>Comprobante de Cierre</h2>
+            <p class="header-sub">El turno ha sido cerrado y registrado exitosamente.</p>
           </div>
         </div>
         <button type="button" class="close-modal-btn" onclick={onclose} aria-label="Cerrar modal">✕</button>
@@ -264,8 +288,9 @@
 
       <div class="receipt-thermal-paper" id="closure-ticket">
         <div class="receipt-brand text-center">
-          <h3 class="receipt-logo">NATURALE POS</h3>
-          <p class="receipt-tagline">COMPROBANTE DE CIERRE DE CAJA</p>
+          <h3 class="receipt-logo">🌿 NATURALE</h3>
+          <p class="receipt-tagline">Mercado Saludable & Café</p>
+          <div class="ticket-type-pill">COMPROBANTE DE CIERRE DE CAJA</div>
           <p class="receipt-meta">Turno #{closedReport.shift?.id?.slice(0, 8).toUpperCase() || 'TURNO'}</p>
         </div>
 
@@ -310,7 +335,7 @@
             <span>Efectivo Real (Contado):</span>
             <span>${Number(closedReport.actualCash || 0).toLocaleString()}</span>
           </div>
-          <div class="summary-line font-bold" style="color: {Number(closedReport.difference) < 0 ? '#c0392b' : Number(closedReport.difference) > 0 ? '#2980b9' : '#27ae60'};">
+          <div class="summary-line font-bold" style="color: {Number(closedReport.difference) < 0 ? '#be123c' : Number(closedReport.difference) > 0 ? '#1d4ed8' : '#15803d'}; font-size: 0.95rem; margin-top: 4px;">
             <span>Diferencia (Arqueo):</span>
             <span>{Number(closedReport.difference) > 0 ? '+' : ''}${Number(closedReport.difference || 0).toLocaleString()}</span>
           </div>
@@ -319,7 +344,7 @@
         <div class="receipt-divider-dashed"></div>
 
         <div class="other-payments-block">
-          <p style="font-weight: 700; margin-bottom: 4px;">Otros Medios de Pago:</p>
+          <p style="font-weight: 700; margin-bottom: 4px; font-size: 0.8rem; color: #555;">Otros Medios de Pago:</p>
           <div class="summary-line">
             <span>💳 Ventas Tarjeta:</span>
             <span>${Number(closedReport.totals?.cardSales || 0).toLocaleString()}</span>
@@ -328,36 +353,36 @@
             <span>📲 Transferencias:</span>
             <span>${Number(closedReport.totals?.transferSales || 0).toLocaleString()}</span>
           </div>
-          <div class="summary-line font-bold" style="margin-top: 4px; border-top: 1px dotted #999; padding-top: 4px;">
-            <span>TOTAL VENTAS DÍA:</span>
-            <span>${(Number(closedReport.totals?.cashSales || 0) + Number(closedReport.totals?.cardSales || 0) + Number(closedReport.totals?.transferSales || 0)).toLocaleString()}</span>
+          <div class="summary-line font-bold" style="margin-top: 6px; border-top: 1px dotted #ccc; padding-top: 6px; font-size: 0.95rem;">
+            <span>TOTAL VENTAS DEL TURNO:</span>
+            <span>${(Number(closedReport.totals?.cashSales || 0) + Number(closedReport.totals?.cardSales || 0) + Number(totals?.transferSales || 0)).toLocaleString()}</span>
           </div>
         </div>
 
         {#if closedReport.shift?.notes}
           <div class="receipt-divider-dashed"></div>
           <div class="notes-block">
-            <span style="font-size: 0.75rem; color: #666;">Notas:</span>
-            <p style="font-size: 0.8rem; margin: 2px 0 0 0;">{closedReport.shift.notes}</p>
+            <span style="font-size: 0.75rem; color: #666; font-weight: 600;">Notas del Turno:</span>
+            <p style="font-size: 0.8rem; margin: 2px 0 0 0; color: #333;">{closedReport.shift.notes}</p>
           </div>
         {/if}
 
         <div class="receipt-divider-dashed"></div>
         <div class="signature-section" style="margin-top: 24px; text-align: center;">
-          <div style="border-top: 1px solid #333; width: 60%; margin: 0 auto 6px auto;"></div>
-          <p style="font-size: 0.75rem; color: #555;">Firma del Cajero Responsable</p>
+          <div style="border-top: 1px solid #777; width: 60%; margin: 0 auto 6px auto;"></div>
+          <p style="font-size: 0.75rem; color: #666; font-weight: 500;">Firma del Cajero Responsable</p>
         </div>
       </div>
 
       <footer class="modal-footer no-print">
-        <button type="button" class="btn btn-secondary" onclick={onclose}>
+        <button type="button" class="btn btn-secondary btn-cancel" onclick={onclose}>
           Listo / Salir
         </button>
         <button type="button" class="btn btn-secondary" onclick={printClosureTicket}>
-          🖨️ Imprimir Ticket de Cierre
+          🖨️ Imprimir Ticket
         </button>
         {#if onopennew}
-          <button type="button" class="btn btn-primary" onclick={onopennew}>
+          <button type="button" class="btn btn-primary btn-new-shift" onclick={onopennew}>
             🚀 Abrir Nuevo Turno
           </button>
         {/if}
@@ -367,18 +392,48 @@
 </div>
 
 <style>
+  .close-shift-dialog {
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
   .header-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
   }
 
-  .header-icon {
-    font-size: 1.8rem;
+  .header-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+  }
+  .header-icon-badge.amber {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.08));
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.15);
+  }
+  .header-icon-badge.green {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.08));
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.15);
+  }
+
+  .header-info h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
   }
 
   .header-sub {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
     margin: 2px 0 0 0;
   }
@@ -390,64 +445,140 @@
     gap: 14px;
   }
 
-  .shift-meta-grid {
+  .shift-meta-cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .meta-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.6);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-sm);
   }
 
-  .meta-item {
+  .meta-icon {
+    font-size: 1.2rem;
+  }
+
+  .meta-col {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
+    min-width: 0;
   }
 
   .meta-label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  .meta-val {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .breakdown-card {
-    padding: 14px;
-    background: rgba(255, 255, 255, 0.02);
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.6);
     border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .breakdown-header h4 {
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+  }
+
+  .breakdown-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
 
-  .breakdown-card h4 {
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin: 0 0 4px 0;
-    color: var(--text-secondary);
-  }
-
   .breakdown-row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    font-size: 0.86rem;
+  }
+
+  .row-label {
+    color: var(--text-secondary);
+  }
+
+  .expected-highlight-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(4, 120, 87, 0.05));
+    border: 1.5px solid rgba(16, 185, 129, 0.35);
+    border-radius: var(--radius-sm);
+    margin-top: 4px;
+  }
+
+  .expected-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .expected-label {
     font-size: 0.85rem;
-  }
-
-  .breakdown-divider {
-    border-top: 1px solid var(--border-glass);
-    margin: 4px 0;
-  }
-
-  .expected-row {
-    font-size: 0.95rem;
     font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .expected-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
   }
 
   .expected-amount {
-    color: var(--color-general);
-    font-size: 1.05rem;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--color-market);
+  }
+
+  .cash-count-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1.5px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-md);
+  }
+
+  .field-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .required-tag {
+    font-size: 0.74rem;
+    color: var(--color-market);
+    font-weight: 500;
   }
 
   .input-with-symbol {
@@ -459,46 +590,55 @@
   .currency-symbol {
     position: absolute;
     left: 14px;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     font-weight: 700;
     color: var(--color-general);
     pointer-events: none;
   }
 
   .cash-count-input {
-    font-size: 1.3rem !important;
+    font-size: 1.5rem !important;
     font-weight: 700 !important;
-    padding-left: 32px !important;
+    padding-left: 36px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
     color: var(--color-general) !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+    border: 1.5px solid rgba(16, 185, 129, 0.3) !important;
+    border-radius: var(--radius-sm) !important;
+  }
+  .cash-count-input:focus {
+    border-color: var(--color-general) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
   }
 
   .discrepancy-card {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 14px;
+    padding: 12px 16px;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--border-glass);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid var(--border-glass);
+    background: rgba(255, 255, 255, 0.6);
     transition: var(--transition-fast);
   }
 
   .discrepancy-card.cuadrado {
-    background: rgba(46, 204, 113, 0.1);
-    border-color: rgba(46, 204, 113, 0.3);
-    color: #2ecc71;
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #15803d;
   }
 
   .discrepancy-card.faltante {
-    background: rgba(231, 76, 60, 0.12);
-    border-color: rgba(231, 76, 60, 0.3);
-    color: #e74c3c;
+    background: rgba(244, 63, 94, 0.12);
+    border-color: rgba(244, 63, 94, 0.4);
+    color: var(--color-danger);
   }
 
   .discrepancy-card.sobrante {
-    background: rgba(52, 152, 219, 0.12);
-    border-color: rgba(52, 152, 219, 0.3);
-    color: #3498db;
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #2563eb;
   }
 
   .discrepancy-header {
@@ -512,54 +652,105 @@
   }
 
   .disc-sub {
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     margin: 2px 0 0 0;
-    color: var(--text-secondary);
+    opacity: 0.9;
   }
 
-  .discrepancy-value {
-    font-size: 1rem;
-    white-space: nowrap;
+  .discrepancy-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 0.8rem;
+  }
+  .discrepancy-badge strong {
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+
+  .notes-textarea {
+    border-radius: var(--radius-sm);
+    resize: none;
+    font-size: 0.88rem;
+    background: rgba(255, 255, 255, 0.6);
+  }
+
+  .modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--border-glass);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .btn-cancel {
+    height: 44px;
+    padding: 0 18px;
+    font-weight: 500;
   }
 
   .btn-close-confirm {
     flex: 1;
+    height: 44px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
+  }
+
+  .btn-new-shift {
+    height: 44px;
+    font-size: 0.9rem;
+    font-weight: 600;
   }
 
   /* Thermal Receipt Style */
   .receipt-thermal-paper {
     background: #ffffff;
     color: #1a1a1a;
-    padding: 24px 20px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.85rem;
-    line-height: 1.4;
-    border-radius: 6px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    padding: 24px 22px;
+    font-family: var(--font-sans);
+    font-size: 0.86rem;
+    line-height: 1.45;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.08);
   }
 
   .receipt-brand h3 {
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 800;
     margin: 0 0 2px 0;
-    letter-spacing: 1px;
-    color: #111;
+    letter-spacing: 0.5px;
+    color: #112217;
   }
 
   .receipt-tagline {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: #555;
     margin: 0;
   }
 
-  .receipt-meta {
+  .ticket-type-pill {
+    display: inline-block;
     font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: #f1f5f9;
+    color: #334155;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin: 6px 0 2px 0;
+  }
+
+  .receipt-meta {
+    font-size: 0.72rem;
     color: #777;
     margin: 2px 0 0 0;
   }
 
   .receipt-divider-dashed {
-    border-top: 1px dashed #999;
+    border-top: 1px dashed #cbd5e1;
     margin: 10px 0;
   }
 
@@ -567,18 +758,31 @@
     display: flex;
     justify-content: space-between;
     font-size: 0.82rem;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
+    color: #334155;
   }
 
   .summary-line {
     display: flex;
     justify-content: space-between;
     font-size: 0.85rem;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
+    color: #334155;
   }
 
   .font-bold {
     font-weight: 700;
+    color: #0f172a;
+  }
+
+  .error-banner {
+    padding: 10px 14px;
+    background: rgba(231, 76, 60, 0.12);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    border-radius: var(--radius-sm);
+    color: #e74c3c;
+    font-size: 0.88rem;
+    font-weight: 500;
   }
 
   @media print {

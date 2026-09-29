@@ -606,16 +606,18 @@
     display: flex;
     gap: 16px;
     flex-wrap: wrap;
+    align-items: stretch;
   }
 
   .visual-panel {
-    padding: 18px;
+    padding: 16px 18px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: 240px;
     border-radius: var(--radius-md);
     min-width: 280px;
+    box-sizing: border-box;
+    overflow: visible;
   }
 
   .visual-panel h3 {
@@ -628,13 +630,15 @@
   .payment-methods-grid {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    overflow: visible;
   }
 
   .alerts-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    max-height: 195px;
     overflow-y: auto;
   }
 

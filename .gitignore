@@ -12,6 +12,7 @@ frontend/dist/
 *.db-journal
 *.db-shm
 *.db-wal
+*.db.bak*
 *.sqlite
 *.sqlite-journal
 

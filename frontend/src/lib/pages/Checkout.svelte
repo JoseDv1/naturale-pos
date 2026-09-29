@@ -26,6 +26,7 @@
   import ThermalReceipt80mm from '../components/molecules/ThermalReceipt80mm.svelte';
   import ReceiptSettingsModal from '../components/organisms/ReceiptSettingsModal.svelte';
   import CustomizeRecipeModal from '../components/organisms/CustomizeRecipeModal.svelte';
+  import { printThermalReceipt } from '../services/printer';
 
   // State variables
   let searchQuery = $state('');
@@ -500,14 +501,24 @@
 
       const soldTable = $selectedTable ? { name: $selectedTable.name } : null;
 
+      // Extract verified items from backend response or fallback to deep copy of cart
+      const saleItems = (data?.sale?.items && Array.isArray(data.sale.items) && data.sale.items.length > 0)
+        ? data.sale.items
+        : JSON.parse(JSON.stringify($cart));
+
+      const salePayments = (data?.sale?.payments && Array.isArray(data.sale.payments) && data.sale.payments.length > 0)
+        ? data.sale.payments
+        : [...payments];
+
       successReceipt = {
-        id: data.sale.id,
-        total: data.sale.total,
-        createdAt: data.sale.createdAt,
-        items: [...$cart],
-        payments: [...payments],
+        ...(data?.sale || {}),
+        id: data?.sale?.id || 'REC-' + Date.now(),
+        total: data?.sale?.total ?? $cartTotal,
+        createdAt: data?.sale?.createdAt || new Date().toISOString(),
+        items: saleItems,
+        payments: salePayments,
         change: cashChange,
-        table: soldTable,
+        table: soldTable || data?.sale?.table,
       };
       clearCart();
       
@@ -520,7 +531,7 @@
 
       if ($receiptSettings.autoPrint) {
         setTimeout(() => {
-          window.print();
+          printThermalReceipt('printable-thermal-receipt');
         }, 350);
       }
     } catch (e: any) {
@@ -679,7 +690,7 @@
     showPaymentModal = true;
     if ($receiptSettings.autoPrint) {
       setTimeout(() => {
-        window.print();
+        printThermalReceipt('printable-thermal-receipt');
       }, 350);
     }
     return res;
@@ -951,7 +962,7 @@
         <button
           type="button"
           class="btn btn-general btn-print-receipt"
-          onclick={() => window.print()}
+          onclick={() => printThermalReceipt('printable-thermal-receipt')}
         >
           🖨️ Imprimir Ticket (80mm)
         </button>

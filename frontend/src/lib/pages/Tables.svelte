@@ -133,6 +133,8 @@
       product: item.product,
       variant: item.variant || null,
       quantity: item.quantity,
+      unitPrice: item.price !== undefined ? Number(item.price) : undefined,
+      notes: item.notes || null,
     }));
     cart.set(items);
     activeTab.set('checkout');

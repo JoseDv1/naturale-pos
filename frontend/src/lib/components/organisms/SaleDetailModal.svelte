@@ -1,6 +1,7 @@
 <script lang="ts">
   import ThermalReceipt80mm from '../molecules/ThermalReceipt80mm.svelte';
   import ReceiptSettingsModal from './ReceiptSettingsModal.svelte';
+  import { printThermalReceipt } from '../../services/printer';
 
   interface Props {
     sale: any;
@@ -11,7 +12,7 @@
   let showReceiptSettings = $state(false);
 
   function printReceipt() {
-    window.print();
+    printThermalReceipt('printable-thermal-receipt');
   }
 </script>
 

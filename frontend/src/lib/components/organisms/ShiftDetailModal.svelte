@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { getShift } from '../../api/shifts';
   import Spinner from '../atoms/Spinner.svelte';
+  import { printThermalReceipt } from '../../services/printer';
 
   interface Props {
     shiftId: string;
@@ -26,7 +27,7 @@
   });
 
   function handlePrint() {
-    window.print();
+    printThermalReceipt('printable-closure-receipt');
   }
 </script>
 
@@ -288,26 +289,9 @@
   }
 
   @media print {
-    :global(html), :global(body) {
-      margin: 0 !important;
-      padding: 0 !important;
-      background: #ffffff !important;
-      width: 80mm !important;
-    }
-
-    :global(body *) {
-      visibility: hidden !important;
-    }
-
-    :global(#printable-closure-receipt),
-    :global(#printable-closure-receipt *) {
-      visibility: visible !important;
-    }
-
     :global(#printable-closure-receipt) {
-      position: fixed !important;
-      left: 0 !important;
-      top: 0 !important;
+      display: block !important;
+      position: static !important;
       width: 72mm !important;
       max-width: 72mm !important;
       margin: 0 auto !important;
@@ -316,7 +300,7 @@
       border: none !important;
       background: #ffffff !important;
       color: #000000 !important;
-      z-index: 9999999 !important;
+      visibility: visible !important;
     }
 
     .no-print {

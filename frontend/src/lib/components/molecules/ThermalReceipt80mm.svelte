@@ -1,5 +1,6 @@
 <script lang="ts">
   import { receiptSettings, type ReceiptSettings } from '../../store';
+  import { printThermalReceipt } from '../../services/printer';
 
   interface Props {
     sale: any;
@@ -35,7 +36,7 @@
   let normalizedItems = $derived.by(() => {
     if (!sale?.items || !Array.isArray(sale.items)) return [];
     return sale.items.map((it: any) => {
-      const name = it.product?.name || it.name || 'Producto';
+      const name = it.product?.name || it.name || it.productName || it.title || 'Producto';
       const variantName = it.variant?.name || it.variantName || null;
       const notes = it.notes || null;
       const quantity = Number(it.quantity || 1);
@@ -106,7 +107,7 @@
     if (onprint) {
       onprint();
     } else {
-      window.print();
+      printThermalReceipt('printable-thermal-receipt');
     }
   }
 </script>
@@ -560,31 +561,10 @@
   }
 
   @media print {
-    :global(html), :global(body) {
-      margin: 0 !important;
-      padding: 0 !important;
-      background: #ffffff !important;
-      width: 80mm !important;
-      overflow: visible !important;
-    }
-
-    /* Hide everything in the page except the 80mm receipt */
-    :global(body *) {
-      visibility: hidden !important;
-    }
-
-    :global(.thermal-receipt-80mm),
-    :global(.thermal-receipt-80mm *) {
-      visibility: visible !important;
-    }
-
     :global(.thermal-receipt-80mm) {
       display: block !important;
-      position: fixed !important;
-      left: 0 !important;
-      top: 0 !important;
-      z-index: 9999999 !important;
-      /* 72mm printable width fits standard 80mm paper roll without right margin clipping */
+      position: static !important;
+      /* 72mm printable width fits standard 80mm paper roll without clipping */
       width: 72mm !important;
       max-width: 72mm !important;
       margin: 0 auto !important;
@@ -598,25 +578,46 @@
       line-height: 1.25 !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+      visibility: visible !important;
     }
 
     .dashed-line {
       color: #000000 !important;
       letter-spacing: -0.5px !important;
+      visibility: visible !important;
     }
 
     .store-name {
       color: #000000 !important;
       font-size: 15px !important;
+      visibility: visible !important;
+    }
+
+    .receipt-item-entry,
+    .item-primary-line,
+    .item-pricing-line,
+    .item-title,
+    .item-qty,
+    .unit-price,
+    .item-total {
+      color: #000000 !important;
+      visibility: visible !important;
+    }
+
+    .receipt-item-entry {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .grand-total {
       color: #000000 !important;
       font-size: 13px !important;
+      visibility: visible !important;
     }
 
     .change-row {
       color: #000000 !important;
+      visibility: visible !important;
     }
 
     .thermal-feed-space {

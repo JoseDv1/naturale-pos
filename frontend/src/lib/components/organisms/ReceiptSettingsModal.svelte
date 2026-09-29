@@ -1,6 +1,7 @@
 <script lang="ts">
   import { receiptSettings, type ReceiptSettings } from '../../store';
   import ThermalReceipt80mm from '../molecules/ThermalReceipt80mm.svelte';
+  import { printThermalReceipt } from '../../services/printer';
 
   interface Props {
     onclose: () => void;
@@ -63,7 +64,7 @@
   }
 
   function handleTestPrint() {
-    window.print();
+    printThermalReceipt('printable-thermal-receipt');
   }
 </script>
 

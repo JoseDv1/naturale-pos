@@ -3,6 +3,7 @@
   import { closeShift, getCurrentShift } from '../../api/shifts';
   import { currentShift, triggerRefresh, user } from '../../store';
   import Spinner from '../atoms/Spinner.svelte';
+  import { printThermalReceipt } from '../../services/printer';
 
   interface Props {
     shiftData?: any;
@@ -83,7 +84,7 @@
   }
 
   function printClosureTicket() {
-    window.print();
+    printThermalReceipt('closure-ticket');
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -913,22 +914,15 @@
   }
 
   @media print {
-    :global(body *) {
-      visibility: hidden;
-    }
-
-    #closure-ticket, #closure-ticket * {
-      visibility: visible;
-    }
-
     #closure-ticket {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 80mm;
-      box-shadow: none;
-      padding: 0;
-      margin: 0;
+      display: block !important;
+      position: static !important;
+      width: 72mm !important;
+      max-width: 72mm !important;
+      margin: 0 auto !important;
+      box-shadow: none !important;
+      padding: 2mm 2mm 15mm 2mm !important;
+      visibility: visible !important;
     }
 
     .no-print {

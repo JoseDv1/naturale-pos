@@ -132,19 +132,21 @@ export interface ReceiptSettings {
   legalNotice: string;
   footerMessage: string;
   website: string;
+  instagram: string;
   autoPrint: boolean;
   paperWidth: '80mm' | '58mm';
 }
 
 export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   storeName: 'NATURALE',
-  storeSubtitle: 'Tienda Saludable & Café Orgánico',
-  taxId: 'NIT: 901.234.567-8',
-  address: 'Calle 10 # 4-20, Centro',
-  phone: 'Tel / WhatsApp: +57 300 123 4567',
-  legalNotice: 'Régimen Simplificado - No responsable de IVA',
-  footerMessage: '¡Gracias por apoyar el comercio saludable y local!',
-  website: 'www.naturalepos.co',
+  storeSubtitle: '',
+  taxId: '',
+  address: '',
+  phone: '',
+  legalNotice: '',
+  footerMessage: '¡Gracias por su compra!',
+  website: '',
+  instagram: '@naturale.mercadosaludable',
   autoPrint: false,
   paperWidth: '80mm',
 };

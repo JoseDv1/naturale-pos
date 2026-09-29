@@ -125,22 +125,7 @@
   <article class="thermal-receipt-80mm" id="printable-thermal-receipt" aria-label="Ticket térmico de venta 80mm">
     <!-- Header / Brand -->
     <header class="receipt-header">
-      <h1 class="store-name">{settings.storeName}</h1>
-      {#if settings.storeSubtitle}
-        <p class="store-subtitle">{settings.storeSubtitle}</p>
-      {/if}
-      {#if settings.taxId}
-        <p class="meta-line">{settings.taxId}</p>
-      {/if}
-      {#if settings.address}
-        <p class="meta-line">{settings.address}</p>
-      {/if}
-      {#if settings.phone}
-        <p class="meta-line">{settings.phone}</p>
-      {/if}
-      {#if settings.legalNotice}
-        <p class="legal-notice">{settings.legalNotice}</p>
-      {/if}
+      <h1 class="store-name">{settings.storeName || 'NATURALE'}</h1>
     </header>
 
     <div class="dashed-line" aria-hidden="true">================================</div>
@@ -252,11 +237,8 @@
       {#if settings.footerMessage}
         <p class="footer-thankyou">{settings.footerMessage}</p>
       {/if}
-      {#if settings.website}
-        <p class="footer-meta">{settings.website}</p>
-      {/if}
-      <p class="footer-pos-brand">Sistema Naturale POS 80mm</p>
-      <!-- Feed space for thermal cutter clearance (15mm) -->
+      <p class="footer-instagram">{settings.instagram || '@naturale.mercadosaludable'}</p>
+      <!-- Feed space for thermal cutter clearance (14mm) -->
       <div class="thermal-feed-space" aria-hidden="true"></div>
     </footer>
   </article>
@@ -329,26 +311,6 @@
     margin: 0 0 2px 0;
     color: #000000;
     text-transform: uppercase;
-  }
-
-  .store-subtitle {
-    font-size: 11px;
-    font-weight: 600;
-    margin: 0 0 4px 0;
-    color: #333333;
-  }
-
-  .meta-line {
-    font-size: 10.5px;
-    margin: 1px 0;
-    color: #444444;
-  }
-
-  .legal-notice {
-    font-size: 9.5px;
-    margin: 3px 0 0 0;
-    color: #555555;
-    font-style: italic;
   }
 
   /* Dashed Divider Lines (monospace art for thermal pin precision) */
@@ -534,18 +496,12 @@
     color: #000000;
   }
 
-  .footer-meta {
-    font-size: 10px;
-    color: #555555;
-    margin: 0 0 4px 0;
-  }
-
-  .footer-pos-brand {
-    font-size: 9px;
-    color: #888888;
-    margin: 2px 0 0 0;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+  .footer-instagram {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #000000;
+    margin: 3px 0 0 0;
+    letter-spacing: 0.2px;
   }
 
   .thermal-feed-space {
@@ -616,6 +572,12 @@
     }
 
     .change-row {
+      color: #000000 !important;
+      visibility: visible !important;
+    }
+
+    .footer-thankyou,
+    .footer-instagram {
       color: #000000 !important;
       visibility: visible !important;
     }

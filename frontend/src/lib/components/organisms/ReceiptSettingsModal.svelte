@@ -128,8 +128,8 @@
         </div>
 
         <div class="form-group">
-          <label for="store-web">Sitio Web / Instagram</label>
-          <input id="store-web" type="text" bind:value={localSettings.website} placeholder="Ej: www.naturalepos.co / @naturalepos" />
+          <label for="store-instagram">Cuenta de Instagram</label>
+          <input id="store-instagram" type="text" bind:value={localSettings.instagram} placeholder="Ej: @naturale.mercadosaludable" />
         </div>
 
         <div class="form-section-title">⚙️ Automatización de Impresión</div>

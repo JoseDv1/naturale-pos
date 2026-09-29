@@ -305,18 +305,12 @@ const THERMAL_CSS = `
     color: #000000;
   }
 
-  .footer-meta {
-    font-size: 9.5px;
-    color: #333333;
-    margin: 0 0 3px 0;
-  }
-
-  .footer-pos-brand {
-    font-size: 8.5px;
-    color: #555555;
-    margin: 2px 0 0 0;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+  .footer-instagram {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #000000;
+    margin: 3px 0 0 0;
+    letter-spacing: 0.2px;
   }
 
   .thermal-feed-space {

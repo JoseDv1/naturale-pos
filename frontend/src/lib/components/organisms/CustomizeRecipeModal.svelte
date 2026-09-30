@@ -114,6 +114,12 @@
     }
   }
 
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onclose();
+    }
+  }
+
   // Derived base unit price
   let basePrice = $derived.by(() => {
     if (currentVariant) return Number(currentVariant.price);
@@ -195,12 +201,57 @@
   }
 </script>
 
-<div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="custom-modal-title">
-  <div class="modal-container glass-panel animate-scale-up" style="max-width: 600px; max-height: 94vh; display: flex; flex-direction: column;">
+<svelte:window onkeydown={handleKeydown} />
+
+{#snippet variantPill(v: ProductVariant)}
+  <button
+    type="button"
+    class="variant-pill-btn"
+    class:active={currentVariant?.id === v.id}
+    onclick={() => (currentVariant = v)}
+    aria-pressed={currentVariant?.id === v.id}
+  >
+    <span class="v-name">{v.name}</span>
+    <span class="v-price">${Number(v.price).toLocaleString()}</span>
+  </button>
+{/snippet}
+
+{#snippet modifierCard(mod: ProductModifier)}
+  <button
+    type="button"
+    class="modifier-card"
+    class:selected={selectedMap[mod.name]}
+    onclick={() => toggleModifier(mod)}
+    aria-pressed={selectedMap[mod.name]}
+  >
+    <div class="checkbox-indicator" aria-hidden="true">
+      {selectedMap[mod.name] ? '✓' : ''}
+    </div>
+    <div class="mod-info">
+      <span class="mod-name">{mod.name}</span>
+      <span class="mod-price" class:free={Number(mod.price) === 0}>
+        {Number(mod.price) > 0 ? `+$${Number(mod.price).toLocaleString()}` : 'Incluido'}
+      </span>
+    </div>
+  </button>
+{/snippet}
+
+<div
+  class="modal-overlay flex-center animate-fade-in"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="custom-modal-title"
+  tabindex="-1"
+  onclick={(e) => { if (e.target === e.currentTarget) onclose(); }}
+  onkeydown={(e) => { if (e.key === 'Escape') onclose(); }}
+>
+  <div class="modal-container animate-scale-up" role="document">
     <!-- Header -->
     <header class="modal-header">
       <div class="header-info">
-        <span class="header-icon">🍓</span>
+        <div class="header-icon-badge" aria-hidden="true">
+          <span>🍓</span>
+        </div>
         <div>
           <h2 id="custom-modal-title">{product.name}</h2>
           <p class="header-sub">Personalizar receta, adiciones y preparación</p>
@@ -214,18 +265,12 @@
       <!-- Variant Selector if exists -->
       {#if product.variants && product.variants.length > 0}
         <section class="section-block">
-          <span class="section-label">1. Tamaño / Variante Base:</span>
+          <span class="section-label">
+            <span class="section-badge-num">1</span> Tamaño / Variante Base:
+          </span>
           <div class="variants-pill-group">
             {#each product.variants as v (v.id)}
-              <button
-                type="button"
-                class="variant-pill-btn"
-                class:active={currentVariant?.id === v.id}
-                onclick={() => (currentVariant = v)}
-              >
-                <span class="v-name">{v.name}</span>
-                <span class="v-price">${Number(v.price).toLocaleString()}</span>
-              </button>
+              {@render variantPill(v)}
             {/each}
           </div>
         </section>
@@ -235,36 +280,24 @@
       <section class="section-block">
         <div class="section-header-row">
           <span class="section-label">
-            {product.variants && product.variants.length > 0 ? '2.' : '1.'} Adiciones e Ingredientes Extras:
+            <span class="section-badge-num">{product.variants && product.variants.length > 0 ? '2' : '1'}</span> Adiciones e Ingredientes Extras:
           </span>
           <span class="section-hint">Selecciona los ingredientes deseados</span>
         </div>
 
         <div class="modifiers-grid">
           {#each availableModifiers as mod (mod.name)}
-            <button
-              type="button"
-              class="modifier-card"
-              class:selected={selectedMap[mod.name]}
-              onclick={() => toggleModifier(mod)}
-            >
-              <div class="checkbox-indicator">
-                {selectedMap[mod.name] ? '✓' : ''}
-              </div>
-              <div class="mod-info">
-                <span class="mod-name">{mod.name}</span>
-                <span class="mod-price" class:free={Number(mod.price) === 0}>
-                  {Number(mod.price) > 0 ? `+$${Number(mod.price).toLocaleString()}` : 'Incluido'}
-                </span>
-              </div>
-            </button>
+            {@render modifierCard(mod)}
           {/each}
         </div>
       </section>
 
       <!-- Custom Addition Input -->
       <section class="section-block custom-addition-box">
-        <span class="section-label">¿Deseas agregar una adición diferente?</span>
+        <div class="custom-addition-header">
+          <span class="custom-addition-icon" aria-hidden="true">✨</span>
+          <span class="section-label-inner">¿Deseas agregar una adición diferente?</span>
+        </div>
         <div class="custom-addition-row">
           <input
             type="text"
@@ -272,6 +305,7 @@
             bind:value={customAddName}
             class="custom-input name-input"
             aria-label="Nombre de adición personalizada"
+            onkeydown={(e) => { if (e.key === 'Enter') handleAddCustomModifier(); }}
           />
           <input
             type="number"
@@ -281,10 +315,11 @@
             aria-label="Precio de adición personalizada"
             min="0"
             step="100"
+            onkeydown={(e) => { if (e.key === 'Enter') handleAddCustomModifier(); }}
           />
           <button
             type="button"
-            class="btn btn-secondary btn-sm"
+            class="btn-add-custom"
             onclick={handleAddCustomModifier}
             disabled={!customAddName.trim()}
           >
@@ -296,8 +331,8 @@
           <div class="custom-tags-container">
             {#each customAdditionsList as c, idx (idx)}
               <span class="custom-tag">
-                {c.name} {c.price > 0 ? `(+$${Number(c.price).toLocaleString()})` : ''}
-                <button type="button" class="btn-remove-tag" onclick={() => removeCustomAddition(idx)} aria-label="Quitar adición">✕</button>
+                <span>{c.name} {c.price > 0 ? `(+$${Number(c.price).toLocaleString()})` : ''}</span>
+                <button type="button" class="btn-remove-tag" onclick={() => removeCustomAddition(idx)} aria-label={`Quitar adición ${c.name}`}>✕</button>
               </span>
             {/each}
           </div>
@@ -306,7 +341,9 @@
 
       <!-- Preparation Notes -->
       <section class="section-block">
-        <label for="prep-notes" class="section-label">Instrucciones Especiales / Nota de Cocina:</label>
+        <label for="prep-notes" class="section-label">
+          <span class="section-badge-num">{product.variants && product.variants.length > 0 ? '3' : '2'}</span> Instrucciones Especiales / Nota de Cocina:
+        </label>
         <input
           type="text"
           id="prep-notes"
@@ -317,8 +354,8 @@
       </section>
 
       <!-- Quantity Selector -->
-      <section class="section-block flex-row-between">
-        <span class="section-label">Cantidad:</span>
+      <section class="section-block flex-row-between quantity-section">
+        <span class="section-label">Cantidad a preparar:</span>
         <div class="quantity-control-group">
           <button
             type="button"
@@ -327,7 +364,7 @@
             disabled={quantity <= 1}
             aria-label="Reducir cantidad"
           >
-            -
+            −
           </button>
           <input
             type="number"
@@ -365,11 +402,12 @@
       </div>
 
       <div class="footer-actions">
-        <button type="button" class="btn btn-secondary" onclick={onclose}>
+        <button type="button" class="btn-cancel" onclick={onclose}>
           Cancelar
         </button>
-        <button type="button" class="btn btn-primary btn-confirm" onclick={handleConfirm}>
-          ✨ Agregar al Pedido (${lineTotal.toLocaleString()})
+        <button type="button" class="btn-confirm" onclick={handleConfirm}>
+          <span>✨ Agregar al Pedido</span>
+          <span class="confirm-price-pill">${lineTotal.toLocaleString()}</span>
         </button>
       </div>
     </footer>
@@ -380,18 +418,27 @@
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(6px);
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 1050;
     padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
   }
 
   .modal-container {
     width: 100%;
-    background: var(--bg-card);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    max-width: 600px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    border-radius: var(--radius-lg, 20px);
+    box-shadow: 0 20px 45px -10px rgba(11, 38, 20, 0.22), 0 0 0 1px rgba(16, 185, 129, 0.08);
     overflow: hidden;
   }
 
@@ -399,9 +446,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 22px;
-    border-bottom: 1px solid var(--border-glass);
-    background: rgba(255, 255, 255, 0.02);
+    padding: 16px 22px;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.16);
+    background: linear-gradient(135deg, rgba(4, 120, 87, 0.07) 0%, rgba(242, 247, 244, 0.95) 100%);
   }
 
   .header-info {
@@ -410,36 +457,54 @@
     gap: 12px;
   }
 
-  .header-icon {
-    font-size: 1.8rem;
+  .header-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(236, 72, 153, 0.12);
+    border: 1px solid rgba(236, 72, 153, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
   }
 
   .modal-header h2 {
     font-size: 1.25rem;
     font-weight: 700;
     margin: 0;
-    color: var(--text-primary);
+    color: var(--text-primary, #112217);
+    line-height: 1.2;
   }
 
   .header-sub {
     font-size: 0.8rem;
-    color: var(--text-secondary);
+    color: var(--text-secondary, #2d4f38);
     margin: 2px 0 0;
   }
 
   .close-modal-btn {
-    background: transparent;
-    border: none;
-    font-size: 1.2rem;
-    color: var(--text-secondary);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    font-size: 1.05rem;
+    color: var(--text-secondary, #2d4f38);
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.15s ease;
   }
 
   .close-modal-btn:hover {
-    color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.08);
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.25);
+    transform: scale(1.05);
   }
 
   .modal-body-scroll {
@@ -448,6 +513,7 @@
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    background: #ffffff;
   }
 
   .section-block {
@@ -464,13 +530,30 @@
 
   .section-label {
     font-size: 0.88rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 700;
+    color: var(--text-primary, #112217);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .section-badge-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--color-general-glow, rgba(4, 120, 87, 0.12));
+    color: var(--color-general, #047857);
+    border: 1px solid rgba(4, 120, 87, 0.2);
+    border-radius: 50%;
+    font-size: 0.72rem;
+    font-weight: 700;
   }
 
   .section-hint {
     font-size: 0.75rem;
-    color: var(--text-secondary);
+    color: var(--text-muted, #3d5e47);
   }
 
   .variants-pill-group {
@@ -483,112 +566,153 @@
     display: flex;
     flex-direction: column;
     padding: 8px 14px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
+    background: #f8faf8;
+    border: 1.5px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-sm, 8px);
     cursor: pointer;
     text-align: left;
     transition: all 0.15s ease;
   }
 
   .variant-pill-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: #eef7f2;
+    border-color: var(--color-general, #047857);
   }
 
   .variant-pill-btn.active {
-    background: rgba(59, 130, 246, 0.15);
-    border-color: #3b82f6;
+    background: rgba(4, 120, 87, 0.08);
+    border-color: var(--color-general, #047857);
+    box-shadow: 0 0 0 2px var(--color-general-glow, rgba(4, 120, 87, 0.15));
   }
 
   .variant-pill-btn .v-name {
     font-weight: 600;
     font-size: 0.88rem;
-    color: var(--text-primary);
+    color: var(--text-primary, #112217);
+  }
+
+  .variant-pill-btn.active .v-name {
+    color: var(--color-general, #047857);
+    font-weight: 700;
   }
 
   .variant-pill-btn .v-price {
     font-size: 0.8rem;
-    color: #3b82f6;
-    font-family: monospace;
+    color: var(--color-cafe, #b45309);
+    font-weight: 600;
+    font-family: inherit;
   }
 
   .modifiers-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 8px;
+    gap: 9px;
   }
 
   .modifier-card {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
+    gap: 12px;
+    padding: 10px 14px;
+    background: #ffffff;
+    border: 1.5px solid #dce8e0;
+    border-radius: var(--radius-sm, 8px);
     cursor: pointer;
     text-align: left;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
     transition: all 0.15s ease;
   }
 
   .modifier-card:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: #f4faf6;
+    border-color: rgba(4, 120, 87, 0.45);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(4, 120, 87, 0.08);
   }
 
   .modifier-card.selected {
-    background: rgba(16, 185, 129, 0.12);
-    border-color: #10b981;
+    background: linear-gradient(135deg, rgba(4, 120, 87, 0.08) 0%, rgba(16, 185, 129, 0.14) 100%);
+    border-color: var(--color-general, #047857);
+    box-shadow: 0 2px 10px var(--color-general-glow, rgba(4, 120, 87, 0.15));
   }
 
   .checkbox-indicator {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    border: 1.5px solid var(--border-glass);
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 1.5px solid #cbd5e1;
+    background: #f8fafc;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: #10b981;
-    background: rgba(0, 0, 0, 0.2);
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: transparent;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
   }
 
   .modifier-card.selected .checkbox-indicator {
-    border-color: #10b981;
-    background: rgba(16, 185, 129, 0.25);
+    border-color: var(--color-general, #047857);
+    background: var(--color-general, #047857);
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(4, 120, 87, 0.25);
   }
 
   .mod-info {
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-width: 0;
   }
 
   .mod-name {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-primary);
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--text-primary, #112217);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .modifier-card.selected .mod-name {
+    color: var(--color-general-hover, #065f46);
+    font-weight: 700;
   }
 
   .mod-price {
     font-size: 0.78rem;
-    font-family: monospace;
-    color: #10b981;
+    color: var(--color-cafe, #b45309);
     font-weight: 600;
   }
 
   .mod-price.free {
-    color: var(--text-secondary);
-    font-weight: normal;
+    color: var(--text-muted, #3d5e47);
+    font-weight: 500;
+    font-size: 0.74rem;
   }
 
   .custom-addition-box {
-    background: rgba(255, 255, 255, 0.02);
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    border: 1px dashed var(--border-glass);
+    background: #f7faf8;
+    padding: 14px;
+    border-radius: var(--radius-sm, 8px);
+    border: 1.5px dashed rgba(16, 185, 129, 0.35);
+  }
+
+  .custom-addition-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .custom-addition-icon {
+    font-size: 1rem;
+  }
+
+  .section-label-inner {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-secondary, #2d4f38);
   }
 
   .custom-addition-row {
@@ -599,11 +723,19 @@
 
   .custom-input {
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
+    background: #ffffff;
+    border: 1.5px solid #d1ded5;
+    border-radius: var(--radius-sm, 8px);
+    color: var(--text-primary, #112217);
     font-size: 0.85rem;
+    transition: all 0.15s ease;
+  }
+
+  .custom-input:focus {
+    outline: none;
+    border-color: var(--color-general, #047857);
+    box-shadow: 0 0 0 3px var(--color-general-glow, rgba(4, 120, 87, 0.12));
+    background: #ffffff;
   }
 
   .name-input {
@@ -613,6 +745,29 @@
   .price-input {
     flex: 1;
     min-width: 100px;
+  }
+
+  .btn-add-custom {
+    padding: 8px 14px;
+    background: var(--color-cafe, #b45309);
+    color: #ffffff;
+    border: none;
+    border-radius: var(--radius-sm, 8px);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-add-custom:hover:not(:disabled) {
+    background: var(--color-cafe-hover, #92400e);
+    box-shadow: 0 2px 8px var(--color-cafe-glow, rgba(180, 83, 9, 0.2));
+    transform: translateY(-1px);
+  }
+
+  .btn-add-custom:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .custom-tags-container {
@@ -626,36 +781,46 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 8px;
-    background: rgba(59, 130, 246, 0.15);
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 4px 10px;
+    background: rgba(180, 83, 9, 0.1);
+    border: 1px solid rgba(180, 83, 9, 0.25);
     border-radius: 9999px;
     font-size: 0.78rem;
-    color: #93c5fd;
+    font-weight: 600;
+    color: #92400e;
   }
 
   .btn-remove-tag {
     background: none;
     border: none;
-    color: #ef4444;
+    color: #be123c;
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
     padding: 0;
+    line-height: 1;
+  }
+
+  .btn-remove-tag:hover {
+    color: #9f1239;
   }
 
   .notes-input {
     padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
+    background: #ffffff;
+    border: 1.5px solid #d1ded5;
+    border-radius: var(--radius-sm, 8px);
+    color: var(--text-primary, #112217);
     font-size: 0.88rem;
     width: 100%;
+    transition: all 0.15s ease;
   }
 
-  .notes-input:focus, .custom-input:focus {
+  .notes-input:focus {
     outline: none;
-    border-color: var(--color-general);
+    border-color: var(--color-general, #047857);
+    box-shadow: 0 0 0 3px var(--color-general-glow, rgba(4, 120, 87, 0.12));
+    background: #ffffff;
   }
 
   .flex-row-between {
@@ -664,28 +829,40 @@
     align-items: center;
   }
 
+  .quantity-section {
+    padding: 8px 0;
+  }
+
   .quantity-control-group {
     display: flex;
     align-items: center;
-    gap: 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-glass);
-    padding: 4px;
-    border-radius: var(--radius-sm);
+    gap: 8px;
+    background: #edf4ef;
+    border: 1.5px solid #d1ded5;
+    padding: 3px 4px;
+    border-radius: 10px;
   }
 
   .qty-btn {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    border: none;
-    border-radius: var(--radius-xs);
-    color: var(--text-primary);
-    font-size: 1.1rem;
+    background: #ffffff;
+    border: 1px solid #d1ded5;
+    border-radius: 7px;
+    color: var(--text-primary, #112217);
+    font-size: 1.15rem;
+    font-weight: 700;
     cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .qty-btn:hover:not(:disabled) {
+    background: #e2ece5;
+    color: var(--color-general, #047857);
   }
 
   .qty-btn:disabled {
@@ -694,15 +871,15 @@
   }
 
   .qty-input {
-    width: 48px;
-    height: 32px;
+    width: 50px;
+    height: 34px;
     text-align: center;
     font-size: 1.1rem;
     font-weight: 700;
-    color: var(--text-primary);
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-xs);
+    color: var(--text-primary, #112217);
+    background: #ffffff;
+    border: 1px solid #d1ded5;
+    border-radius: 7px;
     outline: none;
     padding: 0 4px;
     font-family: inherit;
@@ -718,10 +895,8 @@
   }
 
   .qty-input:focus {
-    background: rgba(236, 72, 153, 0.15);
-    border-color: #f472b6;
-    box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.25);
-    color: #fff;
+    border-color: var(--color-general, #047857);
+    box-shadow: 0 0 0 2px var(--color-general-glow, rgba(4, 120, 87, 0.15));
   }
 
   .modal-footer-custom {
@@ -729,8 +904,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 22px;
-    border-top: 1px solid var(--border-glass);
-    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(16, 185, 129, 0.18);
+    background: linear-gradient(180deg, #fbfdfc 0%, #f0f5f2 100%);
     gap: 12px;
     flex-wrap: wrap;
   }
@@ -741,27 +916,75 @@
   }
 
   .unit-breakdown {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    font-size: 0.78rem;
+    color: var(--text-muted, #3d5e47);
+    font-weight: 500;
   }
 
   .total-line {
-    font-size: 0.9rem;
-    color: var(--text-primary);
+    font-size: 0.92rem;
+    color: var(--text-secondary, #2d4f38);
+    font-weight: 600;
   }
 
   .total-amount {
-    font-size: 1.25rem;
-    color: #10b981;
-    font-family: monospace;
+    font-size: 1.35rem;
+    color: var(--color-general, #047857);
+    font-weight: 800;
   }
 
   .footer-actions {
     display: flex;
+    align-items: center;
     gap: 10px;
   }
 
+  .btn-cancel {
+    background: #ffffff;
+    border: 1.5px solid #d1ded5;
+    color: var(--text-secondary, #2d4f38);
+    padding: 10px 18px;
+    border-radius: var(--radius-sm, 8px);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-cancel:hover {
+    background: #f1f6f3;
+    color: var(--text-primary, #112217);
+    border-color: #b8ccbe;
+  }
+
   .btn-confirm {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: #ffffff;
     font-weight: 700;
+    font-size: 0.95rem;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm, 8px);
+    border: none;
+    box-shadow: 0 4px 14px rgba(4, 120, 87, 0.32);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-confirm:hover {
+    background: linear-gradient(135deg, #047857 0%, #059669 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(4, 120, 87, 0.4);
+  }
+
+  .confirm-price-pill {
+    background: rgba(0, 0, 0, 0.18);
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #ffffff;
   }
 </style>

@@ -1,6 +1,6 @@
 {
   "name": "naturale-pos",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "Local-first POS system for healthy market and café",
   "main": "src/index.ts",
   "type": "module",

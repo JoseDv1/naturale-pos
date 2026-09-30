@@ -1,6 +1,7 @@
 :root {
   --bg-primary: #f2f7f4;
   --bg-secondary: #e5ede7;
+  --bg-card: #ffffff;
   --bg-glass: rgba(255, 255, 255, 0.75);
   --border-glass: rgba(16, 185, 129, 0.15);
   --text-primary: #112217;
@@ -154,11 +155,13 @@ input:focus, select:focus, textarea:focus {
   transform: translateY(-1px);
 }
 
-.btn-general {
+.btn-general,
+.btn-primary {
   background: var(--color-general);
   color: #fff;
 }
-.btn-general:hover {
+.btn-general:hover,
+.btn-primary:hover {
   background: var(--color-general-hover);
   box-shadow: 0 0 15px var(--color-general-glow);
   transform: translateY(-1px);

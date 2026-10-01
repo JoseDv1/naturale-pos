@@ -5,9 +5,12 @@
     sale: any;
     oncancel: (id: string) => void;
     onview?: (sale: any) => void;
+    oneditpayment?: (sale: any) => void;
   }
 
-  let { sale, oncancel, onview }: Props = $props();
+  let { sale, oncancel, onview, oneditpayment }: Props = $props();
+
+  const canEditPayment = $derived(sale.status !== 'CANCELLED' && sale.shift?.status === 'OPEN');
 </script>
 
 <tr
@@ -15,7 +18,7 @@
   class:cancelled-row={sale.status === 'CANCELLED'}
   onclick={(e) => {
     const target = e.target as HTMLElement;
-    if (!target.closest('.btn-cancel-sale')) {
+    if (!target.closest('.btn-cancel-sale') && !target.closest('.btn-edit-payment')) {
       onview?.(sale);
     }
   }}
@@ -75,6 +78,21 @@
         🧾 Ver
       </button>
       {#if sale.status !== 'CANCELLED'}
+        <button
+          type="button"
+          class="btn-edit-payment"
+          onclick={(e) => {
+            e.stopPropagation();
+            if (canEditPayment) {
+              oneditpayment?.(sale);
+            }
+          }}
+          disabled={!canEditPayment}
+          title={canEditPayment ? 'Editar métodos de pago' : 'No editable (Turno cerrado)'}
+          aria-label="Editar métodos de pago"
+        >
+          💳 Editar
+        </button>
         <button
           type="button"
           class="btn-cancel-sale"
@@ -146,6 +164,31 @@
   .btn-cancel-sale:hover {
     background: var(--color-danger-glow);
     border-color: var(--color-danger);
+  }
+
+  .btn-edit-payment {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: var(--color-general);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    outline: none;
+    white-space: nowrap;
+  }
+
+  .btn-edit-payment:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--color-general);
+  }
+
+  .btn-edit-payment:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
   }
 
   .cancelled-row td {

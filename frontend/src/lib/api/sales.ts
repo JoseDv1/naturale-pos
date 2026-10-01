@@ -50,3 +50,17 @@ export async function cancelSale(id: string) {
   }
   return res.json();
 }
+
+export async function updateSalePayments(id: string, payments: Array<{ method: string; amount: number }>) {
+  const res = await fetch(`/api/sales/${id}/payments`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ payments })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to update sale payments');
+  }
+  return res.json();
+}
+

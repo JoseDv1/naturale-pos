@@ -6,10 +6,13 @@
   interface Props {
     sale: any;
     onclose: () => void;
+    oneditpayment?: (sale: any) => void;
   }
 
-  let { sale, onclose }: Props = $props();
+  let { sale, onclose, oneditpayment }: Props = $props();
   let showReceiptSettings = $state(false);
+
+  const canEditPayment = $derived(sale.status !== 'CANCELLED' && sale.shift?.status === 'OPEN');
 
   function printReceipt() {
     printThermalReceipt('printable-thermal-receipt');
@@ -54,6 +57,17 @@
       <button type="button" class="btn btn-secondary" onclick={onclose}>
         Cerrar
       </button>
+      {#if sale.status !== 'CANCELLED'}
+        <button
+          type="button"
+          class="btn btn-secondary edit-payment-btn"
+          onclick={() => oneditpayment?.(sale)}
+          disabled={!canEditPayment}
+          title={canEditPayment ? 'Editar métodos de pago' : 'No disponible (Turno cerrado)'}
+        >
+          💳 Editar Pagos
+        </button>
+      {/if}
       <button type="button" class="btn btn-general print-action-btn" onclick={printReceipt}>
         🖨️ Imprimir Ticket (80mm)
       </button>

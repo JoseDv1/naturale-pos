@@ -8,6 +8,7 @@
   import AlertItem from '../components/molecules/AlertItem.svelte';
   import SaleRow from '../components/organisms/SaleRow.svelte';
   import SaleDetailModal from '../components/organisms/SaleDetailModal.svelte';
+  import EditPaymentModal from '../components/organisms/EditPaymentModal.svelte';
   import ShiftDetailModal from '../components/organisms/ShiftDetailModal.svelte';
   import Spinner from '../components/atoms/Spinner.svelte';
 
@@ -34,6 +35,10 @@
   // Modal State for Sale Ticket Details
   let showDetailModal = $state(false);
   let selectedSale = $state<any | null>(null);
+
+  // Modal State for Editing Sale Payments
+  let showEditPaymentModal = $state(false);
+  let saleToEdit = $state<any | null>(null);
 
   let reportsPromise = $state<Promise<any>>(getDashboardData());
   let lowStockPromise = $state<Promise<any[]>>(getInventoryAlerts());
@@ -130,6 +135,18 @@
   function openSaleDetail(sale: any) {
     selectedSale = sale;
     showDetailModal = true;
+  }
+
+  function openEditPayment(sale: any) {
+    saleToEdit = sale;
+    showEditPaymentModal = true;
+  }
+
+  function handlePaymentEdited(updatedSale: any) {
+    if (selectedSale && selectedSale.id === updatedSale.id) {
+      selectedSale = updatedSale;
+    }
+    triggerRefresh();
   }
 
   async function cancelSale(saleId: string) {
@@ -349,7 +366,12 @@
             </thead>
             <tbody>
               {#each filteredSales as sale (sale.id)}
-                <SaleRow {sale} oncancel={cancelSale} onview={openSaleDetail} />
+                <SaleRow
+                  {sale}
+                  oncancel={cancelSale}
+                  onview={openSaleDetail}
+                  oneditpayment={openEditPayment}
+                />
               {:else}
                 <tr>
                   <td colspan="8" class="text-center text-muted italic" style="padding: 30px;">
@@ -477,6 +499,16 @@
   <SaleDetailModal
     sale={selectedSale}
     onclose={() => { showDetailModal = false; selectedSale = null; }}
+    oneditpayment={(sale) => openEditPayment(sale)}
+  />
+{/if}
+
+<!-- Modal: Editar Métodos de Pago -->
+{#if showEditPaymentModal && saleToEdit}
+  <EditPaymentModal
+    sale={saleToEdit}
+    onclose={() => { showEditPaymentModal = false; saleToEdit = null; }}
+    onsave={handlePaymentEdited}
   />
 {/if}
 

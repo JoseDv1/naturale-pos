@@ -84,6 +84,7 @@ sales.get('/', async (c) => {
           },
         },
         payments: true,
+        shift: { select: { id: true, status: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -109,6 +110,7 @@ sales.get('/:id', async (c) => {
         },
         payments: true,
         table: { select: { id: true, name: true } },
+        shift: { select: { id: true, status: true } },
       },
     });
 
@@ -322,6 +324,102 @@ sales.post('/:id/cancel', async (c) => {
       return c.json({ error: error.message }, error.status);
     }
     return c.json({ error: error.message || 'Error al cancelar la venta' }, 500);
+  }
+});
+
+const updatePaymentsSchema = z.object({
+  payments: z.array(z.object({
+    method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
+    amount: z.union([z.number(), z.string()])
+      .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
+      .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del pago debe ser mayor a cero' }),
+  })).min(1, 'Debe especificar al menos un método de pago'),
+});
+
+/**
+ * PUT /sales/:id/payments
+ * Updates payment methods for a sale.
+ * Allowed only for sales with status != 'CANCELLED' and shift.status === 'OPEN'.
+ */
+sales.put('/:id/payments', zValidator('json', updatePaymentsSchema, (result, c) => {
+  if (!result.success) {
+    return c.json({ error: result.error.issues[0].message }, 400);
+  }
+}), async (c) => {
+  try {
+    const id = c.req.param('id');
+    const { payments } = c.req.valid('json');
+
+    const result = await prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.findUnique({
+        where: { id },
+        include: {
+          shift: true,
+          payments: true,
+        },
+      });
+
+      if (!sale) {
+        throw new ApiError('Venta no encontrada', 404);
+      }
+
+      if (sale.status === 'CANCELLED') {
+        throw new ApiError('No se pueden editar pagos de una venta cancelada', 400);
+      }
+
+      if (!sale.shift || sale.shift.status !== 'OPEN') {
+        throw new ApiError('Solo se pueden editar los pagos de ventas pertenecientes al turno actualmente abierto', 400);
+      }
+
+      // Validate payment sum matches sale total (within 0.01 tolerance)
+      const paymentSum = payments.reduce((sum, pay) => sum + pay.amount, 0);
+      if (Math.abs(paymentSum - Number(sale.total)) > 0.01) {
+        throw new ApiError(
+          `La suma de los pagos ($${paymentSum.toLocaleString()}) no coincide con el total de la venta ($${Number(sale.total).toLocaleString()})`,
+          400
+        );
+      }
+
+      // Delete existing payments
+      await tx.salePayment.deleteMany({
+        where: { saleId: id },
+      });
+
+      // Create new payments
+      await tx.salePayment.createMany({
+        data: payments.map((pay) => ({
+          saleId: id,
+          method: pay.method,
+          amount: pay.amount,
+        })),
+      });
+
+      // Fetch and return the updated sale
+      const updated = await tx.sale.findUnique({
+        where: { id },
+        include: {
+          user: { select: { id: true, name: true, username: true } },
+          items: {
+            include: {
+              product: { select: { id: true, name: true, sku: true, department: true } },
+              variant: { select: { id: true, name: true, sku: true } },
+            },
+          },
+          payments: true,
+          shift: { select: { id: true, status: true } },
+          table: { select: { id: true, name: true } },
+        },
+      });
+
+      return updated;
+    });
+
+    return c.json({ success: true, sale: result });
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json({ error: error.message || 'Error al actualizar métodos de pago' }, 500);
   }
 });
 

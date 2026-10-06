@@ -20,6 +20,7 @@
     "export:web": "bun scripts/export-pos-to-web.ts",
     "db:clean": "bun scripts/clean-database.ts",
     "db:populate": "bun scripts/populate-catalog.ts",
+    "serve:catalog": "bun scripts/serve-catalog.ts",
     "test": "bun test"
   },
   "dependencies": {

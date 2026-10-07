@@ -826,12 +826,17 @@
 
     <div class="cart-items scroll-y">
       {#each $cart as item, index (item.product.id + (item.variant?.id || '') + (item.notes || '') + index)}
+        {@const fullProduct = $products.find((p) => p.id === item.product.id) || item.product}
+        {@const hasRecipe = Boolean(
+          (fullProduct?.modifiers && fullProduct.modifiers.length > 0) ||
+          (item.product?.modifiers && item.product.modifiers.length > 0)
+        )}
         <CartItem
           {item}
           onupdateqty={(prodId, varId, delta) => updateQuantity(prodId, varId, delta, index)}
           onsetqty={(prodId, varId, qty) => setQuantity(prodId, varId, qty, index)}
           onremove={(prodId, varId) => removeFromCart(prodId, varId, index)}
-          oncustomize={() => openCustomizeModal(item.product, item.variant, index)}
+          oncustomize={hasRecipe ? () => openCustomizeModal(fullProduct, item.variant, index) : undefined}
         />
       {:else}
         <div class="empty-cart flex-center">

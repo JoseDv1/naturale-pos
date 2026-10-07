@@ -35,18 +35,9 @@
 
   // Available modifiers from product
   let availableModifiers = $derived<ProductModifier[]>(
-    product.modifiers && product.modifiers.length > 0
+    product?.modifiers && product.modifiers.length > 0
       ? product.modifiers
-      : [
-          // Helpful defaults for café/fresh items if product has no configured modifiers yet
-          { name: 'Mermelada de Frutos Rojos', price: 2000 },
-          { name: 'Fruta Extra (Fresas frescas)', price: 1500 },
-          { name: 'Banano en rodajas', price: 1000 },
-          { name: 'Granola Artesanal Extra', price: 1500 },
-          { name: 'Mantequilla de Maní 100% natural', price: 2000 },
-          { name: 'Miel de Abejas pura', price: 1000 },
-          { name: 'Semillas de Chía', price: 1000 },
-        ]
+      : []
   );
 
   function initSelectedMap(): Record<string, boolean> {

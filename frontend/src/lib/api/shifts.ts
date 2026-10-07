@@ -42,8 +42,13 @@ export async function closeShift(actualCash: number, notes?: string) {
   return res.json();
 }
 
-export async function getShifts() {
-  const res = await fetch('/api/shifts');
+export async function getShifts(start?: string, end?: string) {
+  const params = new URLSearchParams();
+  if (start) params.append('start', start);
+  if (end) params.append('end', end);
+  const query = params.toString();
+  const url = query ? `/api/shifts?${query}` : '/api/shifts';
+  const res = await fetch(url);
   if (!res.ok) {
     throw new Error('Error al consultar los turnos');
   }

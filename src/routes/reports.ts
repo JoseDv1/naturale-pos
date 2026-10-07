@@ -1,25 +1,43 @@
 import { Hono } from 'hono';
 import { prisma } from '../db';
+import { calculateShiftTotals } from './shifts';
 
 const reports = new Hono();
 
+const round2 = (num: number): number => Math.round((num + Number.EPSILON) * 100) / 100;
+
 reports.get('/dashboard', async (c) => {
   try {
-    const startParam = c.req.query('start');
-    const endParam = c.req.query('end');
+    const startParam = c.req.query('start')?.trim();
+    const endParam = c.req.query('end')?.trim();
 
     const dateFilter: any = {};
-    if (startParam) dateFilter.gte = new Date(startParam);
-    if (endParam) dateFilter.lte = new Date(endParam);
-
-    const filter: any = {};
-    if (startParam || endParam) filter.createdAt = dateFilter;
+    if (startParam) {
+      const d = new Date(startParam);
+      if (!isNaN(d.getTime())) {
+        if (startParam.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(startParam)) {
+          dateFilter.gte = new Date(`${startParam}T00:00:00.000Z`);
+        } else {
+          dateFilter.gte = d;
+        }
+      }
+    }
+    if (endParam) {
+      const d = new Date(endParam);
+      if (!isNaN(d.getTime())) {
+        if (endParam.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(endParam)) {
+          dateFilter.lte = new Date(`${endParam}T23:59:59.999Z`);
+        } else {
+          dateFilter.lte = d;
+        }
+      }
+    }
 
     // Fetch non-cancelled sales
     const sales = await prisma.sale.findMany({
       where: {
         status: { in: ['COMPLETED', 'TRANSFER_OUT'] },
-        ...(startParam || endParam ? { createdAt: dateFilter } : {}),
+        ...(dateFilter.gte || dateFilter.lte ? { createdAt: dateFilter } : {}),
       },
       include: {
         items: {
@@ -32,10 +50,11 @@ reports.get('/dashboard', async (c) => {
       },
     });
 
-    // Fetch expenses
+    // Fetch operational expenses (excluding internal transfer virtual records)
     const expenses = await prisma.expense.findMany({
       where: {
-        ...(startParam || endParam ? { date: dateFilter } : {}),
+        category: { not: 'INTERNAL_TRANSFER' },
+        ...(dateFilter.gte || dateFilter.lte ? { date: dateFilter } : {}),
       },
     });
 
@@ -90,17 +109,136 @@ reports.get('/dashboard', async (c) => {
       data.CONSOLIDATED.expenses += expAmount;
     }
 
-    // Complete math
-    data.MARKET.grossProfit = data.MARKET.revenue - data.MARKET.costOfSales;
-    data.MARKET.netProfit = data.MARKET.grossProfit - data.MARKET.expenses;
+    // Complete math with 2-decimal financial rounding
+    data.MARKET.revenue = round2(data.MARKET.revenue);
+    data.MARKET.costOfSales = round2(data.MARKET.costOfSales);
+    data.MARKET.grossProfit = round2(data.MARKET.revenue - data.MARKET.costOfSales);
+    data.MARKET.expenses = round2(data.MARKET.expenses);
+    data.MARKET.netProfit = round2(data.MARKET.grossProfit - data.MARKET.expenses);
 
-    data.CAFE.grossProfit = data.CAFE.revenue - data.CAFE.costOfSales;
-    data.CAFE.netProfit = data.CAFE.grossProfit - data.CAFE.expenses;
+    data.CAFE.revenue = round2(data.CAFE.revenue);
+    data.CAFE.costOfSales = round2(data.CAFE.costOfSales);
+    data.CAFE.grossProfit = round2(data.CAFE.revenue - data.CAFE.costOfSales);
+    data.CAFE.expenses = round2(data.CAFE.expenses);
+    data.CAFE.netProfit = round2(data.CAFE.grossProfit - data.CAFE.expenses);
 
-    data.CONSOLIDATED.grossProfit = data.CONSOLIDATED.revenue - data.CONSOLIDATED.costOfSales;
-    data.CONSOLIDATED.netProfit = data.CONSOLIDATED.grossProfit - data.CONSOLIDATED.expenses;
+    data.GENERAL.expenses = round2(data.GENERAL.expenses);
 
-    return c.json(data);
+    data.CONSOLIDATED.revenue = round2(data.CONSOLIDATED.revenue);
+    data.CONSOLIDATED.costOfSales = round2(data.CONSOLIDATED.costOfSales);
+    data.CONSOLIDATED.grossProfit = round2(data.CONSOLIDATED.revenue - data.CONSOLIDATED.costOfSales);
+    data.CONSOLIDATED.expenses = round2(data.CONSOLIDATED.expenses);
+    data.CONSOLIDATED.netProfit = round2(data.CONSOLIDATED.grossProfit - data.CONSOLIDATED.expenses);
+
+    data.paymentMethods.CASH = round2(data.paymentMethods.CASH);
+    data.paymentMethods.CARD = round2(data.paymentMethods.CARD);
+    data.paymentMethods.TRANSFER = round2(data.paymentMethods.TRANSFER);
+    data.paymentMethods.INTERNAL = round2(data.paymentMethods.INTERNAL);
+
+    // Query shifts intersecting with this date range for Cash Drawer reconciliation
+    const shiftWhere: any = {};
+    if (dateFilter.gte || dateFilter.lte) {
+      shiftWhere.OR = [
+        { openedAt: dateFilter },
+        { closedAt: dateFilter },
+        ...(dateFilter.gte && dateFilter.lte ? [
+          { openedAt: { lte: dateFilter.gte }, closedAt: null },
+        ] : []),
+      ];
+    }
+
+    const shiftsList = await prisma.shift.findMany({
+      where: shiftWhere,
+      include: {
+        user: { select: { id: true, name: true, username: true } },
+        closedByUser: { select: { id: true, name: true, username: true } },
+      },
+      orderBy: { openedAt: 'asc' },
+    });
+
+    let shiftsInitialCash = 0;
+    let shiftsExpectedCash = 0;
+    let shiftsActualCash = 0;
+    let shiftsDifference = 0;
+    let closedShiftsCount = 0;
+    let openShiftsCount = 0;
+    const shiftSummaries: any[] = [];
+
+    for (const s of shiftsList) {
+      if (s.status === 'OPEN') {
+        openShiftsCount++;
+        const totals = await calculateShiftTotals(s.id, Number(s.initialCash));
+        shiftsInitialCash += totals.initialCash;
+        shiftsExpectedCash += totals.expectedCash;
+        shiftSummaries.push({
+          id: s.id,
+          status: 'OPEN',
+          openedAt: s.openedAt,
+          closedAt: null,
+          user: s.user,
+          initialCash: totals.initialCash,
+          totalSales: totals.totalSales,
+          cashSales: totals.cashSales,
+          cardSales: totals.cardSales,
+          transferSales: totals.transferSales,
+          internalSales: totals.internalSales,
+          expenses: totals.totalExpenses,
+          expectedCash: totals.expectedCash,
+          actualCash: null,
+          difference: null,
+        });
+      } else {
+        closedShiftsCount++;
+        const initial = Number(s.initialCash || 0);
+        const expected = Number(s.expectedCash || 0);
+        const actual = s.actualCash !== null ? Number(s.actualCash) : expected;
+        const diff = s.difference !== null ? Number(s.difference) : 0;
+        const exp = Number(s.totalExpenses || 0);
+        const cashSales = round2(Math.max(0, expected - initial + exp));
+
+        shiftsInitialCash += initial;
+        shiftsExpectedCash += expected;
+        shiftsActualCash += actual;
+        shiftsDifference += diff;
+
+        shiftSummaries.push({
+          id: s.id,
+          status: 'CLOSED',
+          openedAt: s.openedAt,
+          closedAt: s.closedAt,
+          user: s.user,
+          closedByUser: s.closedByUser,
+          initialCash: initial,
+          totalSales: Number(s.totalSales || 0),
+          cashSales,
+          cardSales: Number(s.totalCard || 0),
+          transferSales: Number(s.totalTransfer || 0),
+          internalSales: Number(s.totalInternal || 0),
+          expenses: exp,
+          expectedCash: expected,
+          actualCash: actual,
+          difference: diff,
+        });
+      }
+    }
+
+    const cashReconciliation = {
+      shiftsCount: shiftsList.length,
+      openShiftsCount,
+      closedShiftsCount,
+      initialCash: round2(shiftsInitialCash),
+      cashSales: round2(data.paymentMethods.CASH),
+      expenses: round2(data.CONSOLIDATED.expenses),
+      expectedCash: round2(shiftsInitialCash + data.paymentMethods.CASH - data.CONSOLIDATED.expenses),
+      actualCash: round2(shiftsActualCash),
+      difference: round2(shiftsDifference),
+      shifts: shiftSummaries,
+    };
+
+    return c.json({
+      ...data,
+      cashReconciliation,
+    });
   } catch (error) {
     return c.json({ error: 'Error al generar reportes' }, 500);
   }

@@ -45,7 +45,7 @@ export async function calculateShiftTotals(shiftId: string, initialCash: number,
   const sales = await tx.sale.findMany({
     where: {
       shiftId,
-      status: { not: 'CANCELLED' },
+      status: { in: ['COMPLETED', 'TRANSFER_OUT'] },
     },
     include: {
       payments: true,
@@ -136,6 +136,7 @@ shifts.get('/current', async (c) => {
         cardSales: totals.cardSales,
         transferSales: totals.transferSales,
         internalSales: totals.internalSales,
+        totalSales: totals.totalSales,
         expenses: totals.totalExpenses,
         expectedCash: totals.expectedCash,
         salesCount: totals.salesCount,
@@ -298,15 +299,91 @@ shifts.post('/close', zValidator('json', closeShiftSchema, (result, c) => {
  */
 shifts.get('/', async (c) => {
   try {
+    const startParam = c.req.query('start')?.trim();
+    const endParam = c.req.query('end')?.trim();
+
+    const dateFilter: any = {};
+    if (startParam) {
+      const d = new Date(startParam);
+      if (!isNaN(d.getTime())) {
+        if (startParam.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(startParam)) {
+          dateFilter.gte = new Date(`${startParam}T00:00:00.000Z`);
+        } else {
+          dateFilter.gte = d;
+        }
+      }
+    }
+    if (endParam) {
+      const d = new Date(endParam);
+      if (!isNaN(d.getTime())) {
+        if (endParam.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(endParam)) {
+          dateFilter.lte = new Date(`${endParam}T23:59:59.999Z`);
+        } else {
+          dateFilter.lte = d;
+        }
+      }
+    }
+
+    const where: any = {};
+    if (dateFilter.gte || dateFilter.lte) {
+      where.OR = [
+        { openedAt: dateFilter },
+        { closedAt: dateFilter },
+        ...(dateFilter.gte && dateFilter.lte ? [
+          { openedAt: { lte: dateFilter.gte }, closedAt: null },
+        ] : []),
+      ];
+    }
+
     const list = await prisma.shift.findMany({
+      where,
       include: {
         user: { select: { id: true, name: true, username: true } },
+        closedByUser: { select: { id: true, name: true, username: true } },
         _count: { select: { sales: true, expenses: true } },
       },
       orderBy: { openedAt: 'desc' },
     });
 
-    return c.json(list);
+    const enrichedList = await Promise.all(
+      list.map(async (shift) => {
+        if (shift.status === 'OPEN') {
+          const totals = await calculateShiftTotals(shift.id, Number(shift.initialCash));
+          return {
+            ...shift,
+            initialCash: totals.initialCash,
+            totalSales: totals.totalSales,
+            cashSales: totals.cashSales,
+            cardSales: totals.cardSales,
+            transferSales: totals.transferSales,
+            internalSales: totals.internalSales,
+            totalExpenses: totals.totalExpenses,
+            expectedCash: totals.expectedCash,
+            actualCash: null,
+            difference: null,
+          };
+        } else {
+          const cashSales = round2(
+            Math.max(0, Number(shift.expectedCash || 0) - Number(shift.initialCash || 0) + Number(shift.totalExpenses || 0))
+          );
+          return {
+            ...shift,
+            initialCash: Number(shift.initialCash || 0),
+            cashSales,
+            cardSales: Number(shift.totalCard || 0),
+            transferSales: Number(shift.totalTransfer || 0),
+            internalSales: Number(shift.totalInternal || 0),
+            totalSales: Number(shift.totalSales || 0),
+            totalExpenses: Number(shift.totalExpenses || 0),
+            expectedCash: shift.expectedCash !== null ? Number(shift.expectedCash) : null,
+            actualCash: shift.actualCash !== null ? Number(shift.actualCash) : null,
+            difference: shift.difference !== null ? Number(shift.difference) : null,
+          };
+        }
+      })
+    );
+
+    return c.json(enrichedList);
   } catch (error: any) {
     return c.json({ error: error.message || 'Error al listar turnos de caja' }, 500);
   }

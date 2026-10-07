@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { user, cart, cartTotal, products, categories, refreshTrigger, triggerRefresh, selectedTable, activeTab, currentShift, receiptSettings } from '../store';
   import { getProducts, getCategories } from '../api/products';
   import { 
@@ -35,6 +36,8 @@
   let selectedCategory = $state('');
   let activeDept = $state('MARKET'); // 'MARKET' | 'CAFE'
   let wasTableSale = $state(false);
+  let isSavingTable = $state(false);
+  let isExitingTable = false;
 
   // Recipe customization modal state
   let showCustomizeModal = $state(false);
@@ -524,6 +527,7 @@
       
       // Reset selected table
       if ($selectedTable) {
+        isExitingTable = true;
         selectedTable.set(null);
       }
       
@@ -539,39 +543,86 @@
     }
   }
 
-  async function saveTableOrder() {
-    if (!$selectedTable) return;
+  async function saveAndExitTable(destinationTab: string = 'tables') {
+    if (!$selectedTable || isSavingTable) return;
+    isSavingTable = true;
+    isExitingTable = true;
     try {
-      const itemsPayload = $cart.map((item) => ({
-        productId: item.product.id,
-        variantId: item.variant?.id || null,
-        quantity: item.quantity,
-        price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
-        notes: item.notes || null,
-      }));
-      await apiSaveTableOrder($selectedTable.id, itemsPayload);
+      const tableId = $selectedTable.id;
+      const currentCart = $cart;
+      if (currentCart.length > 0) {
+        const itemsPayload = currentCart.map((item) => ({
+          productId: item.product.id,
+          variantId: item.variant?.id || null,
+          quantity: item.quantity,
+          price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
+          notes: item.notes || null,
+        }));
+        await apiSaveTableOrder(tableId, itemsPayload);
+      } else {
+        await apiCancelTableOrder(tableId);
+      }
       selectedTable.set(null);
       cart.set([]);
       triggerRefresh();
-      activeTab.set('tables');
+      activeTab.set(destinationTab);
     } catch (e: any) {
-      alert(e.message || 'Error al guardar la orden');
+      isExitingTable = false;
+      alert(e.message || 'Error al guardar la orden de la mesa');
+    } finally {
+      isSavingTable = false;
     }
   }
 
-  async function exitTableMode() {
-    if ($selectedTable && $cart.length === 0) {
-      try {
-        await apiCancelTableOrder($selectedTable.id);
-      } catch (e) {
-        console.error('Error freeing empty table on exit:', e);
-      }
-    }
-    selectedTable.set(null);
-    cart.set([]);
-    triggerRefresh();
-    activeTab.set('tables');
+  async function saveTableOrder() {
+    await saveAndExitTable('tables');
   }
+
+  async function exitTableMode() {
+    await saveAndExitTable('tables');
+  }
+
+  // Auto-save if component is unmounted or user navigates to another tab while table is open
+  onDestroy(() => {
+    if (isExitingTable) return;
+    if ($selectedTable) {
+      const tableToSave = $selectedTable;
+      const currentCart = [...$cart];
+      if (currentCart.length > 0) {
+        const itemsPayload = currentCart.map((item) => ({
+          productId: item.product.id,
+          variantId: item.variant?.id || null,
+          quantity: item.quantity,
+          price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
+          notes: item.notes || null,
+        }));
+        apiSaveTableOrder(tableToSave.id, itemsPayload)
+          .then(() => triggerRefresh())
+          .catch((err) => console.error('Error auto-saving table on exit:', err));
+      } else {
+        apiCancelTableOrder(tableToSave.id)
+          .then(() => triggerRefresh())
+          .catch((err) => console.error('Error auto-cancelling empty table on exit:', err));
+      }
+      selectedTable.set(null);
+      cart.set([]);
+    }
+  });
+
+  // Warn before closing browser or refreshing if cart has unsaved table changes
+  $effect(() => {
+    if (!$selectedTable) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if ($cart.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  });
 
   async function openTableMerge() {
     if (!$selectedTable) return;
@@ -802,7 +853,10 @@
   <div class="cart-section glass-panel">
     {#if $selectedTable}
       <div class="table-mode-banner">
-        <span>📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
+        <div class="table-info-group">
+          <span>📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
+          <span class="auto-save-pill">⚡ Guardado automático</span>
+        </div>
         <div class="table-banner-actions">
           <button type="button" class="btn-table-tool" onclick={openTableMerge} title="Fusionar o mover esta mesa">
             🔀 Mover / Unir
@@ -810,8 +864,8 @@
           <button type="button" class="btn-table-tool" onclick={openTableSplit} title="Dividir cuenta o transferir productos">
             ✂️ Dividir
           </button>
-          <button type="button" class="btn-exit-table" onclick={exitTableMode} title="Salir de la mesa">
-            Volver ↩
+          <button type="button" class="btn-exit-table" onclick={exitTableMode} disabled={isSavingTable} title="Salir de la mesa (guarda automáticamente)">
+            {isSavingTable ? 'Guardando... ⏳' : 'Volver ↩'}
           </button>
         </div>
       </div>
@@ -865,11 +919,11 @@
       </div>
       {#if $selectedTable}
         <div class="table-action-buttons">
-          <button class="btn btn-general checkout-btn flex-1" onclick={openCheckout} disabled={$cart.length === 0}>
+          <button class="btn btn-general checkout-btn flex-1" onclick={openCheckout} disabled={$cart.length === 0 || isSavingTable}>
             Cobrar Mesa 💳
           </button>
-          <button class="btn btn-market save-table-btn" onclick={saveTableOrder} title="Guardar cambios de la mesa">
-            Guardar Mesa 💾
+          <button class="btn btn-market save-table-btn" onclick={saveTableOrder} disabled={isSavingTable} title="Guardar cambios y volver a mesas">
+            {isSavingTable ? 'Guardando... ⏳' : 'Guardar Mesa 💾'}
           </button>
         </div>
       {:else}
@@ -1735,13 +1789,34 @@
     border-top-left-radius: var(--radius-md);
     border-top-right-radius: var(--radius-md);
     flex-shrink: 0;
+    gap: 12px;
+  }
+
+  .table-info-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .auto-save-pill {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-general, #047857);
+    background: rgba(4, 120, 87, 0.12);
+    border: 1px solid rgba(4, 120, 87, 0.25);
+    padding: 2px 8px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .btn-exit-table {
     background: rgba(255, 255, 255, 0.5);
     border: 1px solid rgba(180, 83, 9, 0.4);
     color: #78350f;
-    padding: 4px 8px;
+    padding: 4px 10px;
     font-size: 0.75rem;
     font-weight: 600;
     border-radius: 4px;
@@ -1749,8 +1824,12 @@
     transition: var(--transition-fast);
     outline: none;
   }
-  .btn-exit-table:hover {
+  .btn-exit-table:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.8);
+  }
+  .btn-exit-table:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .table-action-buttons {
@@ -1763,6 +1842,10 @@
     flex: 1;
     height: 48px;
     font-size: 1rem;
+  }
+  .save-table-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .table-banner-actions {

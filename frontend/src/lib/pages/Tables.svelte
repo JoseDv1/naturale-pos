@@ -220,6 +220,9 @@
 
     try {
       await apiDeleteTable(table.id);
+      if (selectedMapTable?.id === table.id) {
+        selectedMapTable = null;
+      }
       loadTables();
     } catch (e: any) {
       alert(e.message || 'Error al eliminar la mesa');
@@ -358,16 +361,14 @@
         <button type="button" class="toggle-btn" class:active={isMapView} onclick={() => isMapView = true} title="Vista Plano">
           🗺️ Plano
         </button>
-        <button type="button" class="toggle-btn" class:active={!isMapView} onclick={() => { isMapView = false; isDesignMode = false; }} title="Vista Rejilla">
+        <button type="button" class="toggle-btn" class:active={!isMapView} onclick={() => isMapView = false} title="Vista Rejilla">
           🔳 Rejilla
         </button>
       </div>
 
-      {#if isMapView}
-        <button type="button" class="btn btn-design-mode" class:active={isDesignMode} onclick={() => { isDesignMode = !isDesignMode; if(!isDesignMode) selectedMapTable = null; }}>
-          🛠️ {isDesignMode ? 'Salir de Diseño' : 'Modo Diseño'}
-        </button>
-      {/if}
+      <button type="button" class="btn btn-design-mode" class:active={isDesignMode} onclick={() => { isDesignMode = !isDesignMode; if(!isDesignMode) selectedMapTable = null; }}>
+        🛠️ {isDesignMode ? 'Salir de Edición' : 'Modo Edición'}
+      </button>
 
       {#if $user?.role === 'ADMIN'}
         <button type="button" class="btn btn-general" onclick={openAddModal}>
@@ -463,49 +464,51 @@
       {/if}
 
       <!-- Table customization & deletion Section -->
-      <div class="admin-panel-tools">
-        <h4>Ajustes de Mesa</h4>
+      {#if isDesignMode}
+        <div class="admin-panel-tools animate-fade-in">
+          <h4>Ajustes de Mesa</h4>
 
-        <div class="tool-group">
-          <span>Forma del Mobiliario:</span>
-          <div class="shape-selector">
-            <button
-              type="button"
-              class="shape-btn"
-              class:active={(tableShapes[table.id] || 'circle') === 'circle'}
-              onclick={() => setTableShape(table.id, 'circle')}
-            >
-              🔴 Círculo
-            </button>
-            <button
-              type="button"
-              class="shape-btn"
-              class:active={tableShapes[table.id] === 'square'}
-              onclick={() => setTableShape(table.id, 'square')}
-            >
-              🟩 Cuadrado
-            </button>
-            <button
-              type="button"
-              class="shape-btn"
-              class:active={tableShapes[table.id] === 'rectangle'}
-              onclick={() => setTableShape(table.id, 'rectangle')}
-            >
-              ▰ Rectángulo
-            </button>
+          <div class="tool-group">
+            <span>Forma del Mobiliario:</span>
+            <div class="shape-selector">
+              <button
+                type="button"
+                class="shape-btn"
+                class:active={(tableShapes[table.id] || 'circle') === 'circle'}
+                onclick={() => setTableShape(table.id, 'circle')}
+              >
+                🔴 Círculo
+              </button>
+              <button
+                type="button"
+                class="shape-btn"
+                class:active={tableShapes[table.id] === 'square'}
+                onclick={() => setTableShape(table.id, 'square')}
+              >
+                🟩 Cuadrado
+              </button>
+              <button
+                type="button"
+                class="shape-btn"
+                class:active={tableShapes[table.id] === 'rectangle'}
+                onclick={() => setTableShape(table.id, 'rectangle')}
+              >
+                ▰ Rectángulo
+              </button>
+            </div>
           </div>
-        </div>
 
-        {#if isDesignMode}
           <div class="design-mode-help">
             <p>✥ Arrastra la mesa en el mapa para ubicarla en su posición física.</p>
           </div>
-        {/if}
 
-        <button type="button" class="btn btn-danger w-100" style="margin-top: 15px;" onclick={() => deleteTable(table)}>
-          🗑️ Eliminar Mesa
-        </button>
-      </div>
+          {#if $user?.role === 'ADMIN'}
+            <button type="button" class="btn btn-danger w-100" style="margin-top: 15px;" onclick={() => deleteTable(table)}>
+              🗑️ Eliminar Mesa
+            </button>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <div class="panel-footer">
@@ -642,7 +645,7 @@
               </div>
               {#if isDesignMode}
                 <div class="legend-item design-badge animate-pulse">
-                  🔧 Modo Diseño Activo: Arrastra las mesas para reubicarlas. Double click en cualquier mesa para abrirla.
+                  🔧 Modo Edición Activo: Arrastra las mesas para reubicarlas o selecciona una para ajustar su forma o eliminarla.
                 </div>
               {/if}
             </div>
@@ -668,19 +671,27 @@
             </div>
           </div>
         {:else}
-          <div class="tables-grid">
-            {#each tables as table}
-              <TableCard
-                {table}
-                userRole={$user?.role}
-                ondelete={deleteTable}
-                onopen={openTable}
-                onresume={resumeTable}
-                oncancel={cancelTableOrder}
-                onmerge={openMergeModal}
-                onsplit={openSplitModal}
-              />
-            {/each}
+          <div class="tables-grid-wrapper">
+            {#if isDesignMode}
+              <div class="grid-mode-notice animate-fade-in">
+                🛠️ <strong>Modo Edición Activo:</strong> Puedes eliminar mesas disponibles usando el botón 🗑️ en cada tarjeta.
+              </div>
+            {/if}
+            <div class="tables-grid">
+              {#each tables as table}
+                <TableCard
+                  {table}
+                  userRole={$user?.role}
+                  isEditMode={isDesignMode}
+                  ondelete={deleteTable}
+                  onopen={openTable}
+                  onresume={resumeTable}
+                  oncancel={cancelTableOrder}
+                  onmerge={openMergeModal}
+                  onsplit={openSplitModal}
+                />
+              {/each}
+            </div>
           </div>
         {/if}
       </div>
@@ -870,6 +881,26 @@
   }
 
   /* Regular Grid View Mode */
+  .tables-grid-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .grid-mode-notice {
+    background: rgba(180, 83, 9, 0.08);
+    border: 1px solid rgba(180, 83, 9, 0.25);
+    color: #92400e;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   .tables-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

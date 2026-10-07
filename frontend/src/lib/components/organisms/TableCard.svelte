@@ -4,6 +4,7 @@
   interface Props {
     table: any;
     userRole?: string;
+    isEditMode?: boolean;
     ondelete: (table: any) => void;
     onopen: (table: any) => void;
     onresume: (table: any) => void;
@@ -12,14 +13,14 @@
     onsplit?: (table: any) => void;
   }
 
-  let { table, userRole = '', ondelete, onopen, onresume, oncancel, onmerge, onsplit }: Props = $props();
+  let { table, userRole = '', isEditMode = false, ondelete, onopen, onresume, oncancel, onmerge, onsplit }: Props = $props();
 </script>
 
 <div class="table-card glass-panel animate-scale-up" class:occupied={table.status === 'OCCUPIED'}>
   <div class="table-card-header">
     <div class="header-left-side">
       <span class="table-icon">☕</span>
-      {#if table.status === 'AVAILABLE' && userRole === 'ADMIN'}
+      {#if isEditMode && table.status === 'AVAILABLE' && userRole === 'ADMIN'}
         <button type="button" class="btn-delete-table" onclick={() => ondelete(table)} title="Eliminar Mesa" aria-label="Eliminar Mesa">
           🗑️
         </button>

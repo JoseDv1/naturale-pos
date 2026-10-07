@@ -5,6 +5,8 @@
     table: any;
     userRole?: string;
     isEditMode?: boolean;
+    isSelected?: boolean;
+    onselect?: (table: any) => void;
     ondelete: (table: any) => void;
     onopen: (table: any) => void;
     onresume: (table: any) => void;
@@ -13,10 +15,39 @@
     onsplit?: (table: any) => void;
   }
 
-  let { table, userRole = '', isEditMode = false, ondelete, onopen, onresume, oncancel, onmerge, onsplit }: Props = $props();
+  let { 
+    table, 
+    userRole = '', 
+    isEditMode = false, 
+    isSelected = false,
+    onselect,
+    ondelete, 
+    onopen, 
+    onresume, 
+    oncancel, 
+    onmerge, 
+    onsplit 
+  }: Props = $props();
 </script>
 
-<div class="table-card glass-panel animate-scale-up" class:occupied={table.status === 'OCCUPIED'}>
+<div 
+  class="table-card glass-panel animate-scale-up" 
+  class:occupied={table.status === 'OCCUPIED'}
+  class:selected={isSelected}
+  onclick={(e) => {
+    if ((e.target as HTMLElement)?.closest('button')) return;
+    onselect?.(table);
+  }}
+  onkeydown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      if ((e.target as HTMLElement)?.closest('button')) return;
+      onselect?.(table);
+    }
+  }}
+  role="button"
+  tabindex="0"
+  aria-label="Mesa {table.name}"
+>
   <div class="table-card-header">
     <div class="header-left-side">
       <span class="table-icon">☕</span>
@@ -54,28 +85,40 @@
       </Button>
     {:else}
       <div class="occupied-actions-wrap">
-        <div class="main-action-row">
-          <Button variant="cafe" extraClass="flex-1" onclick={() => onresume(table)}>
-            Cobrar 🛒
-          </Button>
-          <button type="button" class="btn-cancel-table" onclick={() => oncancel(table)} title="Anular cuenta de mesa" aria-label="Anular cuenta de mesa">
-            ✕
+        <Button variant="cafe" extraClass="w-100 card-main-btn" onclick={() => onresume(table)}>
+          Ver Cuenta / Facturar 🛒
+        </Button>
+        <div class="sub-action-row">
+          {#if onmerge}
+            <button 
+              type="button" 
+              class="btn-tool-action" 
+              onclick={(e) => { e.stopPropagation(); onmerge(table); }} 
+              title="Fusionar o mover mesa"
+            >
+              🔀 Mover
+            </button>
+          {/if}
+          {#if onsplit}
+            <button 
+              type="button" 
+              class="btn-tool-action" 
+              onclick={(e) => { e.stopPropagation(); onsplit(table); }} 
+              title="Dividir cuenta"
+            >
+              ✂️ Dividir
+            </button>
+          {/if}
+          <button 
+            type="button" 
+            class="btn-tool-action btn-tool-cancel" 
+            onclick={(e) => { e.stopPropagation(); oncancel(table); }} 
+            title="Anular cuenta de mesa" 
+            aria-label="Anular cuenta de mesa"
+          >
+            ✕ Anular
           </button>
         </div>
-        {#if onmerge || onsplit}
-          <div class="sub-action-row">
-            {#if onmerge}
-              <button type="button" class="btn-tool-action" onclick={() => onmerge(table)} title="Fusionar o mover mesa">
-                🔀 Fusionar
-              </button>
-            {/if}
-            {#if onsplit}
-              <button type="button" class="btn-tool-action" onclick={() => onsplit(table)} title="Dividir cuenta">
-                ✂️ Dividir
-              </button>
-            {/if}
-          </div>
-        {/if}
       </div>
     {/if}
   </div>
@@ -87,24 +130,39 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 195px;
+    min-height: 200px;
     height: auto;
     transition: var(--transition-normal);
     box-sizing: border-box;
     width: 100%;
+    cursor: pointer;
+  }
+
+  .table-card.selected {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35), 0 8px 24px rgba(0, 0, 0, 0.12) !important;
   }
 
   .occupied-actions-wrap {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     width: 100%;
   }
 
-  .main-action-row {
-    display: flex;
-    gap: 8px;
-    width: 100%;
+  :global(.card-main-btn) {
+    font-size: 0.84rem !important;
+    font-weight: 600 !important;
+    height: 38px !important;
+    padding: 0 8px !important;
+    white-space: nowrap !important;
+    letter-spacing: 0.2px;
+    box-shadow: 0 2px 8px var(--color-cafe-glow);
+  }
+
+  :global(.card-main-btn:hover) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px var(--color-cafe-glow);
   }
 
   .sub-action-row {
@@ -118,9 +176,9 @@
     background: rgba(0, 0, 0, 0.03);
     border: 1px solid var(--border-glass);
     color: var(--text-secondary);
-    padding: 4px 6px;
+    padding: 6px 4px;
     border-radius: var(--radius-sm, 6px);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 500;
     cursor: pointer;
     transition: var(--transition-fast, all 0.2s);
@@ -128,12 +186,25 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
+    white-space: nowrap;
   }
 
   .btn-tool-action:hover {
     background: rgba(0, 0, 0, 0.07);
     color: var(--text-primary);
     border-color: var(--color-general);
+  }
+
+  .btn-tool-cancel {
+    color: var(--color-danger);
+    border-color: rgba(244, 63, 94, 0.25);
+    background: rgba(244, 63, 94, 0.04);
+  }
+
+  .btn-tool-cancel:hover {
+    background: rgba(244, 63, 94, 0.12);
+    border-color: var(--color-danger);
+    color: var(--color-danger);
   }
 
   .table-card:hover {
@@ -245,28 +316,4 @@
     width: 100%;
   }
 
-  :global(.flex-1) {
-    flex: 1;
-  }
-
-  .btn-cancel-table {
-    background: rgba(244, 63, 94, 0.08);
-    border: 1px solid rgba(244, 63, 94, 0.2);
-    color: var(--color-danger);
-    width: 38px;
-    height: 40px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-size: 0.95rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition-fast);
-    outline: none;
-  }
-
-  .btn-cancel-table:hover {
-    background: var(--color-danger-glow);
-    border-color: var(--color-danger);
-  }
 </style>

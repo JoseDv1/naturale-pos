@@ -99,6 +99,15 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
           productModifierTableExists = true;
         }
 
+        let productTransferHasVariant = false;
+        const transferTableExists = db.query(`
+          SELECT name FROM sqlite_master WHERE type='table' AND name='ProductTransfer'
+        `).get();
+        if (transferTableExists) {
+          const tableInfo = db.query(`PRAGMA table_info('ProductTransfer')`).all() as Array<{ name: string }>;
+          productTransferHasVariant = tableInfo.some((col) => col.name === 'variantId');
+        }
+
         const baselineMigrations: string[] = ['20260703201908_init'];
         if (cafeTableExists) {
           baselineMigrations.push('20260703205317_add_tables_feature');
@@ -121,6 +130,9 @@ export async function runAutoMigrations(dbPath: string = './prisma/dev.db') {
         }
         if (productModifierTableExists) {
           baselineMigrations.push('20260923180000_add_product_modifiers_and_recipe');
+        }
+        if (productTransferHasVariant) {
+          baselineMigrations.push('20261007134000_add_transfer_variants');
         }
 
         const insertBaseline = db.prepare(`
@@ -234,20 +246,30 @@ async function checkAndSeedFreshDatabase(db: Database) {
       `).run(adminId, adminPinHash, now, now, cashierId, cashierPinHash, now, now);
 
       // 2. Default Categories (including "Sin categoría")
-      const catDefId = crypto.randomUUID();
+      const existingSinCat = db.query(`
+        SELECT id FROM "Category" WHERE name = 'Sin categoría'
+      `).get() as { id: string } | null;
+
+      const catDefId = existingSinCat?.id ?? crypto.randomUUID();
       const catSuppId = crypto.randomUUID();
       const catBebId = crypto.randomUUID();
       const catSnkId = crypto.randomUUID();
       const catPanId = crypto.randomUUID();
 
+      if (!existingSinCat) {
+        db.prepare(`
+          INSERT INTO "Category" (id, name, description, createdAt, updatedAt)
+          VALUES (?, 'Sin categoría', 'Categoría por defecto para productos sin clasificar', ?, ?)
+        `).run(catDefId, now, now);
+      }
+
       db.prepare(`
         INSERT INTO "Category" (id, name, description, createdAt, updatedAt)
-        VALUES (?, 'Sin categoría', 'Categoría por defecto para productos sin clasificar', ?, ?),
-               (?, 'Suplementos', 'Proteínas, creatinas y colágenos', ?, ?),
+        VALUES (?, 'Suplementos', 'Proteínas, creatinas y colágenos', ?, ?),
                (?, 'Bebidas', 'Cafés, tés, jugos y bebidas embotelladas', ?, ?),
                (?, 'Snacks', 'Barras saludables, frutos secos y chocolates', ?, ?),
                (?, 'Panadería', 'Panes, galletas y repostería saludable', ?, ?)
-      `).run(catDefId, now, now, catSuppId, now, now, catBebId, now, now, catSnkId, now, now, catPanId, now, now);
+      `).run(catSuppId, now, now, catBebId, now, now, catSnkId, now, now, catPanId, now, now);
 
       // 3. Default Products
       const insertProduct = db.prepare(`

@@ -117,7 +117,9 @@ model ProductVariant {
   active      Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  saleItems   SaleItem[]
+  saleItems      SaleItem[]
+  transfersFrom  ProductTransfer[] @relation("TransferVariantSource")
+  transfersTo    ProductTransfer[] @relation("TransferVariantTarget")
 
   @@index([productId])
   @@index([active])
@@ -260,22 +262,28 @@ model Shift {
 }
 
 model ProductTransfer {
-  id              String     @id @default(uuid())
+  id              String          @id @default(uuid())
   productId       String
-  product         Product    @relation("TransferSource", fields: [productId], references: [id])
+  product         Product         @relation("TransferSource", fields: [productId], references: [id])
+  variantId       String?
+  variant         ProductVariant? @relation("TransferVariantSource", fields: [variantId], references: [id], onDelete: SetNull)
   targetProductId String?
-  targetProduct   Product?   @relation("TransferTarget", fields: [targetProductId], references: [id])
+  targetProduct   Product?        @relation("TransferTarget", fields: [targetProductId], references: [id])
+  targetVariantId String?
+  targetVariant   ProductVariant? @relation("TransferVariantTarget", fields: [targetVariantId], references: [id], onDelete: SetNull)
   quantity        Int
-  unitCost        Decimal    // Cambiado de Float a Decimal
-  totalCost       Decimal    // Cambiado de Float a Decimal
+  unitCost        Decimal         // Cambiado de Float a Decimal
+  totalCost       Decimal         // Cambiado de Float a Decimal
   fromDepartment  Department
   toDepartment    Department
   userId          String
-  user            User       @relation(fields: [userId], references: [id])
-  createdAt       DateTime   @default(now())
+  user            User            @relation(fields: [userId], references: [id])
+  createdAt       DateTime        @default(now())
 
   @@index([productId])
+  @@index([variantId])
   @@index([targetProductId])
+  @@index([targetVariantId])
   @@index([userId])
 }
 

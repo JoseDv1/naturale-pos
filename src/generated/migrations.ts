@@ -40,5 +40,9 @@ export const EMBEDDED_MIGRATIONS: Migration[] = [
   {
     "name": "20260923180000_add_product_modifiers_and_recipe",
     "sql": "-- CreateTable\nCREATE TABLE IF NOT EXISTS \"ProductModifier\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"productId\" TEXT NOT NULL,\n    \"name\" TEXT NOT NULL,\n    \"price\" DECIMAL NOT NULL DEFAULT 0,\n    \"cost\" DECIMAL NOT NULL DEFAULT 0,\n    \"isDefault\" BOOLEAN NOT NULL DEFAULT false,\n    \"active\" BOOLEAN NOT NULL DEFAULT true,\n    \"createdAt\" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    \"updatedAt\" DATETIME NOT NULL,\n    CONSTRAINT \"ProductModifier_productId_fkey\" FOREIGN KEY (\"productId\") REFERENCES \"Product\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateIndex\nCREATE INDEX IF NOT EXISTS \"ProductModifier_productId_idx\" ON \"ProductModifier\"(\"productId\");\nCREATE INDEX IF NOT EXISTS \"ProductModifier_active_idx\" ON \"ProductModifier\"(\"active\");\n\n-- AlterTable\nALTER TABLE \"SaleItem\" ADD COLUMN \"notes\" TEXT;\n"
+  },
+  {
+    "name": "20261007134000_add_transfer_variants",
+    "sql": "-- AlterTable\nALTER TABLE \"ProductTransfer\" ADD COLUMN \"variantId\" TEXT REFERENCES \"ProductVariant\"(\"id\") ON DELETE SET NULL ON UPDATE CASCADE;\nALTER TABLE \"ProductTransfer\" ADD COLUMN \"targetVariantId\" TEXT REFERENCES \"ProductVariant\"(\"id\") ON DELETE SET NULL ON UPDATE CASCADE;\n\n-- CreateIndex\nCREATE INDEX IF NOT EXISTS \"ProductTransfer_variantId_idx\" ON \"ProductTransfer\"(\"variantId\");\nCREATE INDEX IF NOT EXISTS \"ProductTransfer_targetVariantId_idx\" ON \"ProductTransfer\"(\"targetVariantId\");\n"
   }
 ];

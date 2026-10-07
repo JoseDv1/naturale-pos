@@ -9,6 +9,8 @@
     tableName?: string;
     showPrintButton?: boolean;
     onprint?: () => void;
+    isPreReceipt?: boolean;
+    elementId?: string;
   }
 
   let {
@@ -18,6 +20,8 @@
     tableName,
     showPrintButton = false,
     onprint,
+    isPreReceipt = false,
+    elementId = 'printable-thermal-receipt',
   }: Props = $props();
 
   let settings = $derived<ReceiptSettings>({
@@ -97,17 +101,20 @@
   );
 
   let statusLabel = $derived.by(() => {
+    if (isPreReceipt) return 'PENDIENTE';
     if (!sale?.status || sale.status === 'COMPLETED') return 'COMPLETADA';
     if (sale.status === 'CANCELLED') return 'ANULADA';
     if (sale.status === 'TRANSFER_OUT') return 'TRASLADO';
     return sale.status;
   });
 
+  let fontDarkness = $derived(settings.fontDarkness || 'dark');
+
   function handlePrint() {
     if (onprint) {
       onprint();
     } else {
-      printThermalReceipt('printable-thermal-receipt');
+      printThermalReceipt(elementId, { darkness: fontDarkness });
     }
   }
 </script>
@@ -116,44 +123,76 @@
   {#if showPrintButton}
     <div class="print-actions-bar no-print">
       <button type="button" class="btn-print-action" onclick={handlePrint}>
-        🖨️ Imprimir Ticket (80mm)
+        {isPreReceipt ? '🖨️ Imprimir Pre-Cuenta (80mm)' : '🖨️ Imprimir Ticket (80mm)'}
       </button>
     </div>
   {/if}
 
   <!-- The printable 80mm ticket -->
-  <article class="thermal-receipt-80mm" id="printable-thermal-receipt" aria-label="Ticket térmico de venta 80mm">
+  <article
+    class="thermal-receipt-80mm darkness-{fontDarkness}"
+    id={elementId}
+    aria-label={isPreReceipt ? 'Pre-cuenta térmica de mesa 80mm' : 'Ticket térmico de venta 80mm'}
+  >
     <!-- Header / Brand -->
     <header class="receipt-header">
       <h1 class="store-name">{settings.storeName || 'NATURALE'}</h1>
     </header>
 
+    {#if isPreReceipt}
+      <div class="pre-receipt-badge" aria-label="Comprobante Pre-Cuenta">
+        <span class="badge-title">*** PRE-CUENTA ***</span>
+        <span class="badge-subtitle">CUENTA PROVISIONAL • NO VÁLIDO COMO FACTURA</span>
+      </div>
+    {/if}
+
+    <!-- Snippets for repeating receipt row layouts -->
+    {#snippet infoRow(label: string, value: string, isStrong: boolean = false, extraClass: string = '')}
+      <div class="info-row">
+        <span class="info-label">{label}</span>
+        {#if isStrong}
+          <strong class="info-value {extraClass}">{value}</strong>
+        {:else}
+          <span class="info-value {extraClass}">{value}</span>
+        {/if}
+      </div>
+    {/snippet}
+
+    {#snippet totalRow(label: string, value: string, extraClass: string = '')}
+      <div class="total-row {extraClass}">
+        <span>{label}</span>
+        <span>{value}</span>
+      </div>
+    {/snippet}
+
+    {#snippet paymentRow(label: string, value: string, extraClass: string = '')}
+      <div class="payment-row {extraClass}">
+        <span>{label}</span>
+        <span>{value}</span>
+      </div>
+    {/snippet}
+
     <div class="dashed-line" aria-hidden="true">================================</div>
 
     <!-- Ticket Info -->
     <section class="ticket-info">
-      <div class="info-row">
-        <span class="info-label">FACTURA/TICKET:</span>
-        <strong class="info-value">#{ticketId}</strong>
-      </div>
-      <div class="info-row">
-        <span class="info-label">FECHA:</span>
-        <span class="info-value">{formattedDate}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">CAJERO:</span>
-        <span class="info-value">{effectiveCashier}</span>
-      </div>
-      {#if effectiveTable}
-        <div class="info-row">
-          <span class="info-label">MESA / CUENTA:</span>
-          <strong class="info-value">{effectiveTable}</strong>
-        </div>
+      {#if isPreReceipt}
+        {@render infoRow('DOCUMENTO:', 'PRE-CUENTA / COMANDA', true)}
+        {@render infoRow('FECHA:', formattedDate)}
+        {@render infoRow('ATENDIDO POR:', effectiveCashier)}
+        {#if effectiveTable}
+          {@render infoRow('MESA / CUENTA:', effectiveTable, true)}
+        {/if}
+        {@render infoRow('ESTADO:', 'PENDIENTE DE PAGO', false, 'status-tag')}
+      {:else}
+        {@render infoRow('FACTURA/TICKET:', `#${ticketId}`, true)}
+        {@render infoRow('FECHA:', formattedDate)}
+        {@render infoRow('CAJERO:', effectiveCashier)}
+        {#if effectiveTable}
+          {@render infoRow('MESA / CUENTA:', effectiveTable, true)}
+        {/if}
+        {@render infoRow('ESTADO:', statusLabel, false, 'status-tag')}
       {/if}
-      <div class="info-row">
-        <span class="info-label">ESTADO:</span>
-        <span class="info-value status-tag">{statusLabel}</span>
-      </div>
     </section>
 
     <div class="dashed-line" aria-hidden="true">--------------------------------</div>
@@ -195,40 +234,34 @@
 
     <!-- Financial Totals -->
     <section class="totals-section">
-      <div class="total-row">
-        <span>SUBTOTAL:</span>
-        <span>${subtotalAmount.toLocaleString('es-CO')}</span>
-      </div>
+      {@render totalRow('SUBTOTAL:', `$${subtotalAmount.toLocaleString('es-CO')}`)}
       {#if discountAmount > 0}
-        <div class="total-row discount-line">
-          <span>DESCUENTO:</span>
-          <span>-${discountAmount.toLocaleString('es-CO')}</span>
-        </div>
+        {@render totalRow('DESCUENTO:', `-$${discountAmount.toLocaleString('es-CO')}`, 'discount-line')}
       {/if}
-      <div class="total-row grand-total">
-        <span>TOTAL A PAGAR:</span>
-        <span>${totalAmount.toLocaleString('es-CO')}</span>
-      </div>
+      {@render totalRow('TOTAL A PAGAR:', `$${totalAmount.toLocaleString('es-CO')}`, 'grand-total')}
     </section>
 
     <div class="dashed-line" aria-hidden="true">================================</div>
 
-    <!-- Payment Breakdown -->
-    <section class="payments-section">
-      <p class="payments-title">MÉTODO(S) DE PAGO:</p>
-      {#each normalizedPayments as pay}
-        <div class="payment-row">
-          <span>{pay.methodName}:</span>
-          <span>${pay.amount.toLocaleString('es-CO')}</span>
-        </div>
-      {/each}
-      {#if changeAmount > 0}
-        <div class="payment-row change-row">
-          <span>CAMBIO ENTREGADO:</span>
-          <span>${changeAmount.toLocaleString('es-CO')}</span>
-        </div>
-      {/if}
-    </section>
+    {#if !isPreReceipt}
+      <!-- Payment Breakdown -->
+      <section class="payments-section">
+        <p class="payments-title">MÉTODO(S) DE PAGO:</p>
+        {#each normalizedPayments as pay}
+          {@render paymentRow(`${pay.methodName}:`, `$${pay.amount.toLocaleString('es-CO')}`)}
+        {/each}
+        {#if changeAmount > 0}
+          {@render paymentRow('CAMBIO ENTREGADO:', `$${changeAmount.toLocaleString('es-CO')}`, 'change-row')}
+        {/if}
+      </section>
+    {:else}
+      <!-- Pre-receipt payment pending notice -->
+      <section class="pre-receipt-notice-section">
+        <p class="pre-receipt-headline">*** CUENTA PENDIENTE DE COBRO ***</p>
+        <p class="pre-receipt-subtext">Por favor acérquese a caja para realizar su pago.</p>
+        <p class="pre-receipt-subtext">Propina voluntaria no incluida.</p>
+      </section>
+    {/if}
 
     <div class="dashed-line" aria-hidden="true">--------------------------------</div>
 
@@ -287,15 +320,34 @@
     width: 100%;
     max-width: 320px; /* ~76mm on standard 96dpi displays */
     background: #ffffff;
-    color: #111111;
-    font-family: 'Courier New', Courier, monospace, 'Lucida Console';
-    font-size: 11.5px;
+    color: #000000;
+    font-family: 'Consolas', 'Courier New', 'Lucida Console', Monaco, monospace;
+    font-size: 12px;
+    font-weight: 700;
     line-height: 1.35;
     padding: 18px 14px 22px 14px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
     border-radius: 4px;
     box-sizing: border-box;
     border-top: 4px solid var(--color-general, #047857);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+  }
+
+  /* Darkness variants */
+  .thermal-receipt-80mm.darkness-normal {
+    font-weight: 600;
+    -webkit-text-stroke: 0px #000000;
+  }
+
+  .thermal-receipt-80mm.darkness-dark {
+    font-weight: 700;
+    -webkit-text-stroke: 0.22px #000000;
+  }
+
+  .thermal-receipt-80mm.darkness-extra-dark {
+    font-weight: 800;
+    -webkit-text-stroke: 0.42px #000000;
   }
 
   /* Header Styles */
@@ -306,29 +358,76 @@
 
   .store-name {
     font-size: 16px;
-    font-weight: 800;
+    font-weight: 900;
     letter-spacing: 0.5px;
     margin: 0 0 2px 0;
     color: #000000;
     text-transform: uppercase;
   }
 
+  /* Pre-Receipt Elements */
+  .pre-receipt-badge {
+    text-align: center;
+    border: 1.5px dashed #000000;
+    padding: 4px 2px;
+    margin: 4px 0 6px 0;
+    background: #f8fafc;
+  }
+
+  .pre-receipt-badge .badge-title {
+    display: block;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #000000;
+  }
+
+  .pre-receipt-badge .badge-subtitle {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    color: #000000;
+    margin-top: 2px;
+  }
+
+  .pre-receipt-notice-section {
+    text-align: center;
+    padding: 4px 0;
+    margin: 3px 0;
+  }
+
+  .pre-receipt-headline {
+    font-size: 11.5px;
+    font-weight: 900;
+    color: #000000;
+    margin-bottom: 2px;
+  }
+
+  .pre-receipt-subtext {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #000000;
+    margin: 1px 0;
+  }
+
   /* Dashed Divider Lines (monospace art for thermal pin precision) */
   .dashed-line {
     text-align: center;
-    font-size: 10px;
-    font-weight: bold;
-    letter-spacing: -1px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
     overflow: hidden;
     user-select: none;
     margin: 4px 0;
-    color: #222222;
+    color: #000000;
   }
 
   /* Ticket Meta Info */
   .ticket-info {
     margin: 4px 0;
-    font-size: 11px;
+    font-size: 11.5px;
+    font-weight: 700;
   }
 
   .info-row {
@@ -338,20 +437,28 @@
   }
 
   .info-label {
-    font-weight: 600;
+    font-weight: 700;
+    color: #000000;
+  }
+
+  .info-value {
+    font-weight: 800;
+    color: #000000;
   }
 
   .status-tag {
-    font-weight: bold;
+    font-weight: 900;
+    color: #000000;
   }
 
   /* Table Header */
   .items-table-header {
     display: grid;
-    grid-template-columns: 1fr 55px 65px;
-    font-weight: 700;
-    font-size: 10px;
+    grid-template-columns: 1fr 54px 66px;
+    font-weight: 900;
+    font-size: 10.5px;
     margin: 2px 0;
+    color: #000000;
   }
 
   .col-item-desc {
@@ -378,83 +485,94 @@
   .item-primary-line {
     display: flex;
     gap: 6px;
-    font-weight: 600;
-    font-size: 11px;
+    font-weight: 800;
+    font-size: 12px;
     color: #000000;
   }
 
   .item-qty {
-    font-weight: 700;
+    font-weight: 900;
     min-width: 20px;
+    color: #000000;
   }
 
   .item-title {
     flex: 1;
     word-break: break-word;
+    font-weight: 800;
+    color: #000000;
   }
 
   .item-variant-line {
-    font-size: 10px;
+    font-size: 10.5px;
     padding-left: 26px;
-    color: #333333;
-    font-weight: 600;
+    color: #111111;
+    font-weight: 700;
   }
 
   .item-notes-line {
-    font-size: 9.5px;
+    font-size: 10px;
     padding-left: 26px;
-    color: #444444;
+    color: #222222;
     font-style: italic;
     word-break: break-word;
     margin-top: 1px;
+    font-weight: 700;
   }
 
   .item-pricing-line {
     display: grid;
-    grid-template-columns: 1fr 55px 65px;
-    font-size: 10.5px;
+    grid-template-columns: 1fr 54px 66px;
+    font-size: 11.5px;
+    font-weight: 700;
     margin-top: 1px;
+    color: #000000;
   }
 
   .unit-price {
     text-align: right;
-    color: #555555;
+    color: #000000;
+    font-weight: 700;
   }
 
   .item-total {
     text-align: right;
-    font-weight: 700;
+    font-weight: 900;
     color: #000000;
   }
 
   .empty-items-notice {
     text-align: center;
     font-style: italic;
-    font-size: 10.5px;
-    color: #666666;
+    font-size: 11px;
+    color: #222222;
+    font-weight: 700;
     padding: 6px 0;
   }
 
   /* Totals Section */
   .totals-section {
     margin: 4px 0;
-    font-size: 11.5px;
+    font-size: 12px;
+    font-weight: 700;
   }
 
   .total-row {
     display: flex;
     justify-content: space-between;
     margin-bottom: 2px;
+    font-weight: 700;
+    color: #000000;
   }
 
   .discount-line {
     color: #be123c;
-    font-weight: 600;
+    font-weight: 800;
   }
 
   .grand-total {
-    font-size: 13.5px;
-    font-weight: 800;
+    font-size: 14.5px;
+    font-weight: 900;
     margin-top: 4px;
     padding-top: 2px;
     color: #000000;
@@ -463,22 +581,26 @@
   /* Payments Breakdown */
   .payments-section {
     margin: 4px 0;
-    font-size: 11px;
+    font-size: 11.5px;
+    font-weight: 700;
   }
 
   .payments-title {
-    font-weight: 700;
+    font-weight: 900;
     margin: 0 0 2px 0;
+    color: #000000;
   }
 
   .payment-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1px;
+    margin-bottom: 1.5px;
+    font-weight: 700;
+    color: #000000;
   }
 
   .change-row {
-    font-weight: 700;
+    font-weight: 900;
     margin-top: 2px;
     color: #047857;
   }
@@ -487,18 +609,20 @@
   .receipt-footer {
     text-align: center;
     margin-top: 6px;
-    font-size: 10.5px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #000000;
   }
 
   .footer-thankyou {
-    font-weight: 700;
+    font-weight: 800;
     margin: 0 0 2px 0;
     color: #000000;
   }
 
   .footer-instagram {
-    font-size: 10.5px;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 900;
     color: #000000;
     margin: 3px 0 0 0;
     letter-spacing: 0.2px;
@@ -530,22 +654,60 @@
       border-radius: 0 !important;
       background: #ffffff !important;
       color: #000000 !important;
-      font-size: 10.5px !important;
-      line-height: 1.25 !important;
+      font-family: 'Consolas', 'Courier New', 'Lucida Console', Monaco, monospace !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      line-height: 1.35 !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+      -webkit-font-smoothing: antialiased !important;
+      -webkit-text-stroke: 0.22px #000000 !important;
+      text-rendering: geometricPrecision !important;
       visibility: visible !important;
+    }
+
+    :global(.thermal-receipt-80mm.darkness-normal) {
+      font-weight: 600 !important;
+      -webkit-text-stroke: 0px #000000 !important;
+    }
+
+    :global(.thermal-receipt-80mm.darkness-dark) {
+      font-weight: 700 !important;
+      -webkit-text-stroke: 0.22px #000000 !important;
+    }
+
+    :global(.thermal-receipt-80mm.darkness-extra-dark) {
+      font-weight: 800 !important;
+      -webkit-text-stroke: 0.42px #000000 !important;
     }
 
     .dashed-line {
       color: #000000 !important;
       letter-spacing: -0.5px !important;
+      font-weight: 900 !important;
       visibility: visible !important;
     }
 
     .store-name {
       color: #000000 !important;
-      font-size: 15px !important;
+      font-size: 16px !important;
+      font-weight: 900 !important;
+      visibility: visible !important;
+    }
+
+    .pre-receipt-badge {
+      border: 1.5px dashed #000000 !important;
+      background: transparent !important;
+      color: #000000 !important;
+      visibility: visible !important;
+    }
+
+    .pre-receipt-badge .badge-title,
+    .pre-receipt-badge .badge-subtitle,
+    .pre-receipt-notice-section,
+    .pre-receipt-headline,
+    .pre-receipt-subtext {
+      color: #000000 !important;
       visibility: visible !important;
     }
 
@@ -555,9 +717,23 @@
     .item-title,
     .item-qty,
     .unit-price,
-    .item-total {
+    .item-total,
+    .item-variant-line,
+    .item-notes-line {
       color: #000000 !important;
       visibility: visible !important;
+    }
+
+    .item-qty {
+      font-weight: 900 !important;
+    }
+
+    .item-title {
+      font-weight: 800 !important;
+    }
+
+    .item-total {
+      font-weight: 900 !important;
     }
 
     .receipt-item-entry {
@@ -565,20 +741,32 @@
       break-inside: avoid;
     }
 
+    .total-row,
+    .discount-line,
     .grand-total {
       color: #000000 !important;
-      font-size: 13px !important;
       visibility: visible !important;
     }
 
+    .grand-total {
+      font-size: 14px !important;
+      font-weight: 900 !important;
+    }
+
+    .payment-row,
     .change-row {
       color: #000000 !important;
       visibility: visible !important;
     }
 
+    .change-row {
+      font-weight: 900 !important;
+    }
+
     .footer-thankyou,
     .footer-instagram {
       color: #000000 !important;
+      font-weight: 900 !important;
       visibility: visible !important;
     }
 

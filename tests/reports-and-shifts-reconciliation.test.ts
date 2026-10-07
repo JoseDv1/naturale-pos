@@ -368,4 +368,376 @@ describe('Reports & Shifts Reconciliation and Date Filter Suite', () => {
     });
     expect(closeRes.status).toBe(200);
   });
+
+  it('11. Audits shiftId=current and shiftId=<uuid> filters on /reports/dashboard, /sales, and /shifts for Este Turno', async () => {
+    await resetTestShifts();
+    // 1. Open a dedicated test shift
+    const openRes = await api.request('/shifts/open', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({ initialCash: 100000, notes: 'Turno Prueba Temporalidad' }),
+    });
+    expect(openRes.status).toBe(201);
+    const { shift: activeShift } = await openRes.json();
+    expect(activeShift.status).toBe('OPEN');
+
+    // 2. Create cash sale ($25,000) and card sale ($25,000)
+    const sale1 = await api.request('/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({
+        userId: auth.cashierUser.id,
+        total: 25000,
+        payments: [{ method: 'CASH', amount: 25000 }],
+        items: [{ productId: testProduct.id, quantity: 1, price: 25000 }],
+      }),
+    });
+    expect([200, 201]).toContain(sale1.status);
+
+    const sale2 = await api.request('/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({
+        userId: auth.cashierUser.id,
+        total: 25000,
+        payments: [{ method: 'CARD', amount: 25000 }],
+        items: [{ productId: testProduct.id, quantity: 1, price: 25000 }],
+      }),
+    });
+    expect([200, 201]).toContain(sale2.status);
+
+    // 3. Create expense ($10,000)
+    const expRes = await api.request('/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({
+        userId: auth.cashierUser.id,
+        department: 'MARKET',
+        category: 'supplies',
+        description: 'Bolsas para turno',
+        amount: 10000,
+      }),
+    });
+    expect([200, 201]).toContain(expRes.status);
+
+    // 4. Test GET /reports/dashboard?shiftId=current
+    const reportRes = await api.request('/reports/dashboard?shiftId=current', {
+      headers: { Cookie: auth.adminCookie },
+    });
+    expect(reportRes.status).toBe(200);
+    const reportData = await reportRes.json();
+    expect(reportData.shiftInfo).toBeDefined();
+    expect(reportData.shiftInfo.id).toBe(activeShift.id);
+    expect(reportData.shiftInfo.status).toBe('OPEN');
+    expect(reportData.paymentMethods.CASH).toBe(25000);
+    expect(reportData.paymentMethods.CARD).toBe(25000);
+    expect(reportData.CONSOLIDATED.revenue).toBe(50000);
+    expect(reportData.CONSOLIDATED.expenses).toBe(10000);
+
+    // 5. Test GET /sales?shiftId=current
+    const salesRes = await api.request('/sales?shiftId=current', {
+      headers: { Cookie: auth.cashierCookie },
+    });
+    expect(salesRes.status).toBe(200);
+    const salesList = await salesRes.json();
+    expect(salesList.length).toBe(2);
+    expect(salesList.every((s: any) => s.shiftId === activeShift.id)).toBe(true);
+
+    // 6. Test GET /shifts?shiftId=current
+    const shiftsRes = await api.request('/shifts?shiftId=current', {
+      headers: { Cookie: auth.cashierCookie },
+    });
+    expect(shiftsRes.status).toBe(200);
+    const shiftsList = await shiftsRes.json();
+    expect(shiftsList.length).toBe(1);
+    expect(shiftsList[0].id).toBe(activeShift.id);
+    expect(shiftsList[0].status).toBe('OPEN');
+    expect(shiftsList[0].initialCash).toBe(100000);
+    expect(shiftsList[0].totalSales).toBe(50000);
+    expect(shiftsList[0].cashSales).toBe(25000);
+    expect(shiftsList[0].cardSales).toBe(25000);
+    expect(shiftsList[0].totalExpenses).toBe(10000);
+    expect(shiftsList[0].expectedCash).toBe(115000); // 100,000 + 25,000 - 10,000
+
+    // 7. Close shift and verify fallback to most recent closed shift
+    const closeShiftRes = await api.request('/shifts/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({ actualCash: 115000 }),
+    });
+    expect(closeShiftRes.status).toBe(200);
+
+    // After closure, shiftId=current returns the latest closed shift
+    const postCloseReportRes = await api.request('/reports/dashboard?shiftId=current', {
+      headers: { Cookie: auth.adminCookie },
+    });
+    expect(postCloseReportRes.status).toBe(200);
+    const postCloseData = await postCloseReportRes.json();
+    expect(postCloseData.shiftInfo.id).toBe(activeShift.id);
+    expect(postCloseData.shiftInfo.status).toBe('CLOSED');
+  });
+
+  it('12. Audits non-existent shift UUID handling across /reports/dashboard, /sales, and /shifts', async () => {
+    const nonExistentId = '00000000-0000-0000-0000-000000000000';
+
+    // GET /reports/dashboard with non-existent shiftId
+    const reportRes = await api.request(`/reports/dashboard?shiftId=${nonExistentId}`, {
+      headers: { Cookie: auth.adminCookie },
+    });
+    expect(reportRes.status).toBe(200);
+    const reportData = await reportRes.json();
+    expect(reportData.shiftInfo).toBeNull();
+    expect(reportData.CONSOLIDATED.revenue).toBe(0);
+    expect(reportData.CONSOLIDATED.expenses).toBe(0);
+    expect(reportData.cashReconciliation.shiftsCount).toBe(0);
+    expect(reportData.cashReconciliation.shifts).toEqual([]);
+
+    // GET /sales with non-existent shiftId
+    const salesRes = await api.request(`/sales?shiftId=${nonExistentId}`, {
+      headers: { Cookie: auth.cashierCookie },
+    });
+    expect(salesRes.status).toBe(200);
+    const salesList = await salesRes.json();
+    expect(salesList).toEqual([]);
+
+    // GET /shifts with non-existent shiftId
+    const shiftsRes = await api.request(`/shifts?shiftId=${nonExistentId}`, {
+      headers: { Cookie: auth.cashierCookie },
+    });
+    expect(shiftsRes.status).toBe(200);
+    const shiftsList = await shiftsRes.json();
+    expect(shiftsList).toEqual([]);
+  });
+
+  it('13. Audits fallback ordering among multiple closed shifts and explicit historical UUID lookup', async () => {
+    await resetTestShifts();
+
+    // Create Shift 1 (older)
+    const shift1 = await prisma.shift.create({
+      data: {
+        userId: auth.cashierUser.id,
+        status: 'CLOSED',
+        initialCash: 40000,
+        expectedCash: 40000,
+        actualCash: 40000,
+        difference: 0,
+        openedAt: new Date(Date.now() + 10000),
+        closedAt: new Date(Date.now() + 20000),
+      },
+    });
+
+    // Create Shift 2 (newer)
+    const shift2 = await prisma.shift.create({
+      data: {
+        userId: auth.cashierUser.id,
+        status: 'CLOSED',
+        initialCash: 60000,
+        expectedCash: 60000,
+        actualCash: 60000,
+        difference: 0,
+        openedAt: new Date(Date.now() + 30000),
+        closedAt: new Date(Date.now() + 40000),
+      },
+    });
+
+    // When no shift is open, shiftId=current MUST pick the newest closed shift (Shift 2)
+    const reportCurrent = await api.request('/reports/dashboard?shiftId=current', {
+      headers: { Cookie: auth.adminCookie },
+    });
+    expect(reportCurrent.status).toBe(200);
+    const reportCurrentData = await reportCurrent.json();
+    expect(reportCurrentData.shiftInfo.id).toBe(shift2.id);
+    expect(reportCurrentData.shiftInfo.initialCash).toBe(60000);
+
+    const shiftsCurrent = await api.request('/shifts?shiftId=current', {
+      headers: { Cookie: auth.adminCookie },
+    });
+    expect(shiftsCurrent.status).toBe(200);
+    const shiftsCurrentList = await shiftsCurrent.json();
+    expect(shiftsCurrentList.length).toBe(1);
+    expect(shiftsCurrentList[0].id).toBe(shift2.id);
+
+    // Historical lookup: explicitly querying Shift 1 by UUID must return Shift 1
+    const reportShift1 = await api.request(`/reports/dashboard?shiftId=${shift1.id}`, {
+      headers: { Cookie: auth.adminCookie },
+    });
+    expect(reportShift1.status).toBe(200);
+    const reportShift1Data = await reportShift1.json();
+    expect(reportShift1Data.shiftInfo.id).toBe(shift1.id);
+    expect(reportShift1Data.shiftInfo.initialCash).toBe(40000);
+
+    const shiftsShift1 = await api.request(`/shifts?shiftId=${shift1.id}`, {
+      headers: { Cookie: auth.adminCookie },
+    });
+    expect(shiftsShift1.status).toBe(200);
+    const shiftsShift1List = await shiftsShift1.json();
+    expect(shiftsShift1List.length).toBe(1);
+    expect(shiftsShift1List[0].id).toBe(shift1.id);
+
+    // Clean up created test shifts
+    await prisma.shift.deleteMany({ where: { id: { in: [shift1.id, shift2.id] } } });
+  });
+
+  it('14. Audits shiftId=current behavior when no shifts exist in database', async () => {
+    await resetTestShifts();
+
+    // Temporarily backup and delete all shifts
+    const existingShifts = await prisma.shift.findMany();
+    await prisma.shift.deleteMany();
+
+    try {
+      // 1. GET /reports/dashboard?shiftId=current must return 200 with shiftInfo: null
+      const reportRes = await api.request('/reports/dashboard?shiftId=current', {
+        headers: { Cookie: auth.adminCookie },
+      });
+      expect(reportRes.status).toBe(200);
+      const reportData = await reportRes.json();
+      expect(reportData.shiftInfo).toBeNull();
+      expect(reportData.CONSOLIDATED.revenue).toBe(0);
+      expect(reportData.CONSOLIDATED.expenses).toBe(0);
+      expect(reportData.cashReconciliation.shiftsCount).toBe(0);
+      expect(reportData.cashReconciliation.shifts).toEqual([]);
+
+      // 2. GET /sales?shiftId=current must return 200 with []
+      const salesRes = await api.request('/sales?shiftId=current', {
+        headers: { Cookie: auth.cashierCookie },
+      });
+      expect(salesRes.status).toBe(200);
+      const salesList = await salesRes.json();
+      expect(salesList).toEqual([]);
+
+      // 3. GET /shifts?shiftId=current must return 200 with []
+      const shiftsRes = await api.request('/shifts?shiftId=current', {
+        headers: { Cookie: auth.cashierCookie },
+      });
+      expect(shiftsRes.status).toBe(200);
+      const shiftsList = await shiftsRes.json();
+      expect(shiftsList).toEqual([]);
+    } finally {
+      // Restore shifts
+      for (const s of existingShifts) {
+        await prisma.shift.create({
+          data: {
+            id: s.id,
+            userId: s.userId,
+            status: s.status,
+            initialCash: s.initialCash,
+            openedAt: s.openedAt,
+            closedAt: s.closedAt,
+            closedByUserId: s.closedByUserId,
+            expectedCash: s.expectedCash,
+            actualCash: s.actualCash,
+            difference: s.difference,
+            totalSales: s.totalSales,
+            totalCard: s.totalCard,
+            totalTransfer: s.totalTransfer,
+            totalInternal: s.totalInternal,
+            totalExpenses: s.totalExpenses,
+            notes: s.notes,
+          },
+        }).catch(() => {});
+      }
+    }
+  });
+
+  it('15. Audits financial calculations: multi-method payments and exclusion of INTERNAL_TRANSFER expenses', async () => {
+    await resetTestShifts();
+
+    // 1. Open active shift
+    const openRes = await api.request('/shifts/open', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({ initialCash: 100000, notes: 'Turno Reconciliación Financiera' }),
+    });
+    expect(openRes.status).toBe(201);
+    const { shift: activeShift } = await openRes.json();
+
+    // 2. Sale with multiple payment methods: Cash 25,000 + Card 25,000 = 50,000
+    const saleRes = await api.request('/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({
+        userId: auth.cashierUser.id,
+        total: 50000,
+        items: [{ productId: testProduct.id, quantity: 2, price: 25000 }],
+        payments: [
+          { method: 'CASH', amount: 25000 },
+          { method: 'CARD', amount: 25000 },
+        ],
+      }),
+    });
+    expect([200, 201]).toContain(saleRes.status);
+
+    // 3. Regular operating expense: 15,000
+    const opExpRes = await api.request('/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({
+        userId: auth.cashierUser.id,
+        department: 'MARKET',
+        category: 'supplies',
+        description: 'Limpieza e insumos de tienda',
+        amount: 15000,
+      }),
+    });
+    expect([200, 201]).toContain(opExpRes.status);
+
+    // 4. Virtual expense record with category INTERNAL_TRANSFER: 20,000
+    await prisma.expense.create({
+      data: {
+        userId: auth.cashierUser.id,
+        department: 'MARKET',
+        category: 'INTERNAL_TRANSFER',
+        description: 'Transferencia interna de insumos (virtual)',
+        amount: 20000,
+        shiftId: activeShift.id,
+      },
+    });
+
+    // 5. Audit GET /reports/dashboard?shiftId=current
+    // Expected cash drawer: 100,000 (base) + 25,000 (cash sale) - 15,000 (regular expense) = 110,000
+    // INTERNAL_TRANSFER must NOT be deducted!
+    const reportRes = await api.request('/reports/dashboard?shiftId=current', {
+      headers: { Cookie: auth.adminCookie },
+    });
+    expect(reportRes.status).toBe(200);
+    const reportData = await reportRes.json();
+    expect(reportData.paymentMethods.CASH).toBe(25000);
+    expect(reportData.paymentMethods.CARD).toBe(25000);
+    expect(reportData.CONSOLIDATED.expenses).toBe(15000); // 20,000 INTERNAL_TRANSFER excluded!
+    expect(reportData.cashReconciliation.expectedCash).toBe(110000);
+
+    // 6. Audit GET /shifts/current
+    const currentShiftRes = await api.request('/shifts/current', {
+      headers: { Cookie: auth.cashierCookie },
+    });
+    expect(currentShiftRes.status).toBe(200);
+    const currentShiftData = await currentShiftRes.json();
+    expect(currentShiftData.realTimeTotals.initialCash).toBe(100000);
+    expect(currentShiftData.realTimeTotals.cashSales).toBe(25000);
+    expect(currentShiftData.realTimeTotals.cardSales).toBe(25000);
+    expect(currentShiftData.realTimeTotals.expenses).toBe(15000);
+    expect(currentShiftData.realTimeTotals.expectedCash).toBe(110000);
+
+    // 7. Audit GET /shifts?shiftId=current
+    const shiftsListRes = await api.request('/shifts?shiftId=current', {
+      headers: { Cookie: auth.cashierCookie },
+    });
+    expect(shiftsListRes.status).toBe(200);
+    const shiftsList = await shiftsListRes.json();
+    expect(shiftsList.length).toBe(1);
+    expect(shiftsList[0].expectedCash).toBe(110000);
+    expect(shiftsList[0].totalExpenses).toBe(15000);
+
+    // 8. Close shift with actualCash 110,000 (counted)
+    const closeRes = await api.request('/shifts/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: auth.cashierCookie },
+      body: JSON.stringify({ actualCash: 110000, notes: 'Cierre cuadrado perfecto' }),
+    });
+    expect(closeRes.status).toBe(200);
+    const closeData = await closeRes.json();
+    expect(closeData.report.expectedCash).toBe(110000);
+    expect(closeData.report.difference).toBe(0);
+  });
 });

@@ -922,7 +922,20 @@
       margin: 0 auto !important;
       box-shadow: none !important;
       padding: 2mm 2mm 15mm 2mm !important;
+      font-family: 'Consolas', 'Courier New', 'Lucida Console', Monaco, monospace !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      color: #000000 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      -webkit-font-smoothing: antialiased !important;
+      -webkit-text-stroke: 0.22px #000000 !important;
+      text-rendering: geometricPrecision !important;
       visibility: visible !important;
+    }
+
+    #closure-ticket * {
+      color: #000000 !important;
     }
 
     .no-print {

@@ -29,7 +29,15 @@
   function handlePrint() {
     printThermalReceipt('printable-closure-receipt');
   }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onclose();
+    }
+  }
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="shift-detail-title">
   <div class="modal-container glass-panel animate-scale-up" style="max-width: 520px; max-height: 92vh; display: flex; flex-direction: column;">
@@ -57,94 +65,68 @@
       <div class="receipt-scroll-container">
         <!-- Printable 80mm thermal closing ticket -->
         <article class="thermal-receipt-80mm" id="printable-closure-receipt">
+          {#snippet metaRow(label: string, value: string, strong: boolean = false, color?: string)}
+            <div class="meta-row">
+              <span>{label}</span>
+              {#if strong}
+                <strong style={color ? `color: ${color};` : undefined}>{value}</strong>
+              {:else}
+                <span style={color ? `color: ${color};` : undefined}>{value}</span>
+              {/if}
+            </div>
+          {/snippet}
+
+          {#snippet summaryRow(label: string, value: string, bold: boolean = false, color?: string)}
+            <div class="summary-line" class:font-bold={bold} style={color ? `color: ${color};` : undefined}>
+              <span>{label}</span>
+              <span>{value}</span>
+            </div>
+          {/snippet}
+
           <header class="receipt-header text-center">
             <h1 class="store-name">NATURALE POS</h1>
             <p class="store-subtitle">COMPROBANTE DE CIERRE DE CAJA</p>
             <p class="meta-line">Turno #{shiftData.shift.id.slice(0, 8).toUpperCase()}</p>
           </header>
 
-          <div class="dashed-line">----------------------------------------</div>
+          <div class="dashed-line" aria-hidden="true">----------------------------------------</div>
 
           <section class="receipt-details">
-            <div class="meta-row">
-              <span>Cajero Apertura:</span>
-              <strong>{shiftData.shift.user?.name || 'Cajero'}</strong>
-            </div>
+            {@render metaRow('Cajero Apertura:', shiftData.shift.user?.name || 'Cajero', true)}
             {#if shiftData.shift.closedByUser}
-              <div class="meta-row">
-                <span>Cajero Cierre:</span>
-                <strong>{shiftData.shift.closedByUser.name}</strong>
-              </div>
+              {@render metaRow('Cajero Cierre:', shiftData.shift.closedByUser.name, true)}
             {/if}
-            <div class="meta-row">
-              <span>Apertura:</span>
-              <span>{new Date(shiftData.shift.openedAt).toLocaleString()}</span>
-            </div>
-            <div class="meta-row">
-              <span>Cierre:</span>
-              <span>{shiftData.shift.closedAt ? new Date(shiftData.shift.closedAt).toLocaleString() : 'En curso (Abierto)'}</span>
-            </div>
-            <div class="meta-row">
-              <span>Estado:</span>
-              <strong style="color: {shiftData.shift.status === 'OPEN' ? '#10b981' : '#64748b'};">
-                {shiftData.shift.status === 'OPEN' ? 'ABIERTO (EN CURSO)' : 'CERRADO (ARCHIVADO)'}
-              </strong>
-            </div>
+            {@render metaRow('Apertura:', new Date(shiftData.shift.openedAt).toLocaleString())}
+            {@render metaRow('Cierre:', shiftData.shift.closedAt ? new Date(shiftData.shift.closedAt).toLocaleString() : 'En curso (Abierto)')}
+            {@render metaRow('Estado:', shiftData.shift.status === 'OPEN' ? 'ABIERTO (EN CURSO)' : 'CERRADO (ARCHIVADO)', true, shiftData.shift.status === 'OPEN' ? '#10b981' : '#64748b')}
           </section>
 
-          <div class="dashed-line">----------------------------------------</div>
+          <div class="dashed-line" aria-hidden="true">----------------------------------------</div>
 
           <!-- Cash summary & Arqueo -->
           <section class="receipt-summary-block">
-            <div class="summary-line">
-              <span>Base Inicial:</span>
-              <span>${Number(shiftData.summary.initialCash || 0).toLocaleString()}</span>
-            </div>
-            <div class="summary-line">
-              <span>(+) Ventas en Efectivo:</span>
-              <span>${Number(shiftData.summary.cashSales || 0).toLocaleString()}</span>
-            </div>
-            <div class="summary-line">
-              <span>(-) Egresos / Gastos Menores:</span>
-              <span>-${Number(shiftData.summary.totalExpenses || 0).toLocaleString()}</span>
-            </div>
-            <div class="dashed-line">----------------------------------------</div>
-            <div class="summary-line font-bold">
-              <span>Efectivo Teórico Esperado:</span>
-              <span>${Number(shiftData.summary.expectedCash || 0).toLocaleString()}</span>
-            </div>
+            {@render summaryRow('Base Inicial:', `$${Number(shiftData.summary.initialCash || 0).toLocaleString()}`)}
+            {@render summaryRow('(+) Ventas en Efectivo:', `$${Number(shiftData.summary.cashSales || 0).toLocaleString()}`)}
+            {@render summaryRow('(-) Egresos / Gastos Menores:', `-$${Number(shiftData.summary.totalExpenses || 0).toLocaleString()}`)}
+            <div class="dashed-line" aria-hidden="true">----------------------------------------</div>
+            {@render summaryRow('Efectivo Teórico Esperado:', `$${Number(shiftData.summary.expectedCash || 0).toLocaleString()}`, true)}
             {#if shiftData.summary.actualCash !== null}
-              <div class="summary-line font-bold">
-                <span>Efectivo Real (Contado):</span>
-                <span>${Number(shiftData.summary.actualCash || 0).toLocaleString()}</span>
-              </div>
-              <div class="summary-line font-bold" style="color: {Number(shiftData.summary.difference) < 0 ? '#c0392b' : Number(shiftData.summary.difference) > 0 ? '#2980b9' : '#10b981'};">
-                <span>Diferencia (Arqueo):</span>
-                <span>{Number(shiftData.summary.difference) > 0 ? '+' : ''}${Number(shiftData.summary.difference || 0).toLocaleString()}</span>
-              </div>
+              {@render summaryRow('Efectivo Real (Contado):', `$${Number(shiftData.summary.actualCash || 0).toLocaleString()}`, true)}
+              {@render summaryRow('Diferencia (Arqueo):', `${Number(shiftData.summary.difference) > 0 ? '+' : ''}$${Number(shiftData.summary.difference || 0).toLocaleString()}`, true, Number(shiftData.summary.difference) < 0 ? '#c0392b' : Number(shiftData.summary.difference) > 0 ? '#2980b9' : '#10b981')}
             {/if}
           </section>
 
-          <div class="dashed-line">----------------------------------------</div>
+          <div class="dashed-line" aria-hidden="true">----------------------------------------</div>
 
           <!-- Other payments -->
           <section class="other-payments-block">
             <p style="font-weight: 700; margin: 0 0 4px 0;">Otros Medios de Pago:</p>
-            <div class="summary-line">
-              <span>💳 Ventas Tarjeta:</span>
-              <span>${Number(shiftData.summary.cardSales || 0).toLocaleString()}</span>
-            </div>
-            <div class="summary-line">
-              <span>📲 Transferencias:</span>
-              <span>${Number(shiftData.summary.transferSales || 0).toLocaleString()}</span>
-            </div>
+            {@render summaryRow('💳 Ventas Tarjeta:', `$${Number(shiftData.summary.cardSales || 0).toLocaleString()}`)}
+            {@render summaryRow('📲 Transferencias:', `$${Number(shiftData.summary.transferSales || 0).toLocaleString()}`)}
             {#if Number(shiftData.summary.internalSales || 0) > 0}
-              <div class="summary-line">
-                <span>🔄 Consumo Interno:</span>
-                <span>${Number(shiftData.summary.internalSales).toLocaleString()}</span>
-              </div>
+              {@render summaryRow('🔄 Consumo Interno:', `$${Number(shiftData.summary.internalSales).toLocaleString()}`)}
             {/if}
-            <div class="dashed-line">----------------------------------------</div>
+            <div class="dashed-line" aria-hidden="true">----------------------------------------</div>
             <div class="summary-line grand-total">
               <span>TOTAL VENTAS DEL TURNO:</span>
               <span>${Number(shiftData.summary.totalSales || 0).toLocaleString()}</span>
@@ -156,14 +138,14 @@
           </section>
 
           {#if shiftData.shift.notes}
-            <div class="dashed-line">----------------------------------------</div>
+            <div class="dashed-line" aria-hidden="true">----------------------------------------</div>
             <section class="notes-block">
               <span style="font-size: 10px; color: #555;">Observaciones:</span>
               <p style="font-size: 11px; margin: 2px 0 0 0;">{shiftData.shift.notes}</p>
             </section>
           {/if}
 
-          <div class="dashed-line">----------------------------------------</div>
+          <div class="dashed-line" aria-hidden="true">----------------------------------------</div>
           <footer class="receipt-footer text-center">
             <div class="signature-line" style="margin-top: 25px; border-top: 1px solid #333; width: 65%; margin-left: auto; margin-right: auto;"></div>
             <p style="font-size: 10px; margin-top: 4px;">Firma del Cajero Responsable</p>
@@ -225,35 +207,41 @@
     width: 72mm;
     max-width: 72mm;
     padding: 10px 12px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 11px;
+    font-family: 'Consolas', 'Courier New', 'Lucida Console', Monaco, monospace;
+    font-size: 12px;
+    font-weight: 700;
     line-height: 1.35;
     border-radius: 4px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
   }
 
   .store-name {
-    font-size: 15px;
-    font-weight: 800;
+    font-size: 16px;
+    font-weight: 900;
     margin: 0;
     color: #000000;
   }
 
   .store-subtitle {
-    font-size: 10px;
+    font-size: 11px;
+    font-weight: 700;
     margin: 2px 0;
-    color: #444;
+    color: #000000;
   }
 
   .meta-line {
-    font-size: 10px;
-    color: #666;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #000000;
     margin: 0;
   }
 
   .dashed-line {
-    font-family: monospace;
-    color: #777;
+    font-family: 'Consolas', 'Courier New', monospace;
+    color: #000000;
+    font-weight: 900;
     margin: 6px 0;
     overflow: hidden;
     white-space: nowrap;
@@ -263,16 +251,17 @@
     display: flex;
     justify-content: space-between;
     margin-bottom: 3px;
-    font-size: 11px;
-  }
-
-  .font-bold {
+    font-size: 11.5px;
     font-weight: 700;
   }
 
+  .font-bold {
+    font-weight: 900;
+  }
+
   .grand-total {
-    font-weight: 800;
-    font-size: 12px;
+    font-weight: 900;
+    font-size: 13.5px;
     margin-top: 4px;
   }
 
@@ -300,6 +289,15 @@
       border: none !important;
       background: #ffffff !important;
       color: #000000 !important;
+      font-family: 'Consolas', 'Courier New', 'Lucida Console', Monaco, monospace !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      line-height: 1.35 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      -webkit-font-smoothing: antialiased !important;
+      -webkit-text-stroke: 0.22px #000000 !important;
+      text-rendering: geometricPrecision !important;
       visibility: visible !important;
     }
 

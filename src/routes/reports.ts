@@ -10,6 +10,38 @@ reports.get('/dashboard', async (c) => {
   try {
     const startParam = c.req.query('start')?.trim();
     const endParam = c.req.query('end')?.trim();
+    const shiftIdParam = c.req.query('shiftId')?.trim();
+
+    let targetShift: any = null;
+    if (shiftIdParam) {
+      if (shiftIdParam === 'current') {
+        targetShift = await prisma.shift.findFirst({
+          where: { status: 'OPEN' },
+          include: {
+            user: { select: { id: true, name: true, username: true } },
+            closedByUser: { select: { id: true, name: true, username: true } },
+          },
+          orderBy: { openedAt: 'desc' },
+        });
+        if (!targetShift) {
+          targetShift = await prisma.shift.findFirst({
+            include: {
+              user: { select: { id: true, name: true, username: true } },
+              closedByUser: { select: { id: true, name: true, username: true } },
+            },
+            orderBy: { openedAt: 'desc' },
+          });
+        }
+      } else {
+        targetShift = await prisma.shift.findUnique({
+          where: { id: shiftIdParam },
+          include: {
+            user: { select: { id: true, name: true, username: true } },
+            closedByUser: { select: { id: true, name: true, username: true } },
+          },
+        });
+      }
+    }
 
     const dateFilter: any = {};
     if (startParam) {
@@ -33,12 +65,30 @@ reports.get('/dashboard', async (c) => {
       }
     }
 
+    // Build query filters for sales & expenses
+    const salesWhere: any = {
+      status: { in: ['COMPLETED', 'TRANSFER_OUT'] },
+    };
+    const expensesWhere: any = {
+      category: { not: 'INTERNAL_TRANSFER' },
+    };
+
+    if (targetShift) {
+      salesWhere.shiftId = targetShift.id;
+      expensesWhere.shiftId = targetShift.id;
+    } else if (shiftIdParam) {
+      salesWhere.shiftId = '__not_found__';
+      expensesWhere.shiftId = '__not_found__';
+    } else {
+      if (dateFilter.gte || dateFilter.lte) {
+        salesWhere.createdAt = dateFilter;
+        expensesWhere.date = dateFilter;
+      }
+    }
+
     // Fetch non-cancelled sales
     const sales = await prisma.sale.findMany({
-      where: {
-        status: { in: ['COMPLETED', 'TRANSFER_OUT'] },
-        ...(dateFilter.gte || dateFilter.lte ? { createdAt: dateFilter } : {}),
-      },
+      where: salesWhere,
       include: {
         items: {
           include: {
@@ -52,10 +102,7 @@ reports.get('/dashboard', async (c) => {
 
     // Fetch operational expenses (excluding internal transfer virtual records)
     const expenses = await prisma.expense.findMany({
-      where: {
-        category: { not: 'INTERNAL_TRANSFER' },
-        ...(dateFilter.gte || dateFilter.lte ? { date: dateFilter } : {}),
-      },
+      where: expensesWhere,
     });
 
     // Initialize report structure
@@ -135,26 +182,33 @@ reports.get('/dashboard', async (c) => {
     data.paymentMethods.TRANSFER = round2(data.paymentMethods.TRANSFER);
     data.paymentMethods.INTERNAL = round2(data.paymentMethods.INTERNAL);
 
-    // Query shifts intersecting with this date range for Cash Drawer reconciliation
-    const shiftWhere: any = {};
-    if (dateFilter.gte || dateFilter.lte) {
-      shiftWhere.OR = [
-        { openedAt: dateFilter },
-        { closedAt: dateFilter },
-        ...(dateFilter.gte && dateFilter.lte ? [
-          { openedAt: { lte: dateFilter.gte }, closedAt: null },
-        ] : []),
-      ];
-    }
+    // Query shifts intersecting with this date range or matching target shift
+    let shiftsList: any[] = [];
+    if (targetShift) {
+      shiftsList = [targetShift];
+    } else if (shiftIdParam) {
+      shiftsList = [];
+    } else {
+      const shiftWhere: any = {};
+      if (dateFilter.gte || dateFilter.lte) {
+        shiftWhere.OR = [
+          { openedAt: dateFilter },
+          { closedAt: dateFilter },
+          ...(dateFilter.gte && dateFilter.lte ? [
+            { openedAt: { lte: dateFilter.gte }, closedAt: null },
+          ] : []),
+        ];
+      }
 
-    const shiftsList = await prisma.shift.findMany({
-      where: shiftWhere,
-      include: {
-        user: { select: { id: true, name: true, username: true } },
-        closedByUser: { select: { id: true, name: true, username: true } },
-      },
-      orderBy: { openedAt: 'asc' },
-    });
+      shiftsList = await prisma.shift.findMany({
+        where: shiftWhere,
+        include: {
+          user: { select: { id: true, name: true, username: true } },
+          closedByUser: { select: { id: true, name: true, username: true } },
+        },
+        orderBy: { openedAt: 'asc' },
+      });
+    }
 
     let shiftsInitialCash = 0;
     let shiftsExpectedCash = 0;
@@ -237,6 +291,14 @@ reports.get('/dashboard', async (c) => {
 
     return c.json({
       ...data,
+      shiftInfo: targetShift ? {
+        id: targetShift.id,
+        status: targetShift.status,
+        openedAt: targetShift.openedAt,
+        closedAt: targetShift.closedAt,
+        initialCash: Number(targetShift.initialCash),
+        cashier: targetShift.user?.name || targetShift.user?.username || 'Cajero',
+      } : null,
       cashReconciliation,
     });
   } catch (error) {

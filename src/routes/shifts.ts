@@ -301,38 +301,53 @@ shifts.get('/', async (c) => {
   try {
     const startParam = c.req.query('start')?.trim();
     const endParam = c.req.query('end')?.trim();
-
-    const dateFilter: any = {};
-    if (startParam) {
-      const d = new Date(startParam);
-      if (!isNaN(d.getTime())) {
-        if (startParam.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(startParam)) {
-          dateFilter.gte = new Date(`${startParam}T00:00:00.000Z`);
-        } else {
-          dateFilter.gte = d;
-        }
-      }
-    }
-    if (endParam) {
-      const d = new Date(endParam);
-      if (!isNaN(d.getTime())) {
-        if (endParam.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(endParam)) {
-          dateFilter.lte = new Date(`${endParam}T23:59:59.999Z`);
-        } else {
-          dateFilter.lte = d;
-        }
-      }
-    }
+    const shiftIdParam = c.req.query('shiftId')?.trim();
 
     const where: any = {};
-    if (dateFilter.gte || dateFilter.lte) {
-      where.OR = [
-        { openedAt: dateFilter },
-        { closedAt: dateFilter },
-        ...(dateFilter.gte && dateFilter.lte ? [
-          { openedAt: { lte: dateFilter.gte }, closedAt: null },
-        ] : []),
-      ];
+    if (shiftIdParam) {
+      if (shiftIdParam === 'current') {
+        const targetShift = await prisma.shift.findFirst({
+          where: { status: 'OPEN' },
+          orderBy: { openedAt: 'desc' },
+        }) || await prisma.shift.findFirst({
+          orderBy: { openedAt: 'desc' },
+        });
+        where.id = targetShift ? targetShift.id : '__not_found__';
+      } else {
+        where.id = shiftIdParam;
+      }
+    } else {
+      const dateFilter: any = {};
+      if (startParam) {
+        const d = new Date(startParam);
+        if (!isNaN(d.getTime())) {
+          if (startParam.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(startParam)) {
+            dateFilter.gte = new Date(`${startParam}T00:00:00.000Z`);
+          } else {
+            dateFilter.gte = d;
+          }
+        }
+      }
+      if (endParam) {
+        const d = new Date(endParam);
+        if (!isNaN(d.getTime())) {
+          if (endParam.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(endParam)) {
+            dateFilter.lte = new Date(`${endParam}T23:59:59.999Z`);
+          } else {
+            dateFilter.lte = d;
+          }
+        }
+      }
+
+      if (dateFilter.gte || dateFilter.lte) {
+        where.OR = [
+          { openedAt: dateFilter },
+          { closedAt: dateFilter },
+          ...(dateFilter.gte && dateFilter.lte ? [
+            { openedAt: { lte: dateFilter.gte }, closedAt: null },
+          ] : []),
+        ];
+      }
     }
 
     const list = await prisma.shift.findMany({

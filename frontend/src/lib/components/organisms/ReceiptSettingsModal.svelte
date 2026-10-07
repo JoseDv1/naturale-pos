@@ -64,9 +64,17 @@
   }
 
   function handleTestPrint() {
-    printThermalReceipt('printable-thermal-receipt');
+    printThermalReceipt('printable-thermal-receipt', { darkness: localSettings.fontDarkness || 'dark' });
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onclose();
+    }
   }
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="modal-overlay flex-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="receipt-settings-title">
   <div class="modal-container glass-panel animate-scale-up settings-modal-box">
@@ -130,6 +138,29 @@
         <div class="form-group">
           <label for="store-instagram">Cuenta de Instagram</label>
           <input id="store-instagram" type="text" bind:value={localSettings.instagram} placeholder="Ej: @naturale.mercadosaludable" />
+        </div>
+
+        <div class="form-section-title">🖨️ Calidad y Oscuridad de Impresión</div>
+
+        {#snippet densityCard(value: 'normal' | 'dark' | 'extra-dark', title: string, desc: string, isDefault: boolean = false)}
+          <label class="density-card" class:active={localSettings.fontDarkness === value || (isDefault && !localSettings.fontDarkness)}>
+            <input
+              type="radio"
+              name="fontDarkness"
+              {value}
+              bind:group={localSettings.fontDarkness}
+            />
+            <div class="density-info">
+              <span class="density-title">{title}</span>
+              <span class="density-desc">{desc}</span>
+            </div>
+          </label>
+        {/snippet}
+
+        <div class="density-group" role="radiogroup" aria-label="Densidad y oscuridad del texto">
+          {@render densityCard('normal', 'Normal', 'Trazo estándar para impresoras con cabezal nuevo')}
+          {@render densityCard('dark', 'Oscura (Recomendada) ⭐', 'Letra más gruesa y negra para óptima legibilidad térmica', true)}
+          {@render densityCard('extra-dark', 'Extra Oscura', 'Máxima densidad y trazo reforzado para papel tenue o cabezal desgastado')}
         </div>
 
         <div class="form-section-title">⚙️ Automatización de Impresión</div>
@@ -378,5 +409,59 @@
   .footer-right {
     display: flex;
     gap: 10px;
+  }
+
+  /* Density and Darkness Selector */
+  .density-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .density-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.12));
+    border-radius: var(--radius-sm, 8px);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  }
+
+  .density-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .density-card.active {
+    background: rgba(4, 120, 87, 0.15);
+    border-color: var(--color-general, #047857);
+  }
+
+  .density-card input[type="radio"] {
+    accent-color: var(--color-general, #047857);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    margin: 0;
+  }
+
+  .density-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .density-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+  }
+
+  .density-desc {
+    font-size: 0.78rem;
+    color: var(--text-secondary, #94a3b8);
   }
 </style>

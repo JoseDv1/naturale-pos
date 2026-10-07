@@ -26,6 +26,7 @@
   import OpenShiftModal from '../components/organisms/OpenShiftModal.svelte';
   import ThermalReceipt80mm from '../components/molecules/ThermalReceipt80mm.svelte';
   import ReceiptSettingsModal from '../components/organisms/ReceiptSettingsModal.svelte';
+  import PreReceiptModal from '../components/organisms/PreReceiptModal.svelte';
   import CustomizeRecipeModal from '../components/organisms/CustomizeRecipeModal.svelte';
   import { printThermalReceipt } from '../services/printer';
 
@@ -33,8 +34,10 @@
   let searchQuery = $state('');
   let showOpenShiftModal = $state(false);
   let showReceiptSettingsModal = $state(false);
+  let showPreReceiptModal = $state(false);
+  let preReceiptTableData = $state<any>(null);
   let selectedCategory = $state('');
-  let activeDept = $state('MARKET'); // 'MARKET' | 'CAFE'
+  let activeDept = $state('CAFE'); // Default to CAFE
   let wasTableSale = $state(false);
   let isSavingTable = $state(false);
   let isExitingTable = false;
@@ -388,6 +391,25 @@
     cart.set([...$cart]);
   }
 
+  function setUnitPrice(productId: string, variantId: string | null, targetPrice: number | null, itemIndex?: number) {
+    let item: any;
+    if (itemIndex !== undefined && $cart[itemIndex]) {
+      item = $cart[itemIndex];
+    } else {
+      item = $cart.find(
+        (i) => i.product.id === productId && (i.variant?.id || null) === (variantId || null)
+      );
+    }
+    if (!item) return;
+
+    if (targetPrice === null || isNaN(targetPrice) || targetPrice < 0) {
+      delete item.unitPrice;
+    } else {
+      item.unitPrice = Math.round(targetPrice);
+    }
+    cart.set([...$cart]);
+  }
+
   function removeFromCart(productId: string, variantId: string | null, itemIndex?: number) {
     if (itemIndex !== undefined && $cart[itemIndex]) {
       $cart.splice(itemIndex, 1);
@@ -676,6 +698,43 @@
     }
   }
 
+  async function openTablePreReceipt() {
+    if (!$selectedTable) return;
+    try {
+      if ($cart.length > 0) {
+        const itemsPayload = $cart.map(item => ({
+          productId: item.product.id,
+          variantId: item.variant?.id || null,
+          quantity: item.quantity,
+          price: item.unitPrice !== undefined ? Number(item.unitPrice) : (item.variant ? Number(item.variant.price) : Number(item.product.price)),
+          notes: item.notes || null,
+        }));
+        await apiSaveTableOrder($selectedTable.id, itemsPayload);
+      }
+
+      preReceiptTableData = {
+        id: $selectedTable.id,
+        name: $selectedTable.name,
+        currentSale: {
+          id: $selectedTable.currentSaleId || 'PRE-' + Date.now().toString().slice(-6),
+          createdAt: new Date().toISOString(),
+          total: $cartTotal,
+          user: { name: $user?.name || 'Cajero' },
+          items: $cart.map((i) => ({
+            quantity: i.quantity,
+            price: i.unitPrice !== undefined ? Number(i.unitPrice) : (i.variant ? Number(i.variant.price) : Number(i.product.price)),
+            product: i.product,
+            variant: i.variant,
+            notes: i.notes,
+          })),
+        },
+      };
+      showPreReceiptModal = true;
+    } catch (e: any) {
+      alert(e.message || 'Error al preparar pre-cuenta de la mesa');
+    }
+  }
+
   async function handleCheckoutMerge(sourceId: string, targetTableId: string) {
     await apiMergeTables(sourceId, targetTableId);
     triggerRefresh();
@@ -694,6 +753,8 @@
         product: i.product,
         variant: i.variant || null,
         quantity: i.quantity,
+        unitPrice: i.price !== undefined ? Number(i.price) : undefined,
+        notes: i.notes || null,
       }));
       cart.set(remainingItems);
       selectedTable.set({
@@ -719,6 +780,8 @@
         product: i.product,
         variant: i.variant || null,
         quantity: i.quantity,
+        unitPrice: i.price !== undefined ? Number(i.price) : undefined,
+        notes: i.notes || null,
       }));
       cart.set(remainingItems);
       selectedTable.set({
@@ -774,6 +837,7 @@
             <input
               type="text"
               placeholder="Buscar por nombre o escanear código / SKU..."
+              aria-label="Buscar por nombre o escanear código"
               bind:value={searchQuery}
               bind:this={barcodeSearchInput}
               onkeydown={handleSearchKeyDown}
@@ -808,18 +872,20 @@
         <div class="tabs-and-filters">
           <div class="dept-tabs">
             <button
-              class="tab-btn"
-              class:active={activeDept === 'MARKET'}
-              onclick={() => { activeDept = 'MARKET'; selectedCategory = ''; }}
-            >
-              🍏 Mercado Saludable
-            </button>
-            <button
+              type="button"
               class="tab-btn"
               class:active={activeDept === 'CAFE'}
               onclick={() => { activeDept = 'CAFE'; selectedCategory = ''; }}
             >
               ☕ Café
+            </button>
+            <button
+              type="button"
+              class="tab-btn"
+              class:active={activeDept === 'MARKET'}
+              onclick={() => { activeDept = 'MARKET'; selectedCategory = ''; }}
+            >
+              🍏 Mercado Saludable
             </button>
           </div>
 
@@ -853,18 +919,45 @@
   <div class="cart-section glass-panel">
     {#if $selectedTable}
       <div class="table-mode-banner">
-        <div class="table-info-group">
-          <span>📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
-          <span class="auto-save-pill">⚡ Guardado automático</span>
+        <div class="table-title-row">
+          <span class="table-name-label">📌 Cuenta: <strong>{$selectedTable.name}</strong></span>
         </div>
         <div class="table-banner-actions">
-          <button type="button" class="btn-table-tool" onclick={openTableMerge} title="Fusionar o mover esta mesa">
+          <button
+            type="button"
+            class="btn-table-tool btn-pre-receipt-tool"
+            onclick={openTablePreReceipt}
+            title="Imprimir Pre-Cuenta para el cliente"
+            aria-label="Imprimir Pre-Cuenta para el cliente"
+          >
+            🧾 Pre-Cuenta
+          </button>
+          <button
+            type="button"
+            class="btn-table-tool"
+            onclick={openTableMerge}
+            title="Fusionar o mover esta mesa"
+            aria-label="Fusionar o mover esta mesa"
+          >
             🔀 Mover / Unir
           </button>
-          <button type="button" class="btn-table-tool" onclick={openTableSplit} title="Dividir cuenta o transferir productos">
+          <button
+            type="button"
+            class="btn-table-tool"
+            onclick={openTableSplit}
+            title="Dividir cuenta o transferir productos"
+            aria-label="Dividir cuenta o transferir productos"
+          >
             ✂️ Dividir
           </button>
-          <button type="button" class="btn-exit-table" onclick={exitTableMode} disabled={isSavingTable} title="Salir de la mesa (guarda automáticamente)">
+          <button
+            type="button"
+            class="btn-exit-table"
+            onclick={exitTableMode}
+            disabled={isSavingTable}
+            title="Salir de la mesa (guarda automáticamente)"
+            aria-label="Salir de la mesa"
+          >
             {isSavingTable ? 'Guardando... ⏳' : 'Volver ↩'}
           </button>
         </div>
@@ -889,6 +982,7 @@
           {item}
           onupdateqty={(prodId, varId, delta) => updateQuantity(prodId, varId, delta, index)}
           onsetqty={(prodId, varId, qty) => setQuantity(prodId, varId, qty, index)}
+          onsetprice={(prodId, varId, price) => setUnitPrice(prodId, varId, price, index)}
           onremove={(prodId, varId) => removeFromCart(prodId, varId, index)}
           oncustomize={hasRecipe ? () => openCustomizeModal(fullProduct, item.variant, index) : undefined}
         />
@@ -919,11 +1013,22 @@
       </div>
       {#if $selectedTable}
         <div class="table-action-buttons">
-          <button class="btn btn-general checkout-btn flex-1" onclick={openCheckout} disabled={$cart.length === 0 || isSavingTable}>
-            Cobrar Mesa 💳
-          </button>
-          <button class="btn btn-market save-table-btn" onclick={saveTableOrder} disabled={isSavingTable} title="Guardar cambios y volver a mesas">
+          <button
+            type="button"
+            class="btn btn-market save-table-btn"
+            onclick={saveTableOrder}
+            disabled={isSavingTable}
+            title="Guardar cambios y volver a mesas"
+          >
             {isSavingTable ? 'Guardando... ⏳' : 'Guardar Mesa 💾'}
+          </button>
+          <button
+            type="button"
+            class="btn btn-general checkout-btn"
+            onclick={openCheckout}
+            disabled={$cart.length === 0 || isSavingTable}
+          >
+            Cobrar Mesa 💳
           </button>
         </div>
       {:else}
@@ -1243,6 +1348,16 @@
       productToCustomize = null;
       variantToCustomize = null;
       editingCartIndex = null;
+    }}
+  />
+{/if}
+
+{#if showPreReceiptModal && preReceiptTableData}
+  <PreReceiptModal
+    table={preReceiptTableData}
+    onclose={() => {
+      showPreReceiptModal = false;
+      preReceiptTableData = null;
     }}
   />
 {/if}
@@ -1778,55 +1893,107 @@
 
   .table-mode-banner {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 8px;
     background: var(--color-cafe-glow);
     border-bottom: 1px solid rgba(180, 83, 9, 0.25);
-    padding: 10px 18px;
-    font-size: 0.9rem;
-    color: #78350f;
-    font-weight: 600;
+    padding: 10px 14px;
     border-top-left-radius: var(--radius-md);
     border-top-right-radius: var(--radius-md);
     flex-shrink: 0;
-    gap: 12px;
   }
 
-  .table-info-group {
+  .table-title-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+  }
+
+  .table-name-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #78350f;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .table-name-label strong {
+    font-weight: 700;
+    color: #451a03;
+  }
+
+  .table-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
     flex-wrap: wrap;
   }
 
-  .auto-save-pill {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--color-general, #047857);
-    background: rgba(4, 120, 87, 0.12);
-    border: 1px solid rgba(4, 120, 87, 0.25);
-    padding: 2px 8px;
-    border-radius: 9999px;
+  .btn-table-tool {
+    flex: 1;
+    min-width: fit-content;
+    text-align: center;
+    justify-content: center;
     display: inline-flex;
     align-items: center;
     gap: 4px;
-  }
-
-  .btn-exit-table {
-    background: rgba(255, 255, 255, 0.5);
-    border: 1px solid rgba(180, 83, 9, 0.4);
+    background: rgba(180, 83, 9, 0.12);
+    border: 1px solid rgba(180, 83, 9, 0.35);
     color: #78350f;
-    padding: 4px 10px;
-    font-size: 0.75rem;
+    padding: 6px 8px;
+    font-size: 0.78rem;
     font-weight: 600;
-    border-radius: 4px;
+    border-radius: var(--radius-sm, 6px);
     cursor: pointer;
     transition: var(--transition-fast);
     outline: none;
+    white-space: nowrap;
   }
+
+  .btn-table-tool:hover {
+    background: rgba(180, 83, 9, 0.22);
+    border-color: rgba(180, 83, 9, 0.5);
+  }
+
+  .btn-pre-receipt-tool {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #065f46;
+    font-weight: 700;
+  }
+
+  .btn-pre-receipt-tool:hover {
+    background: rgba(16, 185, 129, 0.25);
+    border-color: rgba(16, 185, 129, 0.6);
+  }
+
+  .btn-exit-table {
+    flex: 1;
+    min-width: fit-content;
+    text-align: center;
+    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(180, 83, 9, 0.4);
+    color: #78350f;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm, 6px);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    outline: none;
+    white-space: nowrap;
+  }
+
   .btn-exit-table:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.9);
   }
+
   .btn-exit-table:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -1838,38 +2005,24 @@
     width: 100%;
   }
 
-  .save-table-btn {
+  .table-action-buttons .btn {
     flex: 1;
+    min-width: 0;
+    width: auto;
+    height: 48px;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .save-table-btn {
     height: 48px;
     font-size: 1rem;
   }
   .save-table-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-
-  .table-banner-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .btn-table-tool {
-    background: rgba(180, 83, 9, 0.12);
-    border: 1px solid rgba(180, 83, 9, 0.35);
-    color: #78350f;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-    outline: none;
-  }
-
-  .btn-table-tool:hover {
-    background: rgba(180, 83, 9, 0.22);
-    border-color: rgba(180, 83, 9, 0.5);
   }
 
   /* Variant Selector Modal */

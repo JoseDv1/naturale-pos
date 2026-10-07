@@ -24,6 +24,7 @@
   const today = getTodayLocalDate();
   let startDate = $state(today);
   let endDate = $state(today);
+  let selectedQuickRange = $state<'shift' | 'today' | 'yesterday' | 'week' | 'month' | 'all' | 'custom'>('today');
   let activeTab = $state('CONSOLIDATED'); // 'CONSOLIDATED' | 'MARKET' | 'CAFE'
 
   // Subtab switch between Sales History and Shift Closures
@@ -49,19 +50,23 @@
   let saleToEdit = $state<any | null>(null);
 
   function getRangeISOBounds() {
+    if (selectedQuickRange === 'shift') {
+      return { startISO: undefined, endISO: undefined, shiftId: 'current' };
+    }
     const startISO = startDate ? toLocalStartOfDayISO(startDate) : undefined;
     const endISO = endDate ? toLocalEndOfDayISO(endDate) : undefined;
-    return { startISO, endISO };
+    return { startISO, endISO, shiftId: undefined };
   }
 
   function fetchSalesHistory(): Promise<any[]> {
-    const { startISO, endISO } = getRangeISOBounds();
+    const { startISO, endISO, shiftId } = getRangeISOBounds();
     return getSales({
       q: searchQuery.trim() || undefined,
       status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
       paymentMethod: selectedPayment !== 'ALL' ? selectedPayment : undefined,
       start: startISO,
       end: endISO,
+      shiftId,
     }).then((data) => {
       salesList = data;
       return data;
@@ -69,16 +74,16 @@
   }
 
   function fetchShifts(): Promise<any[]> {
-    const { startISO, endISO } = getRangeISOBounds();
-    return getShifts(startISO, endISO).then((data) => {
+    const { startISO, endISO, shiftId } = getRangeISOBounds();
+    return getShifts(startISO, endISO, shiftId).then((data) => {
       shiftsList = data;
       return data;
     });
   }
 
   function loadReports() {
-    const { startISO, endISO } = getRangeISOBounds();
-    reportsPromise = getDashboardData(startISO, endISO);
+    const { startISO, endISO, shiftId } = getRangeISOBounds();
+    reportsPromise = getDashboardData(startISO, endISO, shiftId);
   }
 
   function loadLowStock() {
@@ -94,7 +99,7 @@
   }
 
   const initialBounds = getRangeISOBounds();
-  let reportsPromise = $state<Promise<any>>(getDashboardData(initialBounds.startISO, initialBounds.endISO));
+  let reportsPromise = $state<Promise<any>>(getDashboardData(initialBounds.startISO, initialBounds.endISO, initialBounds.shiftId));
   let lowStockPromise = $state<Promise<any[]>>(getInventoryAlerts());
   let salesPromise = $state<Promise<any[]>>(fetchSalesHistory());
   let shiftsPromise = $state<Promise<any[]>>(fetchShifts());
@@ -114,8 +119,17 @@
     loadShifts();
   }
 
-  function setQuickRange(type: 'today' | 'yesterday' | 'week' | 'month' | 'all') {
-    if (type === 'today') {
+  function handleManualDateChange() {
+    selectedQuickRange = 'custom';
+    handleDateChange();
+  }
+
+  function setQuickRange(type: 'shift' | 'today' | 'yesterday' | 'week' | 'month' | 'all') {
+    selectedQuickRange = type;
+    if (type === 'shift') {
+      startDate = '';
+      endDate = '';
+    } else if (type === 'today') {
       startDate = getTodayLocalDate();
       endDate = getTodayLocalDate();
     } else if (type === 'yesterday') {
@@ -136,6 +150,7 @@
   }
 
   function resetDateFilters() {
+    selectedQuickRange = 'today';
     startDate = getTodayLocalDate();
     endDate = getTodayLocalDate();
     searchQuery = '';
@@ -272,7 +287,17 @@
         <button
           type="button"
           class="btn-range"
-          class:active={startDate === getTodayLocalDate() && endDate === getTodayLocalDate()}
+          class:active={selectedQuickRange === 'shift'}
+          aria-pressed={selectedQuickRange === 'shift'}
+          onclick={() => setQuickRange('shift')}
+        >
+          Este Turno
+        </button>
+        <button
+          type="button"
+          class="btn-range"
+          class:active={selectedQuickRange === 'today'}
+          aria-pressed={selectedQuickRange === 'today'}
           onclick={() => setQuickRange('today')}
         >
           Hoy
@@ -280,7 +305,8 @@
         <button
           type="button"
           class="btn-range"
-          class:active={startDate === getYesterdayLocalDate() && endDate === getYesterdayLocalDate()}
+          class:active={selectedQuickRange === 'yesterday'}
+          aria-pressed={selectedQuickRange === 'yesterday'}
           onclick={() => setQuickRange('yesterday')}
         >
           Ayer
@@ -288,7 +314,8 @@
         <button
           type="button"
           class="btn-range"
-          class:active={startDate === getWeekStartLocalDate() && endDate === getTodayLocalDate()}
+          class:active={selectedQuickRange === 'week'}
+          aria-pressed={selectedQuickRange === 'week'}
           onclick={() => setQuickRange('week')}
         >
           Esta Semana
@@ -296,7 +323,8 @@
         <button
           type="button"
           class="btn-range"
-          class:active={startDate === getMonthStartLocalDate() && endDate === getTodayLocalDate()}
+          class:active={selectedQuickRange === 'month'}
+          aria-pressed={selectedQuickRange === 'month'}
           onclick={() => setQuickRange('month')}
         >
           Este Mes
@@ -304,21 +332,40 @@
         <button
           type="button"
           class="btn-range"
-          class:active={!startDate && !endDate}
+          class:active={selectedQuickRange === 'all'}
+          aria-pressed={selectedQuickRange === 'all'}
           onclick={() => setQuickRange('all')}
         >
           Todo
         </button>
       </div>
 
+      {#if selectedQuickRange === 'shift'}
+        <div
+          class="shift-context-chip"
+          class:is-open={shiftsList[0]?.status === 'OPEN'}
+          aria-live="polite"
+        >
+          {#if shiftsList.length > 0}
+            <span class="chip-dot" aria-hidden="true">●</span>
+            <span class="chip-text">
+              {shiftsList[0].status === 'OPEN' ? 'Turno en curso' : 'Último turno cerrado'}
+              (#{shiftsList[0].id.slice(0, 8).toUpperCase()}{shiftsList[0].user?.name ? ` - ${shiftsList[0].user.name}` : ''})
+            </span>
+          {:else}
+            <span class="chip-text text-muted">Sin turnos registrados</span>
+          {/if}
+        </div>
+      {/if}
+
       <div class="date-inputs-wrapper">
         <div class="date-input-group">
           <label for="start-d">Desde</label>
-          <input type="date" id="start-d" bind:value={startDate} onchange={handleDateChange} />
+          <input type="date" id="start-d" bind:value={startDate} onchange={handleManualDateChange} />
         </div>
         <div class="date-input-group">
           <label for="end-d">Hasta</label>
-          <input type="date" id="end-d" bind:value={endDate} onchange={handleDateChange} />
+          <input type="date" id="end-d" bind:value={endDate} onchange={handleManualDateChange} />
         </div>
       </div>
 
@@ -397,115 +444,7 @@
       {/if}
     </div>
 
-    <!-- Cash Drawer Arqueo & Reconciliation Panel -->
-    {#if data.cashReconciliation}
-      <div class="cash-reconciliation-panel glass-panel animate-scale-up">
-        <div class="reconciliation-header">
-          <div class="header-info">
-            <h3 class="panel-title">
-              💵 Resumen y Arqueo de Caja {startDate === endDate && startDate ? '(Cierre del Día)' : '(Período Seleccionado)'}
-            </h3>
-            <span class="sub-info">
-              {#if data.cashReconciliation.shiftsCount === 0}
-                No se registraron turnos en este rango de fechas.
-              {:else if data.cashReconciliation.shiftsCount === 1}
-                1 turno registrado {data.cashReconciliation.openShiftsCount > 0 ? '(🟢 En curso)' : '(🔒 Cerrado)'}
-              {:else}
-                {data.cashReconciliation.shiftsCount} turnos registrados ({data.cashReconciliation.closedShiftsCount} cerrados{data.cashReconciliation.openShiftsCount > 0 ? `, ${data.cashReconciliation.openShiftsCount} en curso` : ''})
-              {/if}
-            </span>
-          </div>
-          <div class="header-badge">
-            {#if data.cashReconciliation.shiftsCount > 0}
-              {#if data.cashReconciliation.openShiftsCount > 0}
-                <span class="badge badge-warning">🟢 Turno en Curso</span>
-              {:else if Math.abs(data.cashReconciliation.difference) < 0.01}
-                <span class="badge badge-success">✅ Caja Cuadrada ($0)</span>
-              {:else if data.cashReconciliation.difference > 0}
-                <span class="badge badge-info">⬆️ Sobrante: +${Number(data.cashReconciliation.difference).toLocaleString()}</span>
-              {:else}
-                <span class="badge badge-danger">⚠️ Faltante: -${Math.abs(Number(data.cashReconciliation.difference)).toLocaleString()}</span>
-              {/if}
-            {/if}
-          </div>
-        </div>
 
-        <!-- Visual Mathematical Equation Flow: Base + Cash Sales - Expenses = Expected vs Actual -->
-        <div class="reconciliation-flow-grid">
-          <div class="flow-card">
-            <span class="flow-label">Base(s) Inicial(es)</span>
-            <span class="flow-value font-mono">${Number(data.cashReconciliation.initialCash || 0).toLocaleString()}</span>
-            <span class="flow-caption">Efectivo inicial en caja</span>
-          </div>
-
-          <div class="flow-operator" aria-hidden="true">+</div>
-
-          <div class="flow-card flow-positive">
-            <span class="flow-label">Ventas Efectivo</span>
-            <span class="flow-value font-mono">+${Number(data.cashReconciliation.cashSales || 0).toLocaleString()}</span>
-            <span class="flow-caption">Total ingresado por ventas</span>
-          </div>
-
-          <div class="flow-operator" aria-hidden="true">-</div>
-
-          <div class="flow-card flow-negative">
-            <span class="flow-label">Egresos / Gastos</span>
-            <span class="flow-value font-mono">-${Number(data.cashReconciliation.expenses || 0).toLocaleString()}</span>
-            <span class="flow-caption">Salidas pagadas en efectivo</span>
-          </div>
-
-          <div class="flow-operator" aria-hidden="true">=</div>
-
-          <div class="flow-card flow-expected">
-            <span class="flow-label">Efectivo Esperado</span>
-            <span class="flow-value font-mono">${Number(data.cashReconciliation.expectedCash || 0).toLocaleString()}</span>
-            <span class="flow-caption">Debe haber en cajón</span>
-          </div>
-
-          <div class="flow-operator vs" aria-hidden="true">vs</div>
-
-          <div class="flow-card flow-actual">
-            <span class="flow-label">Efectivo Real (Contado)</span>
-            <span class="flow-value font-mono">
-              {#if data.cashReconciliation.closedShiftsCount > 0}
-                ${Number(data.cashReconciliation.actualCash || 0).toLocaleString()}
-              {:else}
-                <span class="text-muted" style="font-size: 0.95rem;">En curso</span>
-              {/if}
-            </span>
-            <span class="flow-caption">Arqueo físico declarado</span>
-          </div>
-
-          <div class="flow-operator" aria-hidden="true">=</div>
-
-          <div class="flow-card flow-diff" class:diff-ok={Math.abs(data.cashReconciliation.difference || 0) < 0.01} class:diff-warn={(data.cashReconciliation.difference || 0) !== 0}>
-            <span class="flow-label">Diferencia (Arqueo)</span>
-            <span class="flow-value font-mono">
-              {#if data.cashReconciliation.closedShiftsCount > 0}
-                {(data.cashReconciliation.difference || 0) > 0 ? '+' : ''}${Number(data.cashReconciliation.difference || 0).toLocaleString()}
-              {:else}
-                <span class="text-muted">-</span>
-              {/if}
-            </span>
-            <span class="flow-caption">
-              {Math.abs(data.cashReconciliation.difference || 0) < 0.01 ? 'Caja balanceada exacta' : (data.cashReconciliation.difference || 0) > 0 ? 'Sobrante en caja' : 'Faltante en caja'}
-            </span>
-          </div>
-        </div>
-
-        {#if data.cashReconciliation.shiftsCount > 0}
-          <div class="reconciliation-footer">
-            <button
-              type="button"
-              class="btn-link-shifts"
-              onclick={() => { historySubTab = 'shifts'; loadShifts(); }}
-            >
-              📑 Ver los {data.cashReconciliation.shiftsCount} {data.cashReconciliation.shiftsCount === 1 ? 'turno detallado' : 'turnos detallados'} de este período ➔
-            </button>
-          </div>
-        {/if}
-      </div>
-    {/if}
 
     <!-- Split Visual: Payments Methods & Inventory Alerts -->
     <div class="secondary-dashboard-row">
@@ -1252,200 +1191,28 @@
     white-space: nowrap;
   }
 
-  /* Cash Drawer Arqueo & Reconciliation Panel */
-  .cash-reconciliation-panel {
-    padding: 18px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-glass);
-  }
-
-  .reconciliation-header {
-    display: flex;
-    justify-content: space-between;
+  .shift-context-chip {
+    display: inline-flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .panel-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    margin: 0;
-    color: var(--text-primary);
-  }
-
-  .sub-info {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    display: block;
-    margin-top: 2px;
-  }
-
-  .header-badge .badge {
-    padding: 5px 12px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    border-radius: 20px;
-    display: inline-block;
-  }
-
-  .badge-success {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-  }
-
-  .badge-warning {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-  }
-
-  .badge-info {
-    background: rgba(59, 130, 246, 0.15);
-    color: #3b82f6;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-  }
-
-  .badge-danger {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-  }
-
-  /* Mathematical Equation Flow Grid */
-  .reconciliation-flow-grid {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding: 12px 14px;
-    background: rgba(0, 0, 0, 0.2);
+    gap: 6px;
+    padding: 6px 12px;
     border-radius: var(--radius-sm);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .flow-card {
-    flex: 1;
-    min-width: 130px;
-    display: flex;
-    flex-direction: column;
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-glass);
-    border-radius: var(--radius-sm);
-    transition: var(--transition-fast);
-  }
-
-  .flow-card:hover {
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .flow-label {
-    font-size: 0.72rem;
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
+    white-space: nowrap;
   }
 
-  .flow-value {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-
-  .flow-caption {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
-
-  .flow-operator {
-    font-size: 1.2rem;
-    font-weight: 800;
-    color: var(--text-muted);
-    padding: 0 4px;
-    user-select: none;
-  }
-
-  .flow-operator.vs {
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    background: rgba(255, 255, 255, 0.06);
-    padding: 3px 8px;
-    border-radius: 12px;
-  }
-
-  .flow-positive .flow-value {
+  .shift-context-chip.is-open {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
     color: #10b981;
   }
 
-  .flow-negative .flow-value {
-    color: #ef4444;
-  }
-
-  .flow-expected {
-    border-color: rgba(59, 130, 246, 0.4);
-    background: rgba(59, 130, 246, 0.05);
-  }
-
-  .flow-expected .flow-value {
-    color: #60a5fa;
-  }
-
-  .flow-actual {
-    border-color: rgba(16, 185, 129, 0.4);
-    background: rgba(16, 185, 129, 0.05);
-  }
-
-  .flow-actual .flow-value {
-    color: #34d399;
-  }
-
-  .flow-diff.diff-ok {
-    border-color: rgba(16, 185, 129, 0.5);
-    background: rgba(16, 185, 129, 0.08);
-  }
-
-  .flow-diff.diff-ok .flow-value {
-    color: #10b981;
-  }
-
-  .flow-diff.diff-warn {
-    border-color: rgba(245, 158, 11, 0.5);
-    background: rgba(245, 158, 11, 0.08);
-  }
-
-  .flow-diff.diff-warn .flow-value {
-    color: #f59e0b;
-  }
-
-  .reconciliation-footer {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .btn-link-shifts {
-    background: transparent;
-    border: none;
-    color: var(--color-general);
-    font-size: 0.84rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: var(--transition-fast);
-  }
-
-  .btn-link-shifts:hover {
-    text-decoration: underline;
-    background: rgba(255, 255, 255, 0.04);
+  .chip-dot {
+    font-size: 0.65rem;
   }
 
   /* Shifts Table Styling */

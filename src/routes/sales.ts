@@ -12,6 +12,7 @@ sales.get('/', async (c) => {
     const paymentMethod = c.req.query('paymentMethod')?.trim();
     const start = c.req.query('start')?.trim();
     const end = c.req.query('end')?.trim();
+    const shiftIdParam = c.req.query('shiftId')?.trim();
 
     const where: any = {};
 
@@ -35,28 +36,42 @@ sales.get('/', async (c) => {
       }
     }
 
-    // 3. Date range bounds
-    const dateFilter: any = {};
-    if (start) {
-      let startDate = new Date(start);
-      if (start.length === 10 && !isNaN(startDate.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(start)) {
-        startDate = new Date(`${start}T00:00:00.000Z`);
+    // 3. Shift or Date range bounds
+    if (shiftIdParam) {
+      if (shiftIdParam === 'current') {
+        const targetShift = await prisma.shift.findFirst({
+          where: { status: 'OPEN' },
+          orderBy: { openedAt: 'desc' },
+        }) || await prisma.shift.findFirst({
+          orderBy: { openedAt: 'desc' },
+        });
+        where.shiftId = targetShift ? targetShift.id : '__not_found__';
+      } else {
+        where.shiftId = shiftIdParam;
       }
-      if (!isNaN(startDate.getTime())) {
-        dateFilter.gte = startDate;
+    } else {
+      const dateFilter: any = {};
+      if (start) {
+        let startDate = new Date(start);
+        if (start.length === 10 && !isNaN(startDate.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(start)) {
+          startDate = new Date(`${start}T00:00:00.000Z`);
+        }
+        if (!isNaN(startDate.getTime())) {
+          dateFilter.gte = startDate;
+        }
       }
-    }
-    if (end) {
-      let endDate = new Date(end);
-      if (end.length === 10 && !isNaN(endDate.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(end)) {
-        endDate = new Date(`${end}T23:59:59.999Z`);
+      if (end) {
+        let endDate = new Date(end);
+        if (end.length === 10 && !isNaN(endDate.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(end)) {
+          endDate = new Date(`${end}T23:59:59.999Z`);
+        }
+        if (!isNaN(endDate.getTime())) {
+          dateFilter.lte = endDate;
+        }
       }
-      if (!isNaN(endDate.getTime())) {
-        dateFilter.lte = endDate;
+      if (Object.keys(dateFilter).length > 0) {
+        where.createdAt = dateFilter;
       }
-    }
-    if (Object.keys(dateFilter).length > 0) {
-      where.createdAt = dateFilter;
     }
 
     // 4. Multi-field text search (Ticket ID, Cashier Name, Product Name)

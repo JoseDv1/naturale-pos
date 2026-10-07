@@ -42,10 +42,11 @@ export async function closeShift(actualCash: number, notes?: string) {
   return res.json();
 }
 
-export async function getShifts(start?: string, end?: string) {
+export async function getShifts(start?: string, end?: string, shiftId?: string) {
   const params = new URLSearchParams();
   if (start) params.append('start', start);
   if (end) params.append('end', end);
+  if (shiftId) params.append('shiftId', shiftId);
   const query = params.toString();
   const url = query ? `/api/shifts?${query}` : '/api/shifts';
   const res = await fetch(url);

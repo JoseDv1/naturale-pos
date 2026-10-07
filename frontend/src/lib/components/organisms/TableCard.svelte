@@ -13,6 +13,7 @@
     oncancel: (table: any) => void;
     onmerge?: (table: any) => void;
     onsplit?: (table: any) => void;
+    onprereceipt?: (table: any) => void;
   }
 
   let { 
@@ -26,7 +27,8 @@
     onresume, 
     oncancel, 
     onmerge, 
-    onsplit 
+    onsplit,
+    onprereceipt 
   }: Props = $props();
 </script>
 
@@ -89,6 +91,17 @@
           Ver Cuenta / Facturar 🛒
         </Button>
         <div class="sub-action-row">
+          {#if onprereceipt}
+            <button
+              type="button"
+              class="btn-tool-action btn-pre-receipt"
+              onclick={(e) => { e.stopPropagation(); onprereceipt(table); }}
+              title="Imprimir pre-cuenta para el cliente"
+              aria-label="Imprimir pre-cuenta para el cliente"
+            >
+              🧾 Pre-Cuenta
+            </button>
+          {/if}
           {#if onmerge}
             <button 
               type="button" 
@@ -205,6 +218,18 @@
     background: rgba(244, 63, 94, 0.12);
     border-color: var(--color-danger);
     color: var(--color-danger);
+  }
+
+  .btn-tool-action.btn-pre-receipt {
+    background: rgba(180, 83, 9, 0.12);
+    border-color: rgba(180, 83, 9, 0.3);
+    color: var(--color-cafe, #b45309);
+    font-weight: 700;
+  }
+
+  .btn-tool-action.btn-pre-receipt:hover {
+    background: rgba(180, 83, 9, 0.22);
+    border-color: var(--color-cafe, #b45309);
   }
 
   .table-card:hover {

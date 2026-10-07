@@ -4,6 +4,7 @@ export interface SalesFilterParams {
   paymentMethod?: string;
   start?: string;
   end?: string;
+  shiftId?: string;
 }
 
 export async function getSales(params?: SalesFilterParams) {
@@ -13,6 +14,7 @@ export async function getSales(params?: SalesFilterParams) {
   if (params?.paymentMethod && params.paymentMethod !== 'ALL') query.set('paymentMethod', params.paymentMethod);
   if (params?.start) query.set('start', params.start);
   if (params?.end) query.set('end', params.end);
+  if (params?.shiftId) query.set('shiftId', params.shiftId);
 
   const qs = query.toString();
   const url = qs ? `/api/sales?${qs}` : '/api/sales';

@@ -1,7 +1,8 @@
-export async function getDashboardData(start?: string, end?: string) {
+export async function getDashboardData(start?: string, end?: string, shiftId?: string) {
   const params = new URLSearchParams();
   if (start) params.append('start', start);
   if (end) params.append('end', end);
+  if (shiftId) params.append('shiftId', shiftId);
   const query = params.toString();
   const url = query ? `/api/reports/dashboard?${query}` : '/api/reports/dashboard';
   const res = await fetch(url);

@@ -135,6 +135,7 @@ export interface ReceiptSettings {
   instagram: string;
   autoPrint: boolean;
   paperWidth: '80mm' | '58mm';
+  fontDarkness?: 'normal' | 'dark' | 'extra-dark';
 }
 
 export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
@@ -149,6 +150,7 @@ export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   instagram: '@naturale.mercadosaludable',
   autoPrint: false,
   paperWidth: '80mm',
+  fontDarkness: 'dark',
 };
 
 function createReceiptSettingsStore() {

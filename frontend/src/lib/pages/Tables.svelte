@@ -14,14 +14,16 @@
   import TableCard from '../components/organisms/TableCard.svelte';
   import MergeTableModal from '../components/organisms/MergeTableModal.svelte';
   import SplitTableModal from '../components/organisms/SplitTableModal.svelte';
+  import PreReceiptModal from '../components/organisms/PreReceiptModal.svelte';
 
   let tables = $state<any[]>([]);
   let isLoading = $state(false);
   let errorMsg = $state('');
 
-  // Modals for merging & splitting
+  // Modals for merging, splitting & pre-receipt
   let showMergeModal = $state(false);
   let showSplitModal = $state(false);
+  let preReceiptTable = $state<any | null>(null);
   let activeModalTable = $state<any | null>(null);
 
   // UI state
@@ -455,6 +457,18 @@
             <span>Total Acumulado:</span>
             <span class="grand-total">${parseFloat(table.currentSale.total).toLocaleString()}</span>
           </div>
+
+          <!-- Quick Pre-Cuenta Print Button inside active order details -->
+          <div class="panel-pre-receipt-action">
+            <button
+              type="button"
+              class="btn btn-pre-receipt w-100"
+              onclick={() => (preReceiptTable = table)}
+              title="Generar e imprimir pre-cuenta para entregar al cliente"
+            >
+              🧾 Imprimir Pre-Cuenta (Ticket Cliente)
+            </button>
+          </div>
         </div>
       {:else}
         <div class="panel-empty-state flex-center">
@@ -532,9 +546,17 @@
             <span>Ver Cuenta / Facturar</span>
             <span class="btn-emoji">🛒</span>
           </button>
-
           <!-- Acciones secundarias operativas de mesa -->
           <div class="footer-subactions-row">
+            <button 
+              type="button" 
+              class="btn btn-secondary flex-1 btn-subaction" 
+              onclick={() => (preReceiptTable = table)}
+              title="Imprimir Pre-Cuenta para entregar al cliente"
+              aria-label="Imprimir Pre-Cuenta"
+            >
+              <span class="subaction-icon">🧾</span> Pre-Cuenta
+            </button>
             <button 
               type="button" 
               class="btn btn-secondary flex-1 btn-subaction" 
@@ -722,6 +744,7 @@
                   oncancel={cancelTableOrder}
                   onmerge={openMergeModal}
                   onsplit={openSplitModal}
+                  onprereceipt={(t) => (preReceiptTable = t)}
                 />
               {/each}
             </div>
@@ -760,6 +783,13 @@
     ontransfer={handleTransfer}
     oncheckout={handlePartialCheckout}
     onclose={() => { showSplitModal = false; activeModalTable = null; }}
+  />
+{/if}
+
+{#if preReceiptTable}
+  <PreReceiptModal
+    table={preReceiptTable}
+    onclose={() => (preReceiptTable = null)}
   />
 {/if}
 
@@ -1284,6 +1314,53 @@
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--color-cafe);
+  }
+
+  .panel-pre-receipt-action {
+    margin-top: 10px;
+  }
+
+  .btn-pre-receipt {
+    background: rgba(180, 83, 9, 0.12);
+    border: 1px solid rgba(180, 83, 9, 0.35);
+    color: var(--color-cafe, #b45309);
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 9px 14px;
+    border-radius: var(--radius-sm, 8px);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background var(--transition-fast, 0.15s), border-color var(--transition-fast, 0.15s), transform var(--transition-fast, 0.15s);
+  }
+
+  .btn-pre-receipt:hover {
+    background: rgba(180, 83, 9, 0.22);
+    border-color: var(--color-cafe, #b45309);
+    transform: translateY(-1px);
+  }
+
+  .btn-pre-receipt-outline {
+    background: rgba(180, 83, 9, 0.1);
+    border: 1px solid rgba(180, 83, 9, 0.3);
+    color: var(--color-cafe, #b45309);
+    font-weight: 700;
+    font-size: 0.88rem;
+    border-radius: var(--radius-sm, 8px);
+    cursor: pointer;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background var(--transition-fast, 0.15s), border-color var(--transition-fast, 0.15s);
+  }
+
+  .btn-pre-receipt-outline:hover {
+    background: rgba(180, 83, 9, 0.2);
+    border-color: var(--color-cafe, #b45309);
   }
 
   .panel-empty-state {

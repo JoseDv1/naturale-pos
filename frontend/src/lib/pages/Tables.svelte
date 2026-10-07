@@ -513,24 +513,55 @@
 
     <div class="panel-footer">
       {#if table.status === 'AVAILABLE'}
-        <button type="button" class="btn btn-market w-100 py-3" onclick={() => openTable(table)}>
-          Abrir Mesa / Comanda 🪑
+        <button 
+          type="button" 
+          class="btn btn-market w-100 btn-primary-action" 
+          onclick={() => openTable(table)}
+        >
+          <span>Abrir Mesa / Comanda</span>
+          <span class="btn-emoji">🪑</span>
         </button>
       {:else}
-        <div class="footer-actions-row">
-          <button type="button" class="btn btn-cafe flex-1 py-3" onclick={() => resumeTable(table)}>
-            Ver Cuenta / Facturar 🛒
+        <div class="panel-occupied-actions">
+          <!-- Botón Principal Destacado: Ver Cuenta / Facturar -->
+          <button 
+            type="button" 
+            class="btn btn-cafe w-100 btn-primary-action btn-facturar" 
+            onclick={() => resumeTable(table)}
+          >
+            <span>Ver Cuenta / Facturar</span>
+            <span class="btn-emoji">🛒</span>
           </button>
-          <button type="button" class="btn btn-danger-outline" onclick={() => cancelTableOrder(table)} title="Anular Cuenta" aria-label="Anular Cuenta">
-            ✕ Anular
-          </button>
-        </div>
-        <div class="footer-subactions-row" style="display: flex; gap: 8px; margin-top: 8px;">
-          <button type="button" class="btn btn-secondary flex-1" onclick={() => openMergeModal(table)}>
-            🔀 Fusionar / Mover
-          </button>
-          <button type="button" class="btn btn-secondary flex-1" onclick={() => openSplitModal(table)}>
-            ✂️ Dividir Cuenta
+
+          <!-- Acciones secundarias operativas de mesa -->
+          <div class="footer-subactions-row">
+            <button 
+              type="button" 
+              class="btn btn-secondary flex-1 btn-subaction" 
+              onclick={() => openMergeModal(table)}
+              title="Fusionar o mover cuenta a otra mesa"
+            >
+              <span class="subaction-icon">🔀</span> Mover / Unir
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-secondary flex-1 btn-subaction" 
+              onclick={() => openSplitModal(table)}
+              title="Dividir la comanda o cobrar por partes"
+            >
+              <span class="subaction-icon">✂️</span> Dividir Cuenta
+            </button>
+          </div>
+
+          <!-- Acción destructiva separada para evitar toques accidentales -->
+          <button 
+            type="button" 
+            class="btn btn-danger-subtle w-100" 
+            onclick={() => cancelTableOrder(table)} 
+            title="Anular la cuenta completa de la mesa" 
+            aria-label="Anular comanda activa"
+          >
+            ✕ Anular Comanda
           </button>
         </div>
       {/if}
@@ -683,6 +714,8 @@
                   {table}
                   userRole={$user?.role}
                   isEditMode={isDesignMode}
+                  isSelected={selectedMapTable?.id === table.id}
+                  onselect={(t) => selectedMapTable = t}
                   ondelete={deleteTable}
                   onopen={openTable}
                   onresume={resumeTable}
@@ -821,7 +854,8 @@
   }
 
   .details-column {
-    width: 360px;
+    width: 380px;
+    min-width: 340px;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -903,7 +937,7 @@
 
   .tables-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
     gap: 16px;
     overflow-y: auto;
     padding-bottom: 24px;
@@ -1436,27 +1470,117 @@
     margin-top: 16px;
   }
 
-  .footer-actions-row {
+  .panel-occupied-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .btn-primary-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 13px 18px;
+    font-size: 1.02rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm, 8px);
+    cursor: pointer;
+    transition: var(--transition-fast, all 0.2s);
+  }
+
+  .btn-primary-action .btn-emoji {
+    font-size: 1.2rem;
+  }
+
+  .btn-facturar {
+    box-shadow: 0 4px 14px var(--color-cafe-glow, rgba(180, 83, 9, 0.25));
+  }
+
+  .btn-facturar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--color-cafe-glow, rgba(180, 83, 9, 0.35));
+  }
+
+  .btn-primary-action.btn-market {
+    box-shadow: 0 4px 14px var(--color-market-glow, rgba(4, 120, 87, 0.25));
+  }
+
+  .btn-primary-action.btn-market:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--color-market-glow, rgba(4, 120, 87, 0.35));
+  }
+
+  .footer-subactions-row {
     display: flex;
     gap: 8px;
+    width: 100%;
   }
 
-  .btn-danger-outline {
+  .btn-subaction {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm, 6px);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition-fast, all 0.2s);
+    white-space: nowrap;
+  }
+
+  .btn-subaction:hover {
+    background: #ffffff;
+    border-color: var(--color-general);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .subaction-icon {
+    font-size: 0.92rem;
+  }
+
+  .btn-danger-subtle {
     background: transparent;
-    border: 1px solid rgba(244, 63, 94, 0.3);
+    border: 1px dashed rgba(244, 63, 94, 0.35);
     color: var(--color-danger);
-    padding: 10px 14px;
-    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm, 6px);
     cursor: pointer;
     font-weight: 500;
-    font-size: 0.88rem;
-    transition: var(--transition-fast);
+    font-size: 0.82rem;
+    transition: var(--transition-fast, all 0.2s);
     outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
   }
 
-  .btn-danger-outline:hover {
-    background: var(--color-danger-glow);
+  .btn-danger-subtle:hover {
+    background: rgba(244, 63, 94, 0.08);
+    border-style: solid;
     border-color: var(--color-danger);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 960px) {
+    .tables-main-layout {
+      flex-direction: column;
+      height: auto;
+      overflow-y: visible;
+    }
+
+    .details-column {
+      width: 100%;
+      min-height: 420px;
+    }
   }
 
 

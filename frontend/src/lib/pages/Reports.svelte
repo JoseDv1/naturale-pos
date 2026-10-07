@@ -54,18 +54,9 @@
     return { startISO, endISO };
   }
 
-  function loadReports() {
+  function fetchSalesHistory(): Promise<any[]> {
     const { startISO, endISO } = getRangeISOBounds();
-    reportsPromise = getDashboardData(startISO, endISO);
-  }
-
-  function loadLowStock() {
-    lowStockPromise = getInventoryAlerts();
-  }
-
-  function loadSalesHistory(): Promise<any[]> {
-    const { startISO, endISO } = getRangeISOBounds();
-    const p: Promise<any[]> = getSales({
+    return getSales({
       q: searchQuery.trim() || undefined,
       status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
       paymentMethod: selectedPayment !== 'ALL' ? selectedPayment : undefined,
@@ -75,25 +66,38 @@
       salesList = data;
       return data;
     });
-    salesPromise = p;
-    return p;
   }
 
-  function loadShifts(): Promise<any[]> {
+  function fetchShifts(): Promise<any[]> {
     const { startISO, endISO } = getRangeISOBounds();
-    const p: Promise<any[]> = getShifts(startISO, endISO).then((data) => {
+    return getShifts(startISO, endISO).then((data) => {
       shiftsList = data;
       return data;
     });
-    shiftsPromise = p;
-    return p;
+  }
+
+  function loadReports() {
+    const { startISO, endISO } = getRangeISOBounds();
+    reportsPromise = getDashboardData(startISO, endISO);
+  }
+
+  function loadLowStock() {
+    lowStockPromise = getInventoryAlerts();
+  }
+
+  function loadSalesHistory() {
+    salesPromise = fetchSalesHistory();
+  }
+
+  function loadShifts() {
+    shiftsPromise = fetchShifts();
   }
 
   const initialBounds = getRangeISOBounds();
   let reportsPromise = $state<Promise<any>>(getDashboardData(initialBounds.startISO, initialBounds.endISO));
   let lowStockPromise = $state<Promise<any[]>>(getInventoryAlerts());
-  let salesPromise = $state<Promise<any[]>>(loadSalesHistory());
-  let shiftsPromise = $state<Promise<any[]>>(loadShifts());
+  let salesPromise = $state<Promise<any[]>>(fetchSalesHistory());
+  let shiftsPromise = $state<Promise<any[]>>(fetchShifts());
 
   $effect(() => {
     if ($refreshTrigger) {

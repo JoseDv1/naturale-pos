@@ -13,7 +13,9 @@
   // Modal State
   let showTransferModal = $state(false);
   let transferSourceId = $state('');
+  let transferVariantId = $state('');
   let transferTargetId = $state('');
+  let transferTargetVariantId = $state('');
   let transferQty = $state(1);
   let transferError = $state('');
   let transferDirection = $state<'MARKET_TO_CAFE' | 'CAFE_TO_MARKET'>('MARKET_TO_CAFE');
@@ -27,7 +29,9 @@
 
   $effect(() => {
     if ($refreshTrigger) {
-      loadData();
+      untrack(() => {
+        loadData();
+      });
     }
   });
 
@@ -38,12 +42,18 @@
     });
   }
 
-  function openTransfer() {
+  function setTransferDirection(dir: 'MARKET_TO_CAFE' | 'CAFE_TO_MARKET') {
+    transferDirection = dir;
     transferSourceId = '';
+    transferVariantId = '';
     transferTargetId = '';
+    transferTargetVariantId = '';
+  }
+
+  function openTransfer() {
+    setTransferDirection('MARKET_TO_CAFE');
     transferQty = 1;
     transferError = '';
-    transferDirection = 'MARKET_TO_CAFE';
     showTransferModal = true;
   }
 
@@ -52,11 +62,31 @@
   let toDept = $derived(transferDirection === 'MARKET_TO_CAFE' ? 'CAFE' : 'MARKET');
 
   // Source products for transfer
-  let transferSources = $derived($products.filter((p) => p.department === fromDept));
+  let transferSources = $derived($products.filter((p) => p.department === fromDept && p.active !== false));
   // Target products
-  let transferTargets = $derived($products.filter((p) => p.department === toDept));
+  let transferTargets = $derived($products.filter((p) => p.department === toDept && p.active !== false));
 
   let selectedSourceProduct = $derived($products.find((p) => p.id === transferSourceId));
+  let sourceVariants = $derived(selectedSourceProduct?.variants?.filter((v: any) => v.active !== false) || []);
+  let hasSourceVariants = $derived(sourceVariants.length > 0);
+  let selectedSourceVariant = $derived(sourceVariants.find((v: any) => v.id === transferVariantId));
+
+  let selectedTargetProduct = $derived($products.find((p) => p.id === transferTargetId));
+  let targetVariants = $derived(selectedTargetProduct?.variants?.filter((v: any) => v.active !== false) || []);
+  let hasTargetVariants = $derived(targetVariants.length > 0);
+  let selectedTargetVariant = $derived(targetVariants.find((v: any) => v.id === transferTargetVariantId));
+
+  // Available stock: if variant selected, variant.stock, else product.stock
+  let availableSourceStock = $derived(
+    selectedSourceVariant ? (selectedSourceVariant.stock ?? 0) : (selectedSourceProduct?.stock ?? 0)
+  );
+
+  // Effective unit cost: if variant selected and variant.cost > 0, variant.cost, else product.cost
+  let effectiveUnitCost = $derived(
+    (selectedSourceVariant && Number(selectedSourceVariant.cost) > 0)
+      ? Number(selectedSourceVariant.cost)
+      : (selectedSourceProduct ? Number(selectedSourceProduct.cost) : 0)
+  );
 
   async function submitTransfer() {
     transferError = '';
@@ -65,15 +95,27 @@
       return;
     }
 
-    if (selectedSourceProduct && selectedSourceProduct.stock < transferQty) {
-      transferError = `Stock insuficiente en origen. Disponible: ${selectedSourceProduct.stock}`;
+    if (hasSourceVariants && !transferVariantId) {
+      transferError = 'Este producto cuenta con variantes. Debes seleccionar la variante a trasladar.';
+      return;
+    }
+
+    if (transferQty > availableSourceStock) {
+      transferError = `Stock insuficiente en origen. Disponible: ${availableSourceStock}`;
+      return;
+    }
+
+    if (selectedTargetProduct && hasTargetVariants && !transferTargetVariantId) {
+      transferError = 'El producto destino cuenta con variantes. Debes seleccionar la variante destino.';
       return;
     }
 
     try {
       const payload = {
         productId: transferSourceId,
+        variantId: transferVariantId || null,
         targetProductId: transferTargetId || null,
+        targetVariantId: transferTargetVariantId || null,
         quantity: transferQty,
         fromDepartment: fromDept,
         toDepartment: toDept,
@@ -164,7 +206,7 @@
               type="button"
               class="segment-btn"
               class:active={transferDirection === 'MARKET_TO_CAFE'}
-              onclick={() => { transferDirection = 'MARKET_TO_CAFE'; transferSourceId = ''; transferTargetId = ''; }}
+              onclick={() => setTransferDirection('MARKET_TO_CAFE')}
             >
               🍏 Mercado a Café ☕
             </button>
@@ -172,7 +214,7 @@
               type="button"
               class="segment-btn"
               class:active={transferDirection === 'CAFE_TO_MARKET'}
-              onclick={() => { transferDirection = 'CAFE_TO_MARKET'; transferSourceId = ''; transferTargetId = ''; }}
+              onclick={() => setTransferDirection('CAFE_TO_MARKET')}
             >
               ☕ Café a Mercado 🍏
             </button>
@@ -181,22 +223,54 @@
 
         <div class="form-group">
           <label for="t-source">Producto de {fromDept === 'MARKET' ? 'Mercado' : 'Café'} (Origen) *</label>
-          <select id="t-source" bind:value={transferSourceId}>
+          <select
+            id="t-source"
+            bind:value={transferSourceId}
+            onchange={() => {
+              transferVariantId = '';
+            }}
+          >
             <option value="">-- Selecciona el Producto --</option>
             {#each transferSources as s}
-              <option value={s.id}>{s.name} (Dispo: {s.stock}) [Cost: ${s.cost.toLocaleString()}]</option>
+              <option value={s.id}>{s.name} (Dispo: {s.stock}) [Costo: ${s.cost.toLocaleString()}]</option>
             {/each}
           </select>
         </div>
 
+        {#if hasSourceVariants}
+          <div class="form-group animate-fade-in">
+            <label for="t-source-variant">Variante de Origen *</label>
+            <select id="t-source-variant" bind:value={transferVariantId}>
+              <option value="">-- Selecciona la Variante --</option>
+              {#each sourceVariants as v}
+                <option value={v.id}>
+                  {v.name} (Dispo: {v.stock ?? 0}) {v.cost ? `[Costo: $${Number(v.cost).toLocaleString()}]` : ''}
+                </option>
+              {/each}
+            </select>
+          </div>
+        {/if}
+
         <div class="form-group">
           <label for="t-qty">Cantidad a Trasladar *</label>
-          <input type="number" id="t-qty" bind:value={transferQty} min="1" max={selectedSourceProduct ? selectedSourceProduct.stock : 999} />
+          <input
+            type="number"
+            id="t-qty"
+            bind:value={transferQty}
+            min="1"
+            max={selectedSourceProduct ? Math.max(1, availableSourceStock) : 999}
+          />
         </div>
 
         <div class="form-group">
           <label for="t-target">Asociar a Producto en {toDept === 'MARKET' ? 'Mercado' : 'Café'} (Destino / Opcional)</label>
-          <select id="t-target" bind:value={transferTargetId}>
+          <select
+            id="t-target"
+            bind:value={transferTargetId}
+            onchange={() => {
+              transferTargetVariantId = '';
+            }}
+          >
             <option value="">Ninguno (Consumo directo en cocina / Insumo)</option>
             {#each transferTargets as t}
               <option value={t.id}>{t.name} (Stock: {t.stock})</option>
@@ -205,15 +279,30 @@
           <span class="help-text">Si seleccionas un producto de destino, su stock se incrementará. Si no, se registrará directamente como consumo de cocina del {toDept === 'MARKET' ? 'Mercado' : 'Café'}.</span>
         </div>
 
+        {#if selectedTargetProduct && hasTargetVariants}
+          <div class="form-group animate-fade-in">
+            <label for="t-target-variant">Variante de Destino *</label>
+            <select id="t-target-variant" bind:value={transferTargetVariantId}>
+              <option value="">-- Selecciona la Variante Destino --</option>
+              {#each targetVariants as tv}
+                <option value={tv.id}>
+                  {tv.name} (Stock actual: {tv.stock ?? 0})
+                </option>
+              {/each}
+            </select>
+            <span class="help-text">El stock se incrementará específicamente en esta variante del producto de destino.</span>
+          </div>
+        {/if}
+
         {#if selectedSourceProduct && transferQty > 0}
           <div class="transfer-math-summary">
             <div class="math-row">
               <span>Valor por unidad (Costo):</span>
-              <span>${selectedSourceProduct.cost.toLocaleString()}</span>
+              <span>${effectiveUnitCost.toLocaleString()}</span>
             </div>
             <div class="math-row total-row">
               <span>Gasto/Ingreso Interno Total:</span>
-              <strong class={toDept === 'MARKET' ? 'text-market' : 'text-cafe'}>${(selectedSourceProduct.cost * transferQty).toLocaleString()}</strong>
+              <strong class={toDept === 'MARKET' ? 'text-market' : 'text-cafe'}>${(effectiveUnitCost * transferQty).toLocaleString()}</strong>
             </div>
           </div>
         {/if}
@@ -422,13 +511,6 @@
     color: var(--text-secondary);
   }
 
-  .text-market {
-    color: var(--color-market);
-  }
-
-  .text-cafe {
-    color: var(--color-cafe);
-  }
 
   /* Segmented control for department */
   .segmented-control {

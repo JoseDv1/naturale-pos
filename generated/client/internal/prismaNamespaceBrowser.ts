@@ -257,7 +257,9 @@ export type ShiftScalarFieldEnum = (typeof ShiftScalarFieldEnum)[keyof typeof Sh
 export const ProductTransferScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
+  variantId: 'variantId',
   targetProductId: 'targetProductId',
+  targetVariantId: 'targetVariantId',
   quantity: 'quantity',
   unitCost: 'unitCost',
   totalCost: 'totalCost',

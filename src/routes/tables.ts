@@ -24,8 +24,8 @@ const tableCheckoutSchema = z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
     amount: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
-      .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del pago debe ser mayor a cero' }),
-  })).min(1, 'Debe ingresar al menos un método de pago')
+      .refine((num) => !isNaN(num) && num >= 0, { message: 'El monto del pago no puede ser negativo' }),
+  }))
 });
 
 const tableMergeSchema = z.object({
@@ -61,8 +61,8 @@ const tablePartialCheckoutSchema = z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
     amount: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
-      .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del pago debe ser mayor a cero' })
-  })).min(1, 'Debe ingresar al menos un método de pago')
+      .refine((num) => !isNaN(num) && num >= 0, { message: 'El monto del pago no puede ser negativo' })
+  }))
 });
 
 
@@ -375,14 +375,16 @@ tables.post('/:id/checkout', zValidator('json', tableCheckoutSchema, (result, c)
         throw new ApiError('La suma de pagos no coincide con el total de la cuenta', 400);
       }
 
-      // Record payments
-      await tx.salePayment.createMany({
-        data: payments.map((pay: any) => ({
-          saleId,
-          method: pay.method,
-          amount: parseFloat(pay.amount)
-        }))
-      });
+      // Record payments if any
+      if (payments && payments.length > 0) {
+        await tx.salePayment.createMany({
+          data: payments.map((pay: any) => ({
+            saleId,
+            method: pay.method,
+            amount: parseFloat(pay.amount)
+          }))
+        });
+      }
 
       // Update sale status to COMPLETED
       const sale = await tx.sale.update({
@@ -1004,13 +1006,15 @@ tables.post('/:id/partial-checkout', zValidator('json', tablePartialCheckoutSche
       });
 
       // Registrar los pagos
-      await tx.salePayment.createMany({
-        data: payments.map(p => ({
-          saleId: completedSale.id,
-          method: p.method,
-          amount: p.amount
-        }))
-      });
+      if (payments && payments.length > 0) {
+        await tx.salePayment.createMany({
+          data: payments.map(p => ({
+            saleId: completedSale.id,
+            method: p.method,
+            amount: p.amount
+          }))
+        });
+      }
 
       // 2. Deducir de la comanda activa de la mesa
       for (const reqItem of items) {

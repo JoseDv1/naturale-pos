@@ -106,10 +106,27 @@
     priceInputValue = unitPrice;
   }
 
+  function setFreePrice() {
+    isEditingPrice = false;
+    priceInputValue = 0;
+    if (onsetprice) {
+      onsetprice(item.product.id, variantId, 0);
+    }
+  }
+
   function savePrice() {
     if (!isEditingPrice) return;
     isEditingPrice = false;
-    const parsed = Math.round(Number(priceInputValue));
+    const raw = priceInputEl ? priceInputEl.value.trim() : (priceInputValue !== null && priceInputValue !== undefined ? String(priceInputValue).trim() : '');
+    if (raw === '' || raw === '0') {
+      // If user typed 0 or cleared the input, set price to 0 (free product)
+      priceInputValue = 0;
+      if (onsetprice) {
+        onsetprice(item.product.id, variantId, 0);
+      }
+      return;
+    }
+    const parsed = Math.round(Number(raw));
     if (isNaN(parsed) || parsed < 0) {
       priceInputValue = unitPrice;
       return;
@@ -163,9 +180,10 @@
             type="number"
             class="price-edit-input"
             min="0"
-            step="100"
+            step="any"
             bind:value={priceInputValue}
             bind:this={priceInputEl}
+            onfocus={(e) => e.currentTarget.select()}
             onblur={savePrice}
             onkeydown={handlePriceKeyDown}
             aria-label="Precio unitario"
@@ -178,6 +196,15 @@
             aria-label="Confirmar precio"
           >
             ✓
+          </button>
+          <button
+            type="button"
+            class="btn-price-action btn-set-free"
+            onmousedown={(e) => { e.preventDefault(); setFreePrice(); }}
+            title="Dejar producto gratis ($0)"
+            aria-label="Dejar producto gratis ($0)"
+          >
+            $0
           </button>
           <button
             type="button"
@@ -195,13 +222,22 @@
             type="button"
             class="btn-price-pill"
             class:custom-price={isCustomPrice}
+            class:free-product={unitPrice === 0}
             onclick={startEditingPrice}
-            title={isCustomPrice
-              ? `Precio editado manualmente (Catálogo: $${catalogPrice.toLocaleString()}). Click para cambiar.`
-              : 'Click para editar precio unitario'}
+            title={unitPrice === 0
+              ? 'Producto gratis / cortesía ($0). Click para cambiar precio.'
+              : isCustomPrice
+                ? `Precio editado manualmente (Catálogo: $${catalogPrice.toLocaleString()}). Click para cambiar.`
+                : 'Click para editar precio unitario'}
             aria-label="Editar precio unitario"
           >
-            <span class="price-value">${unitPrice.toLocaleString()} c/u</span>
+            <span class="price-value">
+              {#if unitPrice === 0}
+                🎁 Gratis ($0)
+              {:else}
+                ${unitPrice.toLocaleString()} c/u
+              {/if}
+            </span>
             {#if isCustomPrice}
               <span class="custom-badge" title="Precio modificado">✏️</span>
             {:else}
@@ -371,6 +407,18 @@
     border-color: rgba(245, 158, 11, 0.55);
   }
 
+  .btn-price-pill.free-product {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #34d399;
+    font-weight: 600;
+  }
+
+  .btn-price-pill.free-product:hover {
+    background: rgba(16, 185, 129, 0.25);
+    border-color: rgba(16, 185, 129, 0.6);
+  }
+
   .edit-hint-icon {
     font-size: 0.7rem;
     opacity: 0.35;
@@ -474,6 +522,18 @@
 
   .btn-price-action.confirm:hover {
     background: rgba(16, 185, 129, 0.45);
+    color: #fff;
+  }
+
+  .btn-price-action.btn-set-free {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    padding: 0 6px;
+    font-size: 0.75rem;
+  }
+
+  .btn-price-action.btn-set-free:hover {
+    background: rgba(245, 158, 11, 0.38);
     color: #fff;
   }
 

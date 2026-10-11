@@ -146,7 +146,7 @@ const saleSchema = z.object({
   userId: z.string().min(1, 'El usuario es requerido'),
   total: z.union([z.number(), z.string()])
     .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
-    .refine((num) => !isNaN(num) && num > 0, { message: 'El total debe ser mayor a cero' }),
+    .refine((num) => !isNaN(num) && num >= 0, { message: 'El total no puede ser negativo' }),
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de producto inválido'),
     variantId: z.string().nullable().optional(),
@@ -162,8 +162,8 @@ const saleSchema = z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INTERNAL']),
     amount: z.union([z.number(), z.string()])
       .transform((val) => typeof val === 'string' ? parseFloat(val) : val)
-      .refine((num) => !isNaN(num) && num > 0, { message: 'El monto del pago debe ser mayor a cero' }),
-  })).min(1, 'La venta debe contener al menos un método de pago')
+      .refine((num) => !isNaN(num) && num >= 0, { message: 'El monto del pago no puede ser negativo' }),
+  })),
 }).superRefine((data, ctx) => {
   // Validate item sum matches total
   const computedTotal = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -175,14 +175,42 @@ const saleSchema = z.object({
     });
   }
 
-  // Validate payment sum matches total
-  const paymentSum = data.payments.reduce((sum, pay) => sum + pay.amount, 0);
-  if (Math.abs(paymentSum - data.total) > 0.01) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'La suma de los pagos no coincide con el total de la venta',
-      path: ['payments']
-    });
+  // Validate payment sum matches total (only when total > 0)
+  if (data.total > 0) {
+    if (data.payments.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La venta debe contener al menos un método de pago',
+        path: ['payments']
+      });
+    }
+    for (let i = 0; i < data.payments.length; i++) {
+      if (data.payments[i].amount <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'El monto del pago debe ser mayor a cero',
+          path: ['payments', i, 'amount']
+        });
+      }
+    }
+    const paymentSum = data.payments.reduce((sum, pay) => sum + pay.amount, 0);
+    if (Math.abs(paymentSum - data.total) > 0.01) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La suma de los pagos no coincide con el total de la venta',
+        path: ['payments']
+      });
+    }
+  } else {
+    // When total is 0 (free sale / cortesía), ensure payments don't exceed 0
+    const paymentSum = data.payments.reduce((sum, pay) => sum + pay.amount, 0);
+    if (paymentSum > 0.01) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Una venta con total cero no puede tener pagos mayores a cero',
+        path: ['payments']
+      });
+    }
   }
 });
 

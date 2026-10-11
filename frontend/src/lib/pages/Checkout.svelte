@@ -1061,7 +1061,7 @@
           min="0.01"
           step="any"
         />
-        <button class="btn btn-general" onclick={addPayment}>
+        <button type="button" class="btn btn-general" onclick={addPayment}>
           Añadir
         </button>
       </div>
@@ -1174,10 +1174,20 @@
           <!-- Add Payment Section -->
           {#if remainingToPay > 0}
             {@render addPaymentSection()}
+          {:else if $cartTotal === 0}
+            <div class="free-sale-card animate-fade-in">
+              <span class="free-icon">🎁</span>
+              <div>
+                <strong>Venta de Cortesía ($0)</strong>
+                <p>Todos los productos son gratuitos. No se requiere registrar método de pago.</p>
+              </div>
+            </div>
           {/if}
 
           <!-- List of Registered Payments -->
-          {@render registeredPaymentsList()}
+          {#if $cartTotal > 0 || payments.length > 0}
+            {@render registeredPaymentsList()}
+          {/if}
 
           <!-- Change and Actions -->
           <div class="modal-footer">
@@ -1189,10 +1199,11 @@
             {/if}
 
             <div class="footer-buttons">
-              <button class="btn btn-secondary" onclick={closePaymentModal}>
+              <button type="button" class="btn btn-secondary" onclick={closePaymentModal}>
                 Cancelar
               </button>
               <button
+                type="button"
                 class="btn btn-market"
                 onclick={processSale}
                 disabled={remainingToPay > 0.01}
@@ -2115,6 +2126,35 @@
   .v-stock.out {
     color: var(--color-danger);
     font-weight: 600;
+  }
+
+  .free-sale-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--radius-sm);
+    color: #34d399;
+    margin-bottom: 16px;
+  }
+
+  .free-sale-card .free-icon {
+    font-size: 1.5rem;
+  }
+
+  .free-sale-card strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+
+  .free-sale-card p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
   }
 
   @media (max-width: 900px) {

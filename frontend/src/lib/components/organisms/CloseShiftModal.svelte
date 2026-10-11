@@ -59,9 +59,10 @@
 
   async function handleCloseShift(e: SubmitEvent) {
     e.preventDefault();
-    const counted = Number(actualCash);
+    const raw = (actualCash === '' || actualCash === null || actualCash === undefined) ? 0 : actualCash;
+    const counted = Number(raw);
     if (isNaN(counted) || counted < 0) {
-      errorMessage = 'Ingresa un valor válido para el conteo de efectivo.';
+      errorMessage = 'Ingresa un valor válido para el conteo de efectivo (mayor o igual a cero).';
       return;
     }
 
@@ -221,8 +222,30 @@
                   class="form-control cash-count-input"
                   bind:value={actualCash}
                   placeholder="0"
-                  required
+                  onfocus={(e) => e.currentTarget.select()}
                 />
+              </div>
+
+              <!-- Quick Helper Pills for Cashier Convenience -->
+              <div class="quick-cash-pills">
+                <button
+                  type="button"
+                  class="quick-pill zero-pill"
+                  class:selected={enteredCash === 0}
+                  onclick={() => { actualCash = 0; errorMessage = ''; }}
+                >
+                  💵 Sin Efectivo en Gaveta ($0)
+                </button>
+                {#if expectedCash > 0}
+                  <button
+                    type="button"
+                    class="quick-pill"
+                    class:selected={enteredCash === expectedCash}
+                    onclick={() => { actualCash = expectedCash; errorMessage = ''; }}
+                  >
+                    🎯 Monto Esperado (${expectedCash.toLocaleString()})
+                  </button>
+                {/if}
               </div>
             </div>
 
@@ -911,6 +934,44 @@
     color: #e74c3c;
     font-size: 0.88rem;
     font-weight: 500;
+  }
+
+  .quick-cash-pills {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .quick-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .quick-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-color: var(--border-focus);
+  }
+
+  .quick-pill.selected {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .quick-pill.zero-pill.selected {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: #f59e0b;
+    color: #f59e0b;
   }
 
   @media print {

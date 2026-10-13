@@ -129,10 +129,10 @@ reports.get('/dashboard', async (c) => {
         const itemRevenue = Number(item.price) * item.quantity;
         const unitCost = item.variant?.cost !== undefined && item.variant?.cost !== null
           ? Number(item.variant.cost)
-          : Number(item.product.cost);
+          : Number(item.product?.cost ?? 0);
         const itemCost = unitCost * item.quantity;
 
-        const dept = item.product.department; // 'MARKET' | 'CAFE'
+        const dept = item.product?.department; // 'MARKET' | 'CAFE'
         if (dept === 'MARKET' || dept === 'CAFE') {
           data[dept].revenue += itemRevenue;
           data[dept].costOfSales += itemCost;

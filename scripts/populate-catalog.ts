@@ -157,8 +157,8 @@ Opciones:
 
     const defaultCatId = catNameToId.get('sin categoría') || Array.from(catNameToId.values())[0];
 
-    // 2. Productos y Variantes
-    console.log('🏷️  Importando productos y variantes...');
+    // 2. Productos, Variantes y Modificadores
+    console.log('🏷️  Importando productos, variantes y modificadores...');
     const insertProd = db.prepare(`
       INSERT OR REPLACE INTO Product (id, sku, name, description, price, cost, stock, categoryId, department, isRawMaterial, active, createdAt, updatedAt, imageUrl)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -169,8 +169,14 @@ Opciones:
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+    const insertModifier = db.prepare(`
+      INSERT OR REPLACE INTO ProductModifier (id, productId, name, price, cost, isDefault, active, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
     let prodsCount = 0;
     let varsCount = 0;
+    let modsCount = 0;
 
     db.transaction(() => {
       for (const p of catalog.products || []) {
@@ -201,7 +207,7 @@ Opciones:
               v.id || crypto.randomUUID(),
               productId,
               v.name,
-              v.sku,
+              v.sku || null,
               Number(v.price || p.price || 0),
               Number(v.cost || 0),
               Number(v.stock || 0),
@@ -212,10 +218,27 @@ Opciones:
             varsCount++;
           }
         }
+
+        if (p.modifiers && Array.isArray(p.modifiers)) {
+          for (const m of p.modifiers) {
+            insertModifier.run(
+              m.id || crypto.randomUUID(),
+              productId,
+              m.name,
+              Number(m.price || 0),
+              Number(m.cost || 0),
+              m.isDefault ? 1 : 0,
+              m.active !== false ? 1 : 0,
+              now,
+              now
+            );
+            modsCount++;
+          }
+        }
       }
     })();
 
-    console.log(`   ✅ ${prodsCount} productos y ${varsCount} variantes procesados exitosamente.`);
+    console.log(`   ✅ ${prodsCount} productos, ${varsCount} variantes y ${modsCount} modificadores procesados exitosamente.`);
 
     // 3. Verificar integridad
     db.exec('PRAGMA foreign_keys = ON;');
@@ -231,6 +254,7 @@ Opciones:
       categories: (db.query('SELECT count(*) as c FROM Category').get() as any)?.c,
       products: (db.query('SELECT count(*) as c FROM Product').get() as any)?.c,
       variants: (db.query('SELECT count(*) as c FROM ProductVariant').get() as any)?.c,
+      modifiers: (db.query('SELECT count(*) as c FROM ProductModifier').get() as any)?.c,
     };
 
     console.log('\n==================================================================');
@@ -240,6 +264,7 @@ Opciones:
       { Entidad: 'Categorías Totales', Cantidad: currentCounts.categories },
       { Entidad: 'Productos Base', Cantidad: currentCounts.products },
       { Entidad: 'Variantes Totales', Cantidad: currentCounts.variants },
+      { Entidad: 'Modificadores Totales', Cantidad: currentCounts.modifiers },
     ]);
     console.log('==================================================================\n');
   } finally {

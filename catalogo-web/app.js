@@ -37,15 +37,24 @@
     return currencyFormatter.format(amount);
   }
 
-  // Filtrar productos visibles (excluir internos como propinas TIPS y productos inactivos)
+  // Filtrar productos visibles (excluir internos como propinas TIPS, Varios y productos inactivos)
+  const INTERNAL_NAMES = new Set(['TIPS', 'VARIOS']);
   const allProducts = (catalogData.products || [])
-    .filter(p => p.active !== false && p.sku !== 'TIPS')
+    .filter(p => {
+      if (p.active === false) return false;
+      if (p.sku === 'TIPS') return false;
+      const upperName = (p.name || '').trim().toUpperCase();
+      if (INTERNAL_NAMES.has(upperName) && Number(p.price) <= 1) return false;
+      return true;
+    })
     .map(p => {
-      // Normalizar variantes activas
+      // Normalizar variantes y modificadores activos
       const activeVariants = (p.variants || []).filter(v => v.active !== false);
+      const activeModifiers = (p.modifiers || []).filter(m => m.active !== false);
       return {
         ...p,
-        variants: activeVariants
+        variants: activeVariants,
+        modifiers: activeModifiers
       };
     });
 
@@ -55,6 +64,7 @@
     selectedDept: 'ALL',      // 'ALL' | 'CAFE' | 'MARKET'
     selectedCategory: 'ALL',  // 'ALL' | categoryName
     selectedVariants: {},     // productId -> variantId
+    selectedModifiers: {},    // productId -> modifierId (optional)
     filteredProducts: [...allProducts],
     renderedCount: 0,
     pageSize: 60
@@ -64,6 +74,10 @@
   allProducts.forEach(p => {
     if (p.variants && p.variants.length > 0) {
       state.selectedVariants[p.id] = p.variants[0].id;
+    }
+    if (p.modifiers && p.modifiers.length > 0) {
+      const defMod = p.modifiers.find(m => m.isDefault);
+      if (defMod) state.selectedModifiers[p.id] = defMod.id;
     }
   });
 
@@ -113,13 +127,16 @@
   // =========================================================================
   // GENERADOR DE ENLACE DE WHATSAPP POR PRODUCTO
   // =========================================================================
-  function generateWhatsAppUrl(product, variant = null) {
+  function generateWhatsAppUrl(product, variant = null, modifier = null) {
     const greeting = config.whatsappGreeting || '¡Hola! Me interesa este producto:';
     const variantText = variant ? ` (${variant.name})` : '';
-    const priceText = formatMoney(variant ? variant.price : product.price);
-    const skuText = variant ? variant.sku : product.sku;
+    const modifierText = modifier ? `\n• Personalización: *${modifier.name}*` : '';
+    const basePrice = variant ? variant.price : product.price;
+    const extraPrice = modifier ? (Number(modifier.price) || 0) : 0;
+    const priceText = formatMoney(basePrice + extraPrice);
+    const skuText = variant ? (variant.sku || product.sku) : product.sku;
 
-    const message = `${greeting}\n\n• *${product.name}*${variantText}\n• Precio: *${priceText}*\n${skuText ? `• Ref/SKU: ${skuText}` : ''}\n\n¿Tienen disponibilidad?`;
+    const message = `${greeting}\n\n• *${product.name}*${variantText}${modifierText}\n• Precio: *${priceText}*\n${skuText ? `• Ref/SKU: ${skuText}` : ''}\n\n¿Tienen disponibilidad?`;
 
     return `https://wa.me/${config.whatsappNumber}?text=${encodeURIComponent(message)}`;
   }
@@ -280,9 +297,15 @@
     const selectedVariantId = state.selectedVariants[product.id] || (hasVariants ? product.variants[0].id : null);
     const currentVariant = hasVariants ? (product.variants.find(v => v.id === selectedVariantId) || product.variants[0]) : null;
 
-    const currentPrice = currentVariant ? currentVariant.price : product.price;
+    const hasModifiers = product.modifiers && product.modifiers.length > 0;
+    const selectedModifierId = state.selectedModifiers[product.id] || null;
+    const currentModifier = hasModifiers && selectedModifierId ? product.modifiers.find(m => m.id === selectedModifierId) || null : null;
+
+    const basePrice = currentVariant ? currentVariant.price : product.price;
+    const extraPrice = currentModifier ? (Number(currentModifier.price) || 0) : 0;
+    const currentPrice = basePrice + extraPrice;
     const isCafe = product.department === 'CAFE';
-    const waUrl = generateWhatsAppUrl(product, currentVariant);
+    const waUrl = generateWhatsAppUrl(product, currentVariant, currentModifier);
 
     // Badges de Departamento y Categoría
     let badgesHtml = '';
@@ -324,6 +347,35 @@
       `;
     }
 
+    // HTML de Modificadores si existen
+    let modifiersHtml = '';
+    if (hasModifiers) {
+      const modifierButtons = product.modifiers.map(m => {
+        const isSelected = currentModifier && m.id === currentModifier.id;
+        const extraLabel = Number(m.price) > 0 ? ` (+${formatMoney(Number(m.price))})` : '';
+        return `
+          <button 
+            type="button" 
+            class="variant-btn modifier-btn ${isSelected ? 'selected' : ''}" 
+            data-product-id="${product.id}" 
+            data-modifier-id="${m.id}"
+            title="${escapeHtml(m.name)}${extraLabel}"
+          >
+            ${escapeHtml(m.name)}${extraLabel}
+          </button>
+        `;
+      }).join('');
+
+      modifiersHtml = `
+        <div class="variants-container">
+          <span class="variants-label">Personalización:</span>
+          <div class="variants-list">
+            ${modifierButtons}
+          </div>
+        </div>
+      `;
+    }
+
     card.innerHTML = `
       <div class="card-top">
         <div class="badge-group">
@@ -334,6 +386,7 @@
       <div class="card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         ${variantsHtml}
+        ${modifiersHtml}
       </div>
 
       <div class="card-bottom">
@@ -457,34 +510,60 @@
       applyFilters();
     });
 
-    // 5. Delegación de eventos para selección de Variantes en tarjetas
+    // 5. Delegación de eventos para selección de Variantes y Modificadores en tarjetas
     dom.productsGrid.addEventListener('click', (e) => {
-      const variantBtn = e.target.closest('.variant-btn');
-      if (!variantBtn) return;
+      const btn = e.target.closest('.variant-btn');
+      if (!btn) return;
 
-      const productId = variantBtn.dataset.productId;
-      const variantId = variantBtn.dataset.variantId;
+      const productId = btn.dataset.productId;
+      const variantId = btn.dataset.variantId;
+      const modifierId = btn.dataset.modifierId;
 
       const product = allProducts.find(p => p.id === productId);
-      if (!product || !product.variants) return;
+      if (!product) return;
 
-      const variant = product.variants.find(v => v.id === variantId);
-      if (!variant) return;
+      if (variantId && product.variants) {
+        const variant = product.variants.find(v => v.id === variantId);
+        if (!variant) return;
+        state.selectedVariants[productId] = variantId;
 
-      // Actualizar estado
-      state.selectedVariants[productId] = variantId;
+        const card = btn.closest('.product-card');
+        if (card) {
+          card.querySelectorAll('.variant-btn:not(.modifier-btn)').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        }
+      } else if (modifierId && product.modifiers) {
+        if (state.selectedModifiers[productId] === modifierId) {
+          delete state.selectedModifiers[productId];
+        } else {
+          state.selectedModifiers[productId] = modifierId;
+        }
 
-      // Actualizar UI de botones de variante en esa tarjeta
-      const card = variantBtn.closest('.product-card');
+        const card = btn.closest('.product-card');
+        if (card) {
+          card.querySelectorAll('.modifier-btn').forEach(b => {
+            b.classList.toggle('selected', b.dataset.modifierId === state.selectedModifiers[productId]);
+          });
+        }
+      }
+
+      const card = btn.closest('.product-card');
       if (card) {
-        card.querySelectorAll('.variant-btn').forEach(btn => btn.classList.remove('selected'));
-        variantBtn.classList.add('selected');
+        const currentVariant = (product.variants && product.variants.length > 0)
+          ? (product.variants.find(v => v.id === state.selectedVariants[productId]) || product.variants[0])
+          : null;
+        const currentModifier = (product.modifiers && state.selectedModifiers[productId])
+          ? (product.modifiers.find(m => m.id === state.selectedModifiers[productId]) || null)
+          : null;
+
+        const basePrice = currentVariant ? currentVariant.price : product.price;
+        const extraPrice = currentModifier ? (Number(currentModifier.price) || 0) : 0;
 
         // Actualizar precio
         const priceElement = card.querySelector(`#price-${productId}`);
         if (priceElement) {
           priceElement.innerHTML = `
-            ${formatMoney(variant.price)}
+            ${formatMoney(basePrice + extraPrice)}
             <span class="price-currency">COP</span>
           `;
         }
@@ -492,7 +571,7 @@
         // Actualizar botón WhatsApp
         const waBtn = card.querySelector(`#wa-btn-${productId}`);
         if (waBtn) {
-          waBtn.href = generateWhatsAppUrl(product, variant);
+          waBtn.href = generateWhatsAppUrl(product, currentVariant, currentModifier);
         }
       }
     });

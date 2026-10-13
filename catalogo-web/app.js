@@ -105,6 +105,10 @@
     btnResetFilters: document.getElementById('btn-reset-filters')
   };
 
+  const isWhatsAppEnabled = config.whatsappEnabled !== false &&
+    String(config.whatsappEnabled).toLowerCase() !== 'false' &&
+    String(config.whatsappEnabled) !== '0';
+
   // =========================================================================
   // INICIALIZACIÓN DE TEXTOS Y ENLACES GENERALES
   // =========================================================================
@@ -117,10 +121,27 @@
     if (dom.footerTagline) dom.footerTagline.textContent = config.tagline;
     if (dom.currentYear) dom.currentYear.textContent = new Date().getFullYear();
 
-    // Enlace flotante de WhatsApp
-    const generalWaUrl = `https://wa.me/${config.whatsappNumber}?text=${encodeURIComponent(config.whatsappGeneralMessage)}`;
-    if (dom.floatingWa) dom.floatingWa.href = generalWaUrl;
-    if (dom.footerWaLink) dom.footerWaLink.href = generalWaUrl;
+    // Enlace flotante y de footer de WhatsApp
+    if (isWhatsAppEnabled) {
+      const generalWaUrl = `https://wa.me/${config.whatsappNumber}?text=${encodeURIComponent(config.whatsappGeneralMessage)}`;
+      if (dom.floatingWa) {
+        dom.floatingWa.href = generalWaUrl;
+        dom.floatingWa.style.display = '';
+      }
+      if (dom.footerWaLink) {
+        dom.footerWaLink.href = generalWaUrl;
+        dom.footerWaLink.style.display = '';
+      }
+    } else {
+      if (dom.floatingWa) dom.floatingWa.style.display = 'none';
+      if (dom.footerWaLink) {
+        dom.footerWaLink.style.display = 'none';
+        const nextSibling = dom.footerWaLink.nextElementSibling;
+        if (nextSibling && nextSibling.tagName === 'SPAN') {
+          nextSibling.style.display = 'none';
+        }
+      }
+    }
     if (dom.footerIgLink && config.social.instagram) dom.footerIgLink.href = config.social.instagram;
   }
 
@@ -376,6 +397,21 @@
       `;
     }
 
+    const waButtonHtml = isWhatsAppEnabled ? `
+        <a 
+          href="${waUrl}" 
+          class="btn-whatsapp" 
+          id="wa-btn-${product.id}" 
+          target="_blank" 
+          rel="noopener noreferrer"
+        >
+          <svg viewBox="0 0 24 24">
+            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.697c1.002.548 1.83.821 2.806.821h.005c3.18 0 5.767-2.586 5.767-5.766.001-3.182-2.585-5.77-5.767-5.772zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.697.073-1.045-.043-.223-.075-.461-.174-.78-.313-1.354-.59-2.234-1.93-2.302-2.02-.068-.09-1.046-1.391-1.046-2.653 0-1.262.66-1.882.894-2.14.234-.257.51-.322.68-.322.17 0 .34.002.488.01.159.008.371-.06.58.442.213.513.727 1.77.79 1.9.064.13.106.284.021.455-.085.17-.128.277-.255.426-.128.149-.27.332-.385.446-.128.127-.26.265-.112.52.149.255.66 1.09 1.415 1.764.97.865 1.787 1.134 2.042 1.261.255.128.404.106.553-.064.149-.17.638-.745.808-.999.17-.255.34-.213.574-.128.234.085 1.488.702 1.743.83.255.127.425.191.488.3.064.106.064.616-.08 1.021zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.175L2 22l4.98-1.306A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
+          </svg>
+          <span>Pedir por WhatsApp</span>
+        </a>
+    ` : '';
+
     card.innerHTML = `
       <div class="card-top">
         <div class="badge-group">
@@ -397,19 +433,7 @@
             <span class="price-currency">COP</span>
           </div>
         </div>
-
-        <a 
-          href="${waUrl}" 
-          class="btn-whatsapp" 
-          id="wa-btn-${product.id}" 
-          target="_blank" 
-          rel="noopener noreferrer"
-        >
-          <svg viewBox="0 0 24 24">
-            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.697c1.002.548 1.83.821 2.806.821h.005c3.18 0 5.767-2.586 5.767-5.766.001-3.182-2.585-5.77-5.767-5.772zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.697.073-1.045-.043-.223-.075-.461-.174-.78-.313-1.354-.59-2.234-1.93-2.302-2.02-.068-.09-1.046-1.391-1.046-2.653 0-1.262.66-1.882.894-2.14.234-.257.51-.322.68-.322.17 0 .34.002.488.01.159.008.371-.06.58.442.213.513.727 1.77.79 1.9.064.13.106.284.021.455-.085.17-.128.277-.255.426-.128.149-.27.332-.385.446-.128.127-.26.265-.112.52.149.255.66 1.09 1.415 1.764.97.865 1.787 1.134 2.042 1.261.255.128.404.106.553-.064.149-.17.638-.745.808-.999.17-.255.34-.213.574-.128.234.085 1.488.702 1.743.83.255.127.425.191.488.3.064.106.064.616-.08 1.021zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.175L2 22l4.98-1.306A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
-          </svg>
-          <span>Pedir por WhatsApp</span>
-        </a>
+        ${waButtonHtml}
       </div>
     `;
 

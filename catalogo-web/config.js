@@ -9,6 +9,9 @@ window.CATALOG_CONFIG = {
   subtitle: "Mercado Saludable & Café",
   tagline: "Alimentación consciente, café de especialidad y bienestar.",
 
+  // Activar o desactivar todos los botones de "Pedir por WhatsApp" (controlable por WHATSAPP_ENABLED en Dokploy)
+  whatsappEnabled: true,
+
   // Número de WhatsApp (con código de país sin '+', ej. 57 para Colombia + celular de 10 dígitos)
   // Si deseas cambiarlo en producción, solo cambia este número:
   whatsappNumber: "573001234567",

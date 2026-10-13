@@ -120,27 +120,7 @@ body {
   color: var(--text-secondary);
   font-size: 0.95rem;
   max-width: 500px;
-  margin: 0 auto 16px;
-}
-
-.header-info-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 14px;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.info-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-surface);
-  padding: 6px 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-subtle);
+  margin: 0 auto;
 }
 
 /* ==========================================================================

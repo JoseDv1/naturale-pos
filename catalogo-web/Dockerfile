@@ -34,6 +34,11 @@ fi\n\
 if [ -n "$INSTAGRAM_URL" ]; then\n\
   sed -i "s|instagram: *\\\"[^\\\"]*\\\"|instagram: \\\"$INSTAGRAM_URL\\\"|" /usr/share/caddy/config.js\n\
 fi\n\
+TS=$(date +%%s)\n\
+sed -i "s/src=\\\"config.js[^\\\"]*\\\"/src=\\\"config.js?v=$TS\\\"/" /usr/share/caddy/index.html\n\
+sed -i "s/src=\\\"app.js[^\\\"]*\\\"/src=\\\"app.js?v=$TS\\\"/" /usr/share/caddy/index.html\n\
+sed -i "s|src=\\\"data/products.js[^\\\"]*\\\"|src=\\\"data/products.js?v=$TS\\\"|" /usr/share/caddy/index.html\n\
+sed -i "s/href=\\\"styles.css[^\\\"]*\\\"/href=\\\"styles.css?v=$TS\\\"/" /usr/share/caddy/index.html\n\
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile\n' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 EXPOSE 80
